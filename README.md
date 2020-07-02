@@ -4,7 +4,7 @@ This repository contains software corresponding to WP5 of the INSIST project (ht
 
 The folders have the following purpose:
 
-1; brain_meshes: collection of patient specific labelled tetrahedral meshes sufficient for finite element simulations.
+1; brain_meshes.tar.xz: archive of patient specific labelled tetrahedral meshes sufficient for finite element simulations.
 
 2; perfusion: multi-compartment Darcy flow solver describin blood flow in healthy and occluded scenarios.
 

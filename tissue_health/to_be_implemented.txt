@@ -1,0 +1,1 @@
+TODO: implement metabolism and tissue damage model

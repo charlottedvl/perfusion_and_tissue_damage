@@ -1,6 +1,6 @@
 # perfusion_and_tissue_damage
 
-This repository contains software corresponding to WP5 of the INSIST project.
+This repository contains software corresponding to WP5 of the INSIST project (https://www.insist-h2020.eu/).
 
 The folders have the following purpose:
 
@@ -11,3 +11,4 @@ The folders have the following purpose:
 3; oxygen: multi-compartment advection-reaction-diffusion problem describing oxygen transport in the brain.
 
 4; tissue_health: metabolism model capturing tissue damage as a function of time before, during, and after stroke treatment.
+

@@ -1,0 +1,63 @@
+<basic_flow_solver_settings>
+
+<input>
+    <!--tetrahedral brain mesh file with labelled boundaries and subdomains-->
+	<mesh_file> ../brain_meshes/b0000/clustered.xdmf </mesh_file>
+	
+	<!--inlet boundary condition file-->
+	<read_inlet_boundary type='bool'> False </read_inlet_boundary>
+	
+	<!--inlet boundary condition file-->
+	<inlet_boundary_file> boundary_data/BCs.csv </inlet_boundary_file>
+	
+	<!--boundary settings (DBC/NBC)-->
+	<inlet_BC_type> DBC </inlet_BC_type>
+	
+	<!--path to folder storing permeability tensors-->
+	<permeability_folder> ../brain_meshes/b0000/permeability/ </permeability_folder>
+</input>
+
+<physical>
+    <!--arterial pressure boundary condition [Pa]-->
+	<p_arterial type='float'> 10000.0 </p_arterial>
+	
+	<!--venous pressure boundary condition [Pa]-->
+	<p_venous type='float'>  0.0 </p_venous>
+	
+	<!--arteriole compartment - reference permeability [mm^3 s / g]-->
+	<K1gm_ref type='float'> 1.234e-3 </K1gm_ref>
+	
+	<!--capillary compartment - reference permeability [mm^3 s / g]-->
+	<K2gm_ref type='float'> 4.28e-7 </K2gm_ref>
+	
+	<!--venule compartment - reference permeability [mm^3 s / g]-->
+	<K3gm_ref type='float'> 2.468e-3 </K3gm_ref>
+	
+	<!--K_GM/K_WM (grey matter & white matter permeability ratio)-->
+	<gmowm_perm_rat type='float'> 1.0 </gmowm_perm_rat>
+	
+	<!--grey matter coupling coefficient - arteriole & capillary compartments [Pa / s]-->
+	<beta12gm type='float'> 1.326e-6 </beta12gm>
+	
+	<!--grey matter coupling coefficient - capillary & venule compartments [Pa / s]-->
+	<beta23gm type='float'> 4.641e-06 </beta23gm>
+	
+	<!--beta12/beta23-->
+	<gmowm_beta_rat type='float'> 2.538 </gmowm_beta_rat>
+</physical>
+
+<simulation>
+    <!--polynomial degree of finite elements-->
+	<fe_degr type='int'> 1 </fe_degr>
+</simulation>
+
+<output>
+    <!--folder for results-->
+	<res_fldr>  ../VP_results/p0000/perfusion_healthy/  </res_fldr>
+	<!--folder for results-->
+	<save_pvd type='bool'>  True  </save_pvd>
+	<!--compute surface and volume averaged variables-->
+	<comp_ave type='bool'> False </comp_ave> 
+</output>
+
+</basic_flow_solver_settings>

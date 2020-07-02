@@ -1,0 +1,106 @@
+\documentclass[12pt,twoside,a4paper]{article}
+
+\usepackage{amsmath}
+
+\begin{document}
+
+
+
+%Multi-compartment Darcy flow models have been applied succesfully to simulate cardiac perfusion \cite{michler2013,hyde2013,hyde2014}.
+%This work aims to report a similar model developed for whole-organ brain perfusion modelling.
+
+\section{Governing Equations}
+
+\begin{equation}
+ K \boldsymbol{\nabla}^2 p_c  = - \sigma \text{ \hspace{10pt} in } \Omega
+\end{equation}
+
+\begin{eqnarray}
+p_c &=& a \text{ \hspace{10pt} on } \Gamma_{D},\text{ and}\\
+\boldsymbol{\nabla} p_c \cdot \boldsymbol{n} &=& b \text{ \hspace{10pt} on } \Gamma_{N}.
+\end{eqnarray}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{equation}
+\int_\Omega \boldsymbol{\nabla} p_c \cdot \boldsymbol{\nabla}  v  \mathrm{d}\Omega = 
+ \int_\Omega \frac{\sigma}{K} v \mathrm{d}\Omega + 
+ \int_{\Gamma_{N}} b v     \mathrm{d}\Gamma_{N} 
+\end{equation}
+
+\begin{equation}
+\boldsymbol{\nabla} \cdot \left( \boldsymbol{K}_i \cdot \boldsymbol{\nabla} p_i   \right) - \sum_{j=1}^{N}\beta_{i,j}(p_i-p_j) = - \sigma_i \text{ \hspace{10pt} in } \Omega
+\end{equation}
+
+\begin{eqnarray}
+p_i &=& a_i \text{ \hspace{10pt} on } \Gamma_{D,i},\text{ and}\\
+\left( \boldsymbol{K}_i \cdot \boldsymbol{\nabla} p_i \right)\cdot \boldsymbol{n} &=& b_i \text{ \hspace{10pt} on } \Gamma_{N,i}.
+\end{eqnarray}
+
+\begin{equation}
+\int_\Omega \boldsymbol{\nabla} \cdot \left( \boldsymbol{K}_i \cdot \boldsymbol{\nabla} p_i   \right) v_i \mathrm{d}\Omega
+- \sum_{j=1}^N \int_\Omega \beta_{i,j}(p_i-p_j)v_i\mathrm{d}\Omega = 
+- \int_\Omega \sigma_iv_i\mathrm{d}\Omega
+\end{equation}
+
+\begin{eqnarray}
+\int_\Omega \boldsymbol{\nabla} \cdot \left[ \left( \boldsymbol{K}_i \cdot \boldsymbol{\nabla} p_i \right) v_i  \right]  \mathrm{d}\Omega 
+&-& \int_\Omega \left( \boldsymbol{K}_i \cdot \boldsymbol{\nabla} p_i   \right) \cdot \left( \boldsymbol{\nabla} v_i \right) \mathrm{d}\Omega \nonumber \\
+&-& \sum_{j=1}^N \int_\Omega \beta_{i,j}(p_i-p_j)v_i\mathrm{d}\Omega =
+- \int_\Omega \sigma_iv_i\mathrm{d}\Omega
+\end{eqnarray}
+
+\begin{eqnarray}
+\int_{\Gamma_{i}} \left( \boldsymbol{K}_i \cdot \boldsymbol{\nabla} p_i \right) v_i \cdot \boldsymbol{n}    \mathrm{d}\Gamma_{i} 
+&-& \int_\Omega \left( \boldsymbol{K}_i \cdot \boldsymbol{\nabla} p_i   \right) \cdot \left( \boldsymbol{\nabla} v_i \right) \mathrm{d}\Omega \nonumber \\
+&-& \sum_{j=1}^N \int_\Omega \beta_{i,j}(p_i-p_j)v_i\mathrm{d}\Omega =
+- \int_\Omega \sigma_iv_i\mathrm{d}\Omega
+\end{eqnarray}
+
+\begin{eqnarray}
+\int_\Omega \left( \boldsymbol{K}_i \cdot \boldsymbol{\nabla} p_i   \right) \cdot \left( \boldsymbol{\nabla} v_i \right) \mathrm{d}\Omega =
++ \int_\Omega \sigma_iv_i\mathrm{d}\Omega 
++ \int_{\Gamma_{N,i}} b_i v_i     \mathrm{d}\Gamma_{N,i}  \nonumber \\
+- \sum_{j=1}^N \int_\Omega \beta_{i,j}(p_i-p_j)v_i\mathrm{d}\Omega
+\end{eqnarray}
+
+\begin{equation}
+\boldsymbol{u}_i=-\boldsymbol{K}_i \cdot \boldsymbol{\nabla} p_i
+\end{equation}
+
+\section{MMS}
+
+\begin{equation}
+\Omega = [0,1]\times[0,1]\times[0,1]
+\end{equation}
+
+\begin{equation}
+\boldsymbol{K} = 
+\begin{bmatrix}
+    0.1(2 - y)		& 1 + y^2	& 0.1(1 + y^2)  \\
+    1 + y^2			& 2 - y		& 1 + y^2  \\
+    0.1(1 + y^2)	& 1 + y^2	& 0.1(2 - y) 
+\end{bmatrix}
+\end{equation}
+
+\begin{equation}
+\boldsymbol{\beta} = 
+\begin{bmatrix}
+    0       & 0.5 & 1  \\
+    0.5     & 0   & 1.5  \\
+    1       & 1.5 & 0 
+\end{bmatrix}
+\end{equation}
+
+\begin{eqnarray}
+f(x) &=& 16x^4 - 32x^3 + 16x^2 \\
+g(x) &=& x^2
+\end{eqnarray}
+
+\begin{eqnarray}
+p_1 &=& -p_3 = f(x)g(y)f(z) \\
+p_2	&=& f(x)f(y)f(z)\\
+p_3	&=& -p_1 = -f(x)g(y)f(z)
+\end{eqnarray}
+
+\end{document}

@@ -1,0 +1,23 @@
+<permeability_initialiser>
+
+<input_files_and_folders>
+    <!--xdmf file refering to a tetrahedral mesh with labelled boundaries and subdomains-->
+	<mesh_file>  ../brain_meshes/b0000/clustered.xdmf  </mesh_file>
+</input_files_and_folders>
+
+<physical_variables>
+    <!--normal vector of the cortical surface in the reference coordinate system-->
+	<e_ref>  0, 0, 1  </e_ref>
+	
+	<!--arteriole/venule permeability tensor form-->
+	<K1_form>  0, 0, 0, 0, 0, 0, 0, 0, 1  </K1_form>
+</physical_variables>
+
+<output_files_and_folders>
+    <!--folder for results-->
+	<res_fldr>  ../brain_meshes/b0000/permeability/  </res_fldr>
+	<!--save sub-results-->
+	<save_subres>  True  </save_subres>
+</output_files_and_folders>
+
+</permeability_initialiser>

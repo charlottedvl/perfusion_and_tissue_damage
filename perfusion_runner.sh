@@ -1,3 +1,4 @@
+tar xf brain_meshes.tar.xz
 cd perfusion
 mpirun -n 6 python3 permeability_initialiser.py
 python3 BC_creator.py

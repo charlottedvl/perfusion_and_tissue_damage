@@ -2,12 +2,12 @@ sudo docker build -t docker_porous_test .
 sudo docker run docker_porous_test
 
 ## list images and containers
-#sudo docker image ls # list image ID
 #sudo docker ps -a # list container ID
+#sudo docker image ls # list image ID
 
 ## remove images and stuck containers
-#sudo docker rmi "image_id"
 #sudo docker rm "container_id"
+#sudo docker rmi "image_id"
 
 ## remove all images and containers
 #sudo docker rm $(sudo docker ps -a -q)

@@ -14,10 +14,17 @@ The folders have the following purpose:
 
 
 Required inputs from other modules:
-1; Patient parameters: age, sex, systolic and diastolic blood pressure, heart rate, occlusion location <-- WP2
-2; Treatment outcome: thrombus permeability before and after treatment, distribution of thrombus fragments if any organised in a .csv file listing diameter and number of fragments <-- WP3 & WP4
-3; Size and location of infarct as a function of treatment success (TICI), collateral score, age and sex for validation <-- WP2
+
+1; Patient parameters (YAML): age, sex, systolic and diastolic blood pressure, heart rate, occlusion location <-- WP2
+
+2; Treatment outcome: thrombus permeability before and after treatment, distribution of thrombus fragments if any organised in a file listing diameter and number of fragments (*.csv prefered) <-- WP3 & WP4
+
+3; Size and location of infarct as a function of treatment success (TICI), collateral score, age and sex for validation (*.csv prefered) <-- WP2
+
+
 
 Provided outputs for other modules:
-1; Pressure upstream and downstream of thrombus --> WP3
-2; Patient outcome (size and location of infarct, TICI, functional outcome estimate) as a function of patient parameters --> WP7
+
+1; Pressure upstream and downstream of thrombus (*.csv) --> WP3
+
+2; Patient outcome (size and location of infarct, TICI, functional outcome estimate) as a function of patient parameters (*.csv) --> WP7

@@ -13,7 +13,7 @@ The folders have the following purpose:
 4; tissue_health: metabolism model capturing tissue damage as a function of time before, during, and after stroke treatment.
 
 
-Required inputs from other modules:
+**Required inputs from other modules:**
 
 1; Patient parameters (YAML): age, sex, systolic and diastolic blood pressure, heart rate, occlusion location <-- WP2
 
@@ -23,7 +23,7 @@ Required inputs from other modules:
 
 
 
-Provided outputs for other modules:
+**Provided outputs for other modules:**
 
 1; Pressure upstream and downstream of thrombus (*.csv) --> WP3
 

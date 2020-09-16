@@ -1,0 +1,28 @@
+Bootstrap: docker
+From: quay.io/fenicsproject/stable:latest 
+stage: builder
+
+%files
+        ./ /app
+
+%post
+        pip install --upgrade pip
+        cat /app/requirements.txt | sed '/eventmodule/d' | pip install --no-cache-dir -r /dev/stdin
+
+        tar -C /app/ -xvf /app/brain_meshes.tar.xz 
+
+        cd /app/perfusion && python3 permeability_initialiser.py
+
+Bootstrap: docker
+From: quay.io/fenicsproject/stable:latest 
+stage: final
+
+%files from builder
+        /app/* /app/
+
+%post
+        pip install --upgrade pip
+        cd /app/ && pip install --no-cache-dir -r requirements.txt
+
+%runscript
+        cd /app/ && exec python3 API.py "$@"

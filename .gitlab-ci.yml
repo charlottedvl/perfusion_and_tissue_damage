@@ -9,7 +9,7 @@ variables:
         DOCKER_TLS_CERTDIR: "/certs"
         DOCKER_DRIVER: overlay2
         CONTAINER: containers
-        IMAGE: perfusion_and_tissue_damage 
+        IMAGE: perfusion_and_tissue_damage
 
 cache: &global_cache
         paths:
@@ -43,3 +43,29 @@ verify_docker:
                 - docker load -i ${CONTAINER}/docker.tar
                 - mkdir -p ${MOUNT_POINT}/docker
                 - docker run -v ${MOUNT_POINT}/docker:/patient ${IMAGE} test -p /patient
+
+build_singularity:
+        <<: *docker_definition
+        cache:
+                <<: *global_cache
+                policy: push
+        stage: containerise
+        script:
+                - sed -i 's/\.\/ \/app/\/app \/app/' singularity.def
+                - mkdir -p ${MOUNT_POINT}
+                - cp $(ls -p | grep -v /) ${MOUNT_POINT}/
+                - cp -R eventmodule oxygen perfusion tissue_health ${MOUNT_POINT}/
+                - docker run --privileged -v ${MOUNT_POINT}:/app quay.io/singularity/singularity:v3.6.2 build /app/${IMAGE}.sif /app/singularity.def
+                - mkdir -p ${CONTAINER}
+                - cp ${MOUNT_POINT}/${IMAGE}.sif ${CONTAINER}/singularity.sif
+
+verify_singularity:
+        <<: *docker_definition
+        cache:
+                <<: *global_cache
+                policy: pull
+        stage: verify
+        script:
+                - mkdir -p ${MOUNT_POINT}/singularity
+                - cp ${CONTAINER}/singularity.sif ${MOUNT_POINT}/${IMAGE}.sif
+                - docker run --privileged -v ${MOUNT_POINT}:/patient quay.io/singularity/singularity:v3.6.2 run -B /patient/singularity:/patient /patient/${IMAGE}.sif test -p /patient

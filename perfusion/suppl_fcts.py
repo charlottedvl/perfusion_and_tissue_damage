@@ -356,6 +356,67 @@ def surface_ave(mesh,boundaries,vels,ps):
     surf_p_values.append(surf_p)
     return np.array(fluxes), np.array(surf_p_values)
 
+# infarct calculation
+def infarct_vol(mesh,subdomains,infarct):
+    comm = MPI.comm_world
+    rank = comm.Get_rank()
+
+    subdom_labels, n_labels = region_label_assembler(subdomains)
+
+    dV = dx(subdomain_data=subdomains)
+    vol_p_values = []
+
+    # compute volume and characteristic values for each region
+    for i in range(n_labels):
+        ID = int(subdom_labels[i])
+        vol = assemble(Constant(1.0) * dV(ID, domain=mesh))
+        char_p_ID = [ID, vol]
+
+        # volume averaged quantities
+        char_p_ID.append(assemble(infarct * dV(ID))/1000)
+        vol_p_values.append(char_p_ID)
+
+    # compute the net volume and average
+    ID = int(sum(subdom_labels))
+    vol = assemble(Constant(1.0) * dx(domain=mesh))
+    char_p_ID = [ID, vol]
+
+    char_p_ID.append(assemble(infarct * dx)/1000)
+    vol_p_values.append(char_p_ID)
+
+    return np.array(vol_p_values)
+
+
+
+# perfusion calculation
+def perfusion_vol(mesh,subdomains,perfusion):
+    comm = MPI.comm_world
+    rank = comm.Get_rank()
+
+    subdom_labels, n_labels = region_label_assembler(subdomains)
+
+    dV = dx(subdomain_data=subdomains)
+    vol_p_values = []
+
+    # compute volume and characteristic values for each region
+    for i in range(n_labels):
+        ID = int(subdom_labels[i])
+        vol = assemble(Constant(1.0) * dV(ID, domain=mesh))
+        char_p_ID = [ID, vol]
+
+        # volume averaged quantities
+        char_p_ID.append(assemble(perfusion * dV(ID)) / vol)
+        vol_p_values.append(char_p_ID)
+
+    # compute the net volume and average
+    ID = int(sum(subdom_labels))
+    vol = assemble(Constant(1.0) * dx(domain=mesh))
+    char_p_ID = [ID, vol]
+
+    char_p_ID.append(assemble(perfusion * dx) / vol)
+    vol_p_values.append(char_p_ID)
+
+    return np.array(vol_p_values)
 
 #%%
 def vol_ave(mesh,subdomains,ps,vels):

@@ -2,13 +2,13 @@
 
 <input>
     <!--tetrahedral brain mesh file with labelled boundaries and subdomains-->
-	<mesh_file> perfusion1/bf_sim/clustered_mesh.xdmf </mesh_file>
+	<mesh_file> Coarse_Collaterals/BH0025_0/bf_sim/clustered_mesh.xdmf </mesh_file>
 
 	<!--inlet boundary condition file-->
 	<read_inlet_boundary type='bool'> True </read_inlet_boundary>
 
 	<!--inlet boundary condition file-->
-	<inlet_boundary_file> perfusion1/bf_sim/boundary_condition_file.csv </inlet_boundary_file>
+	<inlet_boundary_file> Coarse_Collaterals/BH0025_0/bf_sim/boundary_condition_file.csv </inlet_boundary_file>
 
 	<!--boundary settings (DBC/NBC)-->
 	<inlet_BC_type> DBC </inlet_BC_type>
@@ -19,7 +19,7 @@
 
 <physical>
     <!--arterial pressure boundary condition [Pa]-->
-	<p_arterial type='float'> 7000.0 </p_arterial>
+	<p_arterial type='float'> 6500.0 </p_arterial>
 
 	<!--venous pressure boundary condition [Pa]-->
 	<p_venous type='float'>  0.0 </p_venous>
@@ -53,7 +53,7 @@
 
 <output>
     <!--folder for results-->
-	<res_fldr>  ../VP_results/p0000/perfusion_healthy/  </res_fldr>
+	<res_fldr>  Coarse_Collaterals/BH0025_0/perfusion/  </res_fldr>
 	<!--folder for results-->
 	<save_pvd type='bool'> True </save_pvd>
 	<!--compute surface and volume averaged variables-->

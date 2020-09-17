@@ -12,17 +12,22 @@ class API(eventhandler.EventHandler):
                            check=True,
                            cwd="./perfusion")
 
-        res_fldr = self.patient_dir.joinpath("VP_result")
+        # output paths for `BC_creator.py` and `basic_flow_solver.py`
+        bc_folder = self.patient_dir.joinpath("BC_result")
+        res_folder = self.patient_dir.joinpath("VP_result")
 
-        subprocess.run(
-            ["python3", "BC_creator.py", "--res_fldr", f"{res_fldr}/"],
-            check=True,
-            cwd="./perfusion")
+        subprocess.run([
+            "python3", "BC_creator.py", "--folder", f"{bc_folder}/",
+            "--res_fldr", f"{res_folder}/"
+        ],
+                       check=True,
+                       cwd="./perfusion")
 
-        subprocess.run(
-            ["python3", "basic_flow_solver.py", "--res_fldr", f"{res_fldr}/"],
-            check=True,
-            cwd="./perfusion")
+        subprocess.run([
+            "python3", "basic_flow_solver.py", "--res_fldr", f"{res_folder}/"
+        ],
+                       check=True,
+                       cwd="./perfusion")
 
     def handle_example(self):
         self.handle_event()

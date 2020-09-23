@@ -22,7 +22,6 @@ import argparse
 import numpy
 numpy.set_printoptions(linewidth=200)
 
-
 # ghost mode options: 'none', 'shared_facet', 'shared_vertex'
 parameters['ghost_mode'] = 'none'
 
@@ -100,7 +99,7 @@ start2 = time.time()
 patient_folder = "/".join(configs.input.inlet_boundary_file.split("/")[:-2]) + "/"  # assume boundary file is in bf_sim folder
 
 # run 1-D blood flow model and update boundary file
-coarseCollaterals=True
+coarseCollaterals = False
 solver = "krylov"
 clotactive = False
 
@@ -213,7 +212,7 @@ with open(patient_folder + 'Model_values_Healthy.csv', "w") as f:
     for index, cp in enumerate(Patient.Perfusion.CouplingPoints):
         f.write("%d,%.12g,%.12g,%.12g,%.12g,%.12g,%.12g,%.12g\n" % (
             fluxes[:, 0][2:][index],
-            cp.Node.R1,
+            cp.Node.R1+cp.Node.R2,
             cp.Node.Pressure,
             cp.Node.WKNode.Pressure,
             PressureAtBoundary[index],
@@ -221,6 +220,11 @@ with open(patient_folder + 'Model_values_Healthy.csv', "w") as f:
             # cp.Node.FlowRate,
             cp.Node.WKNode.AccumulatedFlowRate,
             cp.Node.TargetFlow))
+
+CouplingResistance = [node.Node.R1+node.Node.R2 for node in Patient.Perfusion.CouplingPoints]
+for r in CouplingResistance:
+    if r < 1e6:
+        print('\033[93m'+"Warning: Low coupling resistance found. R=%f \033[m" % r)
 
 # update boundary conditions
 for index, node in enumerate(Patient.Topology.OutletNodes):
@@ -265,7 +269,7 @@ def coupledmodel(P):
         # get surface values
         fluxes, surf_p_values = suppl_fcts.surface_ave(mesh, boundaries, vels, ps)
 
-        FlowRateAtBoundary = fluxes[:, 2][2:]* -1
+        FlowRateAtBoundary = fluxes[:, 2][2:] * -1
         # PressureAtBoundary = surf_p_values[:, 2][2:]
 
         # Run 1-D bf model
@@ -287,7 +291,7 @@ if solver == "krylov":
     print("\tRunning two-way coupling by root finding.")
     guessPressure = numpy.array([node.Node.WKNode.Pressure for node in Patient.Perfusion.CouplingPoints])  # healthy scenario
     sol = scipy.optimize.root(coupledmodel, guessPressure, method='krylov',
-                              options={'disp': True, 'maxiter': 5, 'ftol': 1e-06})
+                              options={'disp': True, 'maxiter': 50, 'ftol': 1e-12})  # xtol: 1e-4 or 'ftol': 1e-12
     print(sol)
     for index, node in enumerate(Patient.Perfusion.CouplingPoints):
         node.Node.OutPressure = sol.x[index]
@@ -429,7 +433,7 @@ with open(patient_folder + 'Model_values_Stroke.csv', "w") as f:
     for index, cp in enumerate(Patient.Perfusion.CouplingPoints):
         f.write("%d,%.12g,%.12g,%.12g,%.12g,%.12g,%.12g,%.12g\n" % (
             fluxes[:, 0][2:][index],
-            cp.Node.R1,
+            cp.Node.R1+cp.Node.R2,
             cp.Node.Pressure,
             cp.Node.WKNode.Pressure,
             PressureAtBoundary[index],
@@ -438,8 +442,11 @@ with open(patient_folder + 'Model_values_Stroke.csv', "w") as f:
             cp.Node.WKNode.AccumulatedFlowRate,
             FlowRateAtBoundary[index] * 1e-3))
 
+## save results (6000 comes from minute*100mL)
+perfusion_stroke = project(beta12 * (p1-p2)*6000, K2_space, solver_type='bicgstab', preconditioner_type='amg')
+perfusion_change = project(((perfusion-perfusion_stroke)/perfusion) * -100, K2_space, solver_type='bicgstab', preconditioner_type='amg')
+infarct = project(conditional(gt(perfusion_change, Constant(-70)), Constant(0.0), Constant(1.0)), K2_space, solver_type='bicgstab', preconditioner_type='amg')
 
-## save results
 vars2save = [ps, vels, Ks]
 fnames = ['press','vel','K']
 for idx, fname in enumerate(fnames):
@@ -452,7 +459,14 @@ with XDMFFile(configs.output.res_fldr+'beta12.xdmf') as myfile:
 with XDMFFile(configs.output.res_fldr+'beta23.xdmf') as myfile:
     myfile.write_checkpoint(beta23,"beta23", 0, XDMFFile.Encoding.HDF5, False)
 with XDMFFile(configs.output.res_fldr+'perfusion.xdmf') as myfile:
-    myfile.write_checkpoint(perfusion,'perfusion', 0, XDMFFile.Encoding.HDF5, False)
+    myfile.write_checkpoint(perfusion, 'perfusion', 0, XDMFFile.Encoding.HDF5, False)
+with XDMFFile(configs.output.res_fldr+'perfusion_stroke.xdmf') as myfile:
+    myfile.write_checkpoint(perfusion_stroke, 'perfusion', 0, XDMFFile.Encoding.HDF5, False)
+with XDMFFile(configs.output.res_fldr+'perfusion_change.xdmf') as myfile:
+    myfile.write_checkpoint(perfusion_change, 'perfusion_change', 0, XDMFFile.Encoding.HDF5, False)
+with XDMFFile(configs.output.res_fldr+'infract.xdmf') as myfile:
+    myfile.write_checkpoint(infarct, 'infarct', 0, XDMFFile.Encoding.HDF5, False)
+
 
 fheader = 'FE degree, K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat, beta12gm, beta23gm, gmowm_beta_rat'
 dom_props = numpy.array([configs.simulation.fe_degr,K1gm_ref,K2gm_ref,K3gm_ref,gmowm_perm_rat,beta12gm,beta23gm,gmowm_beta_rat])
@@ -463,6 +477,11 @@ numpy.savetxt(configs.output.res_fldr+'dom_props.csv', [dom_props],"%d,%e,%e,%e,
 if configs.output.comp_ave == True:
     # obtain fluxes (ID, surface area, flux1, flux2, flux3)
     fluxes, surf_p_values = suppl_fcts.surface_ave(mesh,boundaries,vels,ps)
+
+    # calculate perfusion in white and grey matter (and total brain)
+    vol_perfusion_values = suppl_fcts.perfusion_vol(mesh, subdomains, perfusion)
+    vol_perfusion_stroke_values = suppl_fcts.perfusion_vol(mesh, subdomains, perfusion_stroke)
+    vol_infarct_values = suppl_fcts.infarct_vol(mesh, subdomains, infarct)
 
     # obtain some characteristic values within the domain (ID, volume, average, min, max)
     vol_p_values, vol_vel_values = suppl_fcts.vol_ave(mesh,subdomains,ps,vels)
@@ -484,6 +503,14 @@ if configs.output.comp_ave == True:
 
         fheader = 'volume ID, Volume [mm^3], ua [m/s], uc [m/s], uv [m/s]'
         numpy.savetxt(configs.output.res_fldr+'vol_vel_values.csv', vol_vel_values,"%d,%e,%e,%e,%e",header=fheader)
+
+        # perfusion
+        fheader = 'volume ID,Volume [mm^3],perfusion [(ml blood)/min/(100 ml tissue)]'
+        numpy.savetxt(configs.output.res_fldr + 'vol_perfusion_values.csv', vol_perfusion_values, "%d,%e,%e", header=fheader)
+        numpy.savetxt(configs.output.res_fldr + 'vol_perfusion_stroke_values.csv', vol_perfusion_stroke_values, "%d,%e,%e", header=fheader)
+
+        fheader = 'volume ID,Volume [mm^3],infarct volume [mL]'
+        numpy.savetxt(configs.output.res_fldr + 'vol_infarct_values.csv', vol_infarct_values, "%d,%e,%e", header=fheader)
 
 end3 = time.time()
 end0 = time.time()

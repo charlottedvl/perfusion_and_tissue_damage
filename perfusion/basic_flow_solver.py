@@ -47,7 +47,7 @@ if rank == 0: print('Step 1: Reading input files, initialising functions and par
 start1 = time.time()
 
 parser = argparse.ArgumentParser(description="perfusion computation based on multi-compartment Darcy flow model")
-parser.add_argument("--config_file", help="path to configuration file (string ended with /)",
+parser.add_argument("--config_file", help="path to configuration file",
                     type=str, default='./config_basic_flow_solver.yml')
 parser.add_argument("--res_fldr", help="path to results folder (string ended with /)",
                 type=str, default=None)

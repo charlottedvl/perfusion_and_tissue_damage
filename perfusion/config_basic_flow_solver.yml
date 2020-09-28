@@ -1,0 +1,22 @@
+input:
+  inlet_BC_type: DBC
+  inlet_boundary_file: boundary_data/BCs.csv
+  mesh_file: ../brain_meshes/b0000/clustered.xdmf
+  permeability_folder: ../brain_meshes/b0000/permeability/
+  read_inlet_boundary: false
+output:
+  comp_ave: false
+  res_fldr: ../VP_results/p0000/perfusion_healthy/
+  save_pvd: false
+physical:
+  K1gm_ref: 0.001234
+  K2gm_ref: 4.28e-07
+  K3gm_ref: 0.002468
+  beta12gm: 1.326e-06
+  beta23gm: 4.641e-06
+  gmowm_beta_rat: 2.538
+  gmowm_perm_rat: 1.0
+  p_arterial: 10000.0
+  p_venous: 0.0
+simulation:
+  fe_degr: 1

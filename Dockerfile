@@ -12,6 +12,7 @@ RUN pip3 install --upgrade pip
 RUN pip3 install untangle
 RUN pip3 install scipy
 RUN pip3 install argparse
+RUN pip3 install PyYAML
 
 COPY ./brain_meshes /brain_meshes
 COPY ./perfusion /perfusion

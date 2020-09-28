@@ -1,6 +1,7 @@
 from dolfin import *
 import numpy as np
 import untangle
+import yaml
 
 
 #%%
@@ -96,20 +97,29 @@ def basic_flow_config_reader(input_file_path):
 
 #%%
 def basic_flow_config_reader2(input_file_path,parser):
-    configs = untangle.parse(input_file_path).basic_flow_solver_settings       
-    from pydoc import locate
+    config_format = input_file_path[-3::] # xml or yml
     
-    for mydir in dir(configs):
-        for mysubdir in dir(getattr(configs,mydir)):
-                mydata = getattr(getattr(configs,mydir),mysubdir)
-                mydata_type = mydata['type']
-                if mydata_type == None:
-                    setattr(getattr(configs,mydir),mysubdir, mydata.cdata.strip())
-                elif mydata_type != 'bool':
-                    converter = locate(mydata_type)
-                    setattr(getattr(configs,mydir),mysubdir, converter(mydata.cdata.strip()))
-                else:
-                    setattr(getattr(configs,mydir),mysubdir, mydata.cdata.strip()=='True')
+    if config_format == 'xml':
+        configs = untangle.parse(input_file_path).basic_flow_solver_settings       
+        from pydoc import locate
+        
+        for mydir in dir(configs):
+            for mysubdir in dir(getattr(configs,mydir)):
+                    mydata = getattr(getattr(configs,mydir),mysubdir)
+                    mydata_type = mydata['type']
+                    if mydata_type == None:
+                        setattr(getattr(configs,mydir),mysubdir, mydata.cdata.strip())
+                    elif mydata_type != 'bool':
+                        converter = locate(mydata_type)
+                        setattr(getattr(configs,mydir),mysubdir, converter(mydata.cdata.strip()))
+                    else:
+                        setattr(getattr(configs,mydir),mysubdir, mydata.cdata.strip()=='True')
+    elif config_format == 'yml':
+        with open(input_file_path, "r") as configfile:
+            configs = yaml.load(configfile, yaml.SafeLoader)
+        configs = dict2obj(configs)
+    else:
+        raise Exception("unknown input file format: " + config_format)
     
     if parser.parse_args().res_fldr != None:
         configs.output.res_fldr = parser.parse_args().res_fldr
@@ -180,3 +190,12 @@ def hdf5_reader(mesh,variable,folder,file_name,variable_name):
     hdf = HDF5File(mesh.mpi_comm(), folder+file_name, "r")
     hdf.read(variable, "/"+variable_name)
     hdf.close()
+
+#%%
+class dict2obj(dict):
+    def __init__(self, my_dict):
+        for a, b in my_dict.items():
+            if isinstance(b, (list, tuple)):
+               setattr(self, a, [dict2obj(x) if isinstance(x, dict) else x for x in b])
+            else:
+               setattr(self, a, dict2obj(b) if isinstance(b, dict) else b)

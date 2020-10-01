@@ -152,10 +152,10 @@ if configs.output.comp_ave == True:
     vol_p_values, vol_vel_values = suppl_fcts.vol_ave(mesh,subdomains,ps,vels)
     
     if rank ==0:
-        print(fluxes,'\n')
-        print(surf_p_values,'\n')
-        print(vol_p_values,'\n')
-        print(vol_vel_values,'\n')
+        # print(fluxes,'\n')
+        # print(surf_p_values,'\n')
+        # print(vol_p_values,'\n')
+        # print(vol_vel_values,'\n')
         
         fheader = 'surface ID, Area [mm^2], Qa [mm^3/s], Qc [mm^3/s], Qv [mm^3/s]'
         numpy.savetxt(configs.output.res_fldr+'fluxes.csv', fluxes,"%d,%e,%e,%e,%e",header=fheader)

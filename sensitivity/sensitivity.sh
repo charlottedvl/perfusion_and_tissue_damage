@@ -1,5 +1,18 @@
 START_TIME=$SECONDS
 
+# prepare mesh folder
+cd ../
+
+if [ -d "./brain_meshes" ] 
+then
+    echo "The archive of brain_meshes has be extracted already"
+else
+    echo "The archive of brain_meshes will be extracted" 
+    tar xf brain_meshes.tar.xz
+fi
+
+cd ./sensitivity/
+
 # generate config files with different input parameters
 python3 perfusion_parameter_sampling.py
 

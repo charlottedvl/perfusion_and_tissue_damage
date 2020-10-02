@@ -2,7 +2,7 @@ import numpy as np
 import yaml
 import os
 
-n_sampl = 3
+n_sampl = 22
 
 os.chdir('../perfusion/')
 

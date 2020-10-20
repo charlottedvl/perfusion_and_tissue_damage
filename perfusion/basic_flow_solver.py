@@ -47,8 +47,8 @@ if rank == 0: print('Step 1: Reading input files, initialising functions and par
 start1 = time.time()
 
 parser = argparse.ArgumentParser(description="perfusion computation based on multi-compartment Darcy flow model")
-parser.add_argument("--config_file", help="path to configuration file (string ended with /)",
-                    type=str, default='./config_basic_flow_solver.xml')
+parser.add_argument("--config_file", help="path to configuration file",
+                    type=str, default='./config_basic_flow_solver.yml')
 parser.add_argument("--res_fldr", help="path to results folder (string ended with /)",
                 type=str, default=None)
 config_file = parser.parse_args().config_file
@@ -152,10 +152,10 @@ if configs.output.comp_ave == True:
     vol_p_values, vol_vel_values = suppl_fcts.vol_ave(mesh,subdomains,ps,vels)
     
     if rank ==0:
-        print(fluxes,'\n')
-        print(surf_p_values,'\n')
-        print(vol_p_values,'\n')
-        print(vol_vel_values,'\n')
+        # print(fluxes,'\n')
+        # print(surf_p_values,'\n')
+        # print(vol_p_values,'\n')
+        # print(vol_vel_values,'\n')
         
         fheader = 'surface ID, Area [mm^2], Qa [mm^3/s], Qc [mm^3/s], Qv [mm^3/s]'
         numpy.savetxt(configs.output.res_fldr+'fluxes.csv', fluxes,"%d,%e,%e,%e,%e",header=fheader)

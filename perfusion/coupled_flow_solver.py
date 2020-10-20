@@ -13,13 +13,14 @@ sigma_i - source term in the ith compartment [1 / s]
 @author: Tamas Istvan Jozsa
 """
 
-#%% IMPORT MODULES
+# %% IMPORT MODULES
 # installed python3 modules
 from dolfin import *
 import time
 import sys
 import argparse
 import numpy
+
 numpy.set_printoptions(linewidth=200)
 
 # ghost mode options: 'none', 'shared_facet', 'shared_vertex'
@@ -47,7 +48,7 @@ size = comm.Get_size()
 
 start0 = time.time()
 
-#%% READ INPUT
+# %% READ INPUT
 if rank == 0: print('Step 1: Reading input files, initialising functions and parameters')
 start1 = time.time()
 
@@ -55,10 +56,10 @@ parser = argparse.ArgumentParser(description="perfusion computation based on mul
 parser.add_argument("--config_file", help="path to configuration file (string ended with /)",
                     type=str, default='./config_coupled_flow_solver.xml')
 parser.add_argument("--res_fldr", help="path to results folder (string ended with /)",
-                type=str, default=None)
+                    type=str, default=None)
 config_file = parser.parse_args().config_file
 
-configs = IO_fcts.basic_flow_config_reader2(config_file,parser)
+configs = IO_fcts.basic_flow_config_reader2(config_file, parser)
 # physical parameters
 p_arterial, p_venous = configs.physical.p_arterial, configs.physical.p_venous
 K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat = \
@@ -74,44 +75,52 @@ Vp, Vvel, v_1, v_2, v_3, p, p1, p2, p3, K1_space, K2_space = \
     fe_mod.alloc_fct_spaces(mesh, configs.simulation.fe_degr)
 
 # initialise permeability tensors
-K1, K2, K3 = IO_fcts.initialise_permeabilities(K1_space,K2_space,mesh,configs.input.permeability_folder)
-
+K1, K2, K3 = IO_fcts.initialise_permeabilities(K1_space, K2_space, mesh, configs.input.permeability_folder)
 
 if rank == 0: print('\t Scaling coupling coefficients and permeability tensors')
 
 # set coupling coefficients
 beta12, beta23 = suppl_fcts.scale_coupling_coefficients(subdomains, \
-                                beta12gm, beta23gm, gmowm_beta_rat, \
-                                K2_space, configs.output.res_fldr, configs.output.save_pvd)
+                                                        beta12gm, beta23gm, gmowm_beta_rat, \
+                                                        K2_space, configs.output.res_fldr, configs.output.save_pvd)
 
 K1, K2, K3 = suppl_fcts.scale_permeabilities(subdomains, K1, K2, K3, \
-                                  K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat, \
-                                  configs.output.res_fldr,configs.output.save_pvd)
+                                             K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat, \
+                                             configs.output.res_fldr, configs.output.save_pvd)
 end1 = time.time()
 
-
-#%% SET UP FINITE ELEMENT SOLVER AND SOLVE GOVERNING EQUATIONS
+# %% SET UP FINITE ELEMENT SOLVER AND SOLVE GOVERNING EQUATIONS
 if rank == 0: print('Step 2: Defining and solving governing equations')
 start2 = time.time()
 
 # 1-D blood flow model
 # get patient folder location
-patient_folder = "/".join(configs.input.inlet_boundary_file.split("/")[:-2]) + "/"  # assume boundary file is in bf_sim folder
+patient_folder = "/".join(
+    configs.input.inlet_boundary_file.split("/")[:-2]) + "/"  # assume boundary file is in bf_sim folder
 
 # run 1-D blood flow model and update boundary file
-coarseCollaterals = False
+coarseCollaterals = True
 solver = "krylov"
+# solver = ""
 clotactive = False
+frictionconstant = 8  # 8 = laminar, 22 is blunt
 
 Patient = Patient.Patient(patient_folder)
 Patient.LoadBFSimFiles()
 Patient.LoadModelParameters("Model_parameters.txt")
 Patient.LoadClusteringMapping(Patient.Folders.ModellingFolder + "Clusters.csv")
+Patient.LoadPositions()
 
 Patient.Initiate1DSteadyStateModel()  # run with original wk elements
-Patient.Run1DSteadyStateModel(model="Linear", tol=1e-12, clotactive=clotactive, PressureInlets=True, coarseCollaterals=coarseCollaterals)
+Patient.Run1DSteadyStateModel(model="Linear", tol=1e-12, clotactive=clotactive, PressureInlets=True,
+                              coarseCollaterals=coarseCollaterals, frictionconstant=frictionconstant)
 # boundary condition before coupling
 # Patient.Perfusion.UpdateMappedRegionsFlowdata(inlet_boundary_file)
+
+# export visual of collaterals
+# Patient.Topology.addCollateralsToTopology(filename=Patient.Folders.ModellingFolder+"/TopologyCollaterals.vtp")
+# Patient.TopologyToVTP(filename="TopologyCollaterals.vtp")
+# exit()
 
 # save old flowrates
 for index, node in enumerate(Patient.Topology.OutletNodes):
@@ -128,7 +137,7 @@ if UniformPressure:
 else:
     # pressure drop fraction
     pressuredrop = 0.3  # fraction
-    surfacepressure = [(1-pressuredrop)*cp.Node.Pressure for _, cp in enumerate(Patient.Perfusion.CouplingPoints)]
+    surfacepressure = [(1 - pressuredrop) * cp.Node.Pressure for _, cp in enumerate(Patient.Perfusion.CouplingPoints)]
     Patient.UpdatePressureCouplingPoints(surfacepressure)
 
 # update boundary file
@@ -139,33 +148,33 @@ Patient.Perfusion.UpdateMappedRegionsFlowdata(configs.input.inlet_boundary_file)
 # set up finite element solver
 # TODO: handle Neuman/dirichlet boundary conditions
 LHS, RHS, sigma1, sigma2, sigma3, BCs = \
-fe_mod.set_up_fe_solver2(mesh, subdomains, boundaries, Vp, v_1, v_2, v_3, \
-                         p, p1, p2, p3, K1, K2, K3, beta12, beta23, \
-                         p_arterial, p_venous, \
-                         configs.input.read_inlet_boundary, configs.input.inlet_boundary_file, configs.input.inlet_BC_type)
+    fe_mod.set_up_fe_solver2(mesh, subdomains, boundaries, Vp, v_1, v_2, v_3, \
+                             p, p1, p2, p3, K1, K2, K3, beta12, beta23, \
+                             p_arterial, p_venous, \
+                             configs.input.read_inlet_boundary, configs.input.inlet_boundary_file,
+                             configs.input.inlet_BC_type)
 
 lin_solver, precond, rtol, mon_conv, init_sol = 'bicgstab', 'amg', False, False, False
 
 # tested iterative solvers for first order elements: gmres, cg, bicgstab
-#linear_solver_methods()
-#krylov_solver_preconditioners()
+# linear_solver_methods()
+# krylov_solver_preconditioners()
 if rank == 0: print('\t pressure computation')
-p = fe_mod.solve_lin_sys(Vp,LHS,RHS,BCs,lin_solver,precond,rtol,mon_conv,init_sol)
+p = fe_mod.solve_lin_sys(Vp, LHS, RHS, BCs, lin_solver, precond, rtol, mon_conv, init_sol)
 end2 = time.time()
 
-
-#%% COMPUTE VELOCITY FIELDS, SAVE SOLUTION, EXTRACT FIELD VARIABLES
+# %% COMPUTE VELOCITY FIELDS, SAVE SOLUTION, EXTRACT FIELD VARIABLES
 if rank == 0: print('Step 3: Computing velocity fields, saving results, and extracting some field variables')
 start3 = time.time()
 
-p1, p2, p3=p.split()
+p1, p2, p3 = p.split()
 
-perfusion = project(beta12 * (p1-p2)*6000,K2_space, solver_type='bicgstab', preconditioner_type='amg')
+perfusion = project(beta12 * (p1 - p2) * 6000, K2_space, solver_type='bicgstab', preconditioner_type='amg')
 
 # compute velocities
-vel1 = project(-K1*grad(p1),Vvel, solver_type='bicgstab', preconditioner_type='amg')
-vel2 = project(-K2*grad(p2),Vvel, solver_type='bicgstab', preconditioner_type='amg')
-vel3 = project(-K3*grad(p3),Vvel, solver_type='bicgstab', preconditioner_type='amg')
+vel1 = project(-K1 * grad(p1), Vvel, solver_type='bicgstab', preconditioner_type='amg')
+vel2 = project(-K2 * grad(p2), Vvel, solver_type='bicgstab', preconditioner_type='amg')
+vel3 = project(-K3 * grad(p3), Vvel, solver_type='bicgstab', preconditioner_type='amg')
 
 ps = [p1, p2, p3]
 vels = [vel1, vel2, vel3]
@@ -174,7 +183,8 @@ Ks = [K1, K2, K3]
 # get surface values
 fluxes, surf_p_values = suppl_fcts.surface_ave(mesh, boundaries, vels, ps)
 
-FlowRateAtBoundary = fluxes[:, 2][2:] * -1  # Flow rate from the perfusion model (sign to match 1-d bf model, positive flow towards the brain)
+FlowRateAtBoundary = fluxes[:, 2][
+                     2:] * -1  # Flow rate from the perfusion model (sign to match 1-d bf model, positive flow towards the brain)
 PressureAtBoundary = surf_p_values[:, 2][2:]  # Pressure from the perfusion model
 
 # %% OPTIMIZE 1-D BLOOD FLOW MODEL
@@ -190,19 +200,22 @@ for index, cp in enumerate(Patient.Perfusion.CouplingPoints):
 rel_tol = 1e-5
 relative_residual = 1
 while relative_residual > rel_tol:
-    oldR = numpy.array([node.Node.R1+node.Node.R2 for node in Patient.Perfusion.CouplingPoints])
+    oldR = numpy.array([node.Node.R1 + node.Node.R2 for node in Patient.Perfusion.CouplingPoints])
     for index, cp in enumerate(Patient.Perfusion.CouplingPoints):
         cp.Node.R1 = (cp.Node.Pressure - cp.Node.OutPressure) / (cp.Node.TargetFlow * 1e-6)
         cp.Node.R2 = 1
     with contextlib.redirect_stdout(None):
-        Patient.Run1DSteadyStateModel(model="Linear", tol=1e-12, clotactive=clotactive, PressureInlets=True, coarseCollaterals=coarseCollaterals)
+        Patient.Run1DSteadyStateModel(model="Linear", tol=1e-12, clotactive=clotactive, PressureInlets=True,
+                                      coarseCollaterals=coarseCollaterals, frictionconstant=frictionconstant)
     # residual = [Node.Node.TargetFlow - Node.Node.WKNode.AccumulatedFlowRate for index, Node in
     #             enumerate(Patient.Perfusion.CouplingPoints)]
     # newr = numpy.array([node.Node.R1 for node in Patient.Perfusion.CouplingPoints])
     # diff = oldR - newr
     # sq_diff = sum(numpy.power(diff, 2))
     # print(f'\tResidual: {sq_diff}')
-    relative_residual = max([abs(node.Node.R1+node.Node.R2-oldR[index])/(node.Node.R1+node.Node.R2) for index, node in enumerate(Patient.Perfusion.CouplingPoints)])
+    relative_residual = max(
+        [abs(node.Node.R1 + node.Node.R2 - oldR[index]) / (node.Node.R1 + node.Node.R2) for index, node in
+         enumerate(Patient.Perfusion.CouplingPoints)])
     print(f'\tMax relative residual: {relative_residual}')
 
 # save optimization results and model parameters
@@ -212,7 +225,7 @@ with open(patient_folder + 'Model_values_Healthy.csv', "w") as f:
     for index, cp in enumerate(Patient.Perfusion.CouplingPoints):
         f.write("%d,%.12g,%.12g,%.12g,%.12g,%.12g,%.12g,%.12g\n" % (
             fluxes[:, 0][2:][index],
-            cp.Node.R1+cp.Node.R2,
+            cp.Node.R1 + cp.Node.R2,
             cp.Node.Pressure,
             cp.Node.WKNode.Pressure,
             PressureAtBoundary[index],
@@ -221,21 +234,22 @@ with open(patient_folder + 'Model_values_Healthy.csv', "w") as f:
             cp.Node.WKNode.AccumulatedFlowRate,
             cp.Node.TargetFlow))
 
-CouplingResistance = [node.Node.R1+node.Node.R2 for node in Patient.Perfusion.CouplingPoints]
+CouplingResistance = [node.Node.R1 + node.Node.R2 for node in Patient.Perfusion.CouplingPoints]
 for r in CouplingResistance:
     if r < 1e6:
-        print('\033[93m'+"Warning: Low coupling resistance found. R=%f \033[m" % r)
+        print('\033[93m' + "Warning: Low coupling resistance found. R=%f \033[m" % r)
 
 # update boundary conditions
 for index, node in enumerate(Patient.Topology.OutletNodes):
     node.OutletFlowRate = node.WKNode.AccumulatedFlowRate * -1e-6
-Patient.UpdateFlowRateCouplingPoints(-1e-9*FlowRateAtBoundary)
+Patient.UpdateFlowRateCouplingPoints(-1e-9 * FlowRateAtBoundary)
 Patient.Results1DSteadyStateModel()
 Patient.ExportMeanResults(file="ResultsPerVesselHealthy.csv")
 
 for outlet in Patient.Topology.OutletNodes:
     outlet.Pressure = outlet.WKNode.Pressure
 Patient.Perfusion.UpdateMappedRegionsFlowdata(configs.input.inlet_boundary_file)
+
 
 # %% RUN COUPLED MODEL
 def coupledmodel(P):
@@ -251,7 +265,8 @@ def coupledmodel(P):
             fe_mod.alloc_fct_spaces(mesh, configs.simulation.fe_degr)  # do we need to allocate them again?
 
         LHS, RHS, sigma1, sigma2, sigma3, BCs = \
-            fe_mod.set_up_fe_solver2(mesh, subdomains, boundaries, Vp, v_1, v_2, v_3, p, p1, p2, p3, K1, K2, K3, beta12, beta23,
+            fe_mod.set_up_fe_solver2(mesh, subdomains, boundaries, Vp, v_1, v_2, v_3, p, p1, p2, p3, K1, K2, K3, beta12,
+                                     beta23,
                                      p_arterial, p_venous,
                                      configs.input.read_inlet_boundary, configs.input.inlet_boundary_file,
                                      configs.input.inlet_BC_type)
@@ -274,10 +289,12 @@ def coupledmodel(P):
 
         # Run 1-D bf model
         Patient.Run1DSteadyStateModel(model="Linear", tol=1e-12, clotactive=clotactive, PressureInlets=True,
-                                      FlowRateOutlets=False, coarseCollaterals=coarseCollaterals)
+                                      FlowRateOutlets=False, coarseCollaterals=coarseCollaterals,
+                                      frictionconstant=frictionconstant)
 
         # return residuals
-        flowrate1d = [Node.Node.WKNode.AccumulatedFlowRate for index, Node in enumerate(Patient.Perfusion.CouplingPoints)]
+        flowrate1d = [Node.Node.WKNode.AccumulatedFlowRate for index, Node in
+                      enumerate(Patient.Perfusion.CouplingPoints)]
         # pressure1d = [Node.Node.WKNode.Pressure for index, Node in enumerate(Patient.Perfusion.CouplingPoints)]
         residualFlowrate = [(i * 1e-3 - j) for i, j in zip(FlowRateAtBoundary, flowrate1d)]
         # residualpressure= [(i - j) for i, j in zip(PressureAtBoundary, pressure1d)]
@@ -289,7 +306,8 @@ clotactive = True
 if solver == "krylov":
     # Find the pressure at coupling points (identical to the surface regions) such that flowrate of the models are equal.
     print("\tRunning two-way coupling by root finding.")
-    guessPressure = numpy.array([node.Node.WKNode.Pressure for node in Patient.Perfusion.CouplingPoints])  # healthy scenario
+    guessPressure = numpy.array(
+        [node.Node.WKNode.Pressure for node in Patient.Perfusion.CouplingPoints])  # healthy scenario
     sol = scipy.optimize.root(coupledmodel, guessPressure, method='krylov',
                               options={'disp': True, 'maxiter': 50, 'ftol': 1e-12})  # xtol: 1e-4 or 'ftol': 1e-12
     print(sol)
@@ -297,7 +315,7 @@ if solver == "krylov":
         node.Node.OutPressure = sol.x[index]
         node.Node.Pressure = sol.x[index]
     Patient.Perfusion.UpdateMappedRegionsFlowdata(configs.input.inlet_boundary_file)
-else:
+elif solver == "loop":
     # set flow rate from the perfusion model as bc for the 1-D model
     # set pressure from the 1-D model as bc for the perfusion model
     print("\tRunning two-way coupling iteratively.")
@@ -330,11 +348,12 @@ else:
         # get surface values
         fluxes, surf_p_values = suppl_fcts.surface_ave(mesh, boundaries, vels, ps)
 
-        FlowRateAtBoundary = fluxes[:, 2][2:]* -1
+        FlowRateAtBoundary = fluxes[:, 2][2:] * -1
         # PressureAtBoundary = surf_p_values[:, 2][2:]
 
         # flow rate residual before update 1d model
-        flowrate1d = [Node.Node.WKNode.AccumulatedFlowRate for index, Node in enumerate(Patient.Perfusion.CouplingPoints)]
+        flowrate1d = [Node.Node.WKNode.AccumulatedFlowRate for index, Node in
+                      enumerate(Patient.Perfusion.CouplingPoints)]
         residualFlowrate = sum([(i * 1e-3 - j) * (i * 1e-3 - j) for i, j in zip(FlowRateAtBoundary, flowrate1d)])
 
         # update 1-D blood flow model
@@ -345,7 +364,8 @@ else:
         # run 1-D blood flow model
         with contextlib.redirect_stdout(None):
             Patient.Run1DSteadyStateModel(model="Linear", tol=1e-12, clotactive=clotactive, PressureInlets=True,
-                                          FlowRateOutlets=True, coarseCollaterals=coarseCollaterals)
+                                          FlowRateOutlets=True, coarseCollaterals=coarseCollaterals,
+                                          frictionconstant=frictionconstant)
 
         # update boundary file
         for index, node in enumerate(Patient.Perfusion.CouplingPoints):
@@ -354,7 +374,8 @@ else:
 
         # get values at the outlets of the 1d model to the perfusion model
         pressure1d = [Node.Node.WKNode.Pressure for index, Node in enumerate(Patient.Perfusion.CouplingPoints)]
-        flowrate1d = [Node.Node.WKNode.AccumulatedFlowRate for index, Node in enumerate(Patient.Perfusion.CouplingPoints)]
+        flowrate1d = [Node.Node.WKNode.AccumulatedFlowRate for index, Node in
+                      enumerate(Patient.Perfusion.CouplingPoints)]
 
         # pressure residual between the models
         residualPressure = sum([(i - j) * (i - j) for i, j in zip(PressureAtBoundary, pressure1d)])
@@ -373,6 +394,19 @@ else:
         # residual = residualPressure
     print("\tCoupling loop successful.")
     configs.input.inlet_BC_type = 'DBC'
+
+else:
+    # uncoupled
+    Patient.Run1DSteadyStateModel(model="Linear", tol=1e-12, clotactive=clotactive, PressureInlets=True,
+                                  FlowRateOutlets=False, coarseCollaterals=coarseCollaterals, frictionconstant=frictionconstant)
+    # update boundary file
+    for outlet in Patient.Topology.OutletNodes:
+        if abs(outlet.FlowRate) < 1e-12:
+            outlet.Pressure = p_venous
+        else:
+            outlet.Pressure = outlet.OutPressure
+    Patient.Perfusion.UpdateMappedRegionsFlowdata(configs.input.inlet_boundary_file)
+
 
 # Run perfusion model
 Vp, Vvel, v_1, v_2, v_3, p, p1, p2, p3, K1_space, K2_space = \
@@ -400,8 +434,9 @@ fluxes, surf_p_values = suppl_fcts.surface_ave(mesh, boundaries, vels, ps)
 FlowRateAtBoundary = fluxes[:, 2][2:] * -1
 PressureAtBoundary = surf_p_values[:, 2][2:]
 Patient.UpdatePressureCouplingPoints(PressureAtBoundary)
-Patient.Run1DSteadyStateModel(model="Linear", tol=1e-12, clotactive=clotactive, PressureInlets=True, FlowRateOutlets=False,
-                              coarseCollaterals=coarseCollaterals)
+Patient.Run1DSteadyStateModel(model="Linear", tol=1e-12, clotactive=clotactive, PressureInlets=True,
+                              FlowRateOutlets=False,
+                              coarseCollaterals=coarseCollaterals, frictionconstant=frictionconstant)
 # export some results
 Patient.Results1DSteadyStateModel()
 # export data in same format at the 1-D pulsatile model
@@ -433,7 +468,7 @@ with open(patient_folder + 'Model_values_Stroke.csv', "w") as f:
     for index, cp in enumerate(Patient.Perfusion.CouplingPoints):
         f.write("%d,%.12g,%.12g,%.12g,%.12g,%.12g,%.12g,%.12g\n" % (
             fluxes[:, 0][2:][index],
-            cp.Node.R1+cp.Node.R2,
+            cp.Node.R1 + cp.Node.R2,
             cp.Node.Pressure,
             cp.Node.WKNode.Pressure,
             PressureAtBoundary[index],
@@ -443,40 +478,42 @@ with open(patient_folder + 'Model_values_Stroke.csv', "w") as f:
             FlowRateAtBoundary[index] * 1e-3))
 
 ## save results (6000 comes from minute*100mL)
-perfusion_stroke = project(beta12 * (p1-p2)*6000, K2_space, solver_type='bicgstab', preconditioner_type='amg')
-perfusion_change = project(((perfusion-perfusion_stroke)/perfusion) * -100, K2_space, solver_type='bicgstab', preconditioner_type='amg')
-infarct = project(conditional(gt(perfusion_change, Constant(-70)), Constant(0.0), Constant(1.0)), K2_space, solver_type='bicgstab', preconditioner_type='amg')
+perfusion_stroke = project(abs(beta12 * (p1 - p2) * 6000), K2_space, solver_type='bicgstab', preconditioner_type='amg')
+perfusion_change = project(((perfusion - perfusion_stroke) / perfusion) * -100, K2_space, solver_type='bicgstab',
+                           preconditioner_type='amg')
+infarct = project(conditional(gt(perfusion_change, Constant(-70)), Constant(0.0), Constant(1.0)), K2_space,
+                  solver_type='bicgstab', preconditioner_type='amg')
 
 vars2save = [ps, vels, Ks]
-fnames = ['press','vel','K']
+fnames = ['press', 'vel', 'K']
 for idx, fname in enumerate(fnames):
     for i in range(3):
-        with XDMFFile(configs.output.res_fldr+fname+str(i+1)+'.xdmf') as myfile:
-            myfile.write_checkpoint(vars2save[idx][i],fname+str(i+1), 0, XDMFFile.Encoding.HDF5, False)
+        with XDMFFile(configs.output.res_fldr + fname + str(i + 1) + '.xdmf') as myfile:
+            myfile.write_checkpoint(vars2save[idx][i], fname + str(i + 1), 0, XDMFFile.Encoding.HDF5, False)
 
-with XDMFFile(configs.output.res_fldr+'beta12.xdmf') as myfile:
-    myfile.write_checkpoint(beta12,"beta12", 0, XDMFFile.Encoding.HDF5, False)
-with XDMFFile(configs.output.res_fldr+'beta23.xdmf') as myfile:
-    myfile.write_checkpoint(beta23,"beta23", 0, XDMFFile.Encoding.HDF5, False)
-with XDMFFile(configs.output.res_fldr+'perfusion.xdmf') as myfile:
+with XDMFFile(configs.output.res_fldr + 'beta12.xdmf') as myfile:
+    myfile.write_checkpoint(beta12, "beta12", 0, XDMFFile.Encoding.HDF5, False)
+with XDMFFile(configs.output.res_fldr + 'beta23.xdmf') as myfile:
+    myfile.write_checkpoint(beta23, "beta23", 0, XDMFFile.Encoding.HDF5, False)
+with XDMFFile(configs.output.res_fldr + 'perfusion.xdmf') as myfile:
     myfile.write_checkpoint(perfusion, 'perfusion', 0, XDMFFile.Encoding.HDF5, False)
-with XDMFFile(configs.output.res_fldr+'perfusion_stroke.xdmf') as myfile:
+with XDMFFile(configs.output.res_fldr + 'perfusion_stroke.xdmf') as myfile:
     myfile.write_checkpoint(perfusion_stroke, 'perfusion', 0, XDMFFile.Encoding.HDF5, False)
-with XDMFFile(configs.output.res_fldr+'perfusion_change.xdmf') as myfile:
+with XDMFFile(configs.output.res_fldr + 'perfusion_change.xdmf') as myfile:
     myfile.write_checkpoint(perfusion_change, 'perfusion_change', 0, XDMFFile.Encoding.HDF5, False)
-with XDMFFile(configs.output.res_fldr+'infract.xdmf') as myfile:
+with XDMFFile(configs.output.res_fldr + 'infarct.xdmf') as myfile:
     myfile.write_checkpoint(infarct, 'infarct', 0, XDMFFile.Encoding.HDF5, False)
 
-
 fheader = 'FE degree, K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat, beta12gm, beta23gm, gmowm_beta_rat'
-dom_props = numpy.array([configs.simulation.fe_degr,K1gm_ref,K2gm_ref,K3gm_ref,gmowm_perm_rat,beta12gm,beta23gm,gmowm_beta_rat])
-numpy.savetxt(configs.output.res_fldr+'dom_props.csv', [dom_props],"%d,%e,%e,%e,%e,%e,%e,%e",header=fheader)
+dom_props = numpy.array(
+    [configs.simulation.fe_degr, K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat, beta12gm, beta23gm, gmowm_beta_rat])
+numpy.savetxt(configs.output.res_fldr + 'dom_props.csv', [dom_props], "%d,%e,%e,%e,%e,%e,%e,%e", header=fheader)
 
-#%%
+# %%
 
 if configs.output.comp_ave == True:
     # obtain fluxes (ID, surface area, flux1, flux2, flux3)
-    fluxes, surf_p_values = suppl_fcts.surface_ave(mesh,boundaries,vels,ps)
+    fluxes, surf_p_values = suppl_fcts.surface_ave(mesh, boundaries, vels, ps)
 
     # calculate perfusion in white and grey matter (and total brain)
     vol_perfusion_values = suppl_fcts.perfusion_vol(mesh, subdomains, perfusion)
@@ -484,49 +521,97 @@ if configs.output.comp_ave == True:
     vol_infarct_values = suppl_fcts.infarct_vol(mesh, subdomains, infarct)
 
     # obtain some characteristic values within the domain (ID, volume, average, min, max)
-    vol_p_values, vol_vel_values = suppl_fcts.vol_ave(mesh,subdomains,ps,vels)
+    vol_p_values, vol_vel_values = suppl_fcts.vol_ave(mesh, subdomains, ps, vels)
 
-    if rank ==0:
-        print(fluxes,'\n')
-        print(surf_p_values,'\n')
-        print(vol_p_values,'\n')
-        print(vol_vel_values,'\n')
+    if rank == 0:
+        print(fluxes, '\n')
+        print(surf_p_values, '\n')
+        print(vol_p_values, '\n')
+        print(vol_vel_values, '\n')
 
         fheader = 'surface ID, Area [mm^2], Qa [mm^3/s], Qc [mm^3/s], Qv [mm^3/s]'
-        numpy.savetxt(configs.output.res_fldr+'fluxes.csv', fluxes,"%d,%e,%e,%e,%e",header=fheader)
+        numpy.savetxt(configs.output.res_fldr + 'fluxes.csv', fluxes, "%d,%e,%e,%e,%e", header=fheader)
 
         fheader = 'surface ID, Area [mm^2], pa [Pa], pc [Pa], pv [Pa]'
-        numpy.savetxt(configs.output.res_fldr+'surf_p_values.csv', surf_p_values,"%d,%e,%e,%e,%e",header=fheader)
+        numpy.savetxt(configs.output.res_fldr + 'surf_p_values.csv', surf_p_values, "%d,%e,%e,%e,%e", header=fheader)
 
         fheader = 'volume ID, Volume [mm^3], pa [Pa], pc [Pa], pv [Pa]'
-        numpy.savetxt(configs.output.res_fldr+'vol_p_values.csv', vol_p_values,"%e,%e,%e,%e,%e",header=fheader)
+        numpy.savetxt(configs.output.res_fldr + 'vol_p_values.csv', vol_p_values, "%e,%e,%e,%e,%e", header=fheader)
 
         fheader = 'volume ID, Volume [mm^3], ua [m/s], uc [m/s], uv [m/s]'
-        numpy.savetxt(configs.output.res_fldr+'vol_vel_values.csv', vol_vel_values,"%d,%e,%e,%e,%e",header=fheader)
+        numpy.savetxt(configs.output.res_fldr + 'vol_vel_values.csv', vol_vel_values, "%d,%e,%e,%e,%e", header=fheader)
 
         # perfusion
         fheader = 'volume ID,Volume [mm^3],perfusion [(ml blood)/min/(100 ml tissue)]'
-        numpy.savetxt(configs.output.res_fldr + 'vol_perfusion_values.csv', vol_perfusion_values, "%d,%e,%e", header=fheader)
-        numpy.savetxt(configs.output.res_fldr + 'vol_perfusion_stroke_values.csv', vol_perfusion_stroke_values, "%d,%e,%e", header=fheader)
+        numpy.savetxt(configs.output.res_fldr + 'vol_perfusion_values.csv', vol_perfusion_values, "%d,%e,%e",
+                      header=fheader)
+        numpy.savetxt(configs.output.res_fldr + 'vol_perfusion_stroke_values.csv', vol_perfusion_stroke_values,
+                      "%d,%e,%e", header=fheader)
 
         fheader = 'volume ID,Volume [mm^3],infarct volume [mL]'
-        numpy.savetxt(configs.output.res_fldr + 'vol_infarct_values.csv', vol_infarct_values, "%d,%e,%e", header=fheader)
+        numpy.savetxt(configs.output.res_fldr + 'vol_infarct_values.csv', vol_infarct_values, "%d,%e,%e",
+                      header=fheader)
 
 end3 = time.time()
 end0 = time.time()
 
-#%% REPORT EXECUTION TIME
+# %% REPORT EXECUTION TIME
 if rank == 0:
     oldstdout = sys.stdout
-    logfile = open(configs.output.res_fldr+"time_info.log", 'w')
+    logfile = open(configs.output.res_fldr + "time_info.log", 'w')
     sys.stdout = logfile
-    print ('Total execution time [s]; \t\t\t', end0 - start0)
-    print ('Step 1: Reading input files [s]; \t\t', end1 - start1)
-    print ('Step 2: Solving governing equations [s]; \t\t', end2 - start2)
-    print ('Step 3: Preparing and saving output [s]; \t\t', end3 - start3)
+    print('Total execution time [s]; \t\t\t', end0 - start0)
+    print('Step 1: Reading input files [s]; \t\t', end1 - start1)
+    print('Step 2: Solving governing equations [s]; \t\t', end2 - start2)
+    print('Step 3: Preparing and saving output [s]; \t\t', end3 - start3)
     logfile.close()
     sys.stdout = oldstdout
-    print ('Execution time: \t', end0 - start0, '[s]')
-    print ('Step 1: \t\t', end1 - start1, '[s]')
-    print ('Step 2: \t\t', end2 - start2, '[s]')
-    print ('Step 3: \t\t', end3 - start3, '[s]')
+    print('Execution time: \t', end0 - start0, '[s]')
+    print('Step 1: \t\t', end1 - start1, '[s]')
+    print('Step 2: \t\t', end2 - start2, '[s]')
+    print('Step 3: \t\t', end3 - start3, '[s]')
+
+# # export visual of collaterals
+# Patient.Topology.addCollateralsToTopology()
+# Patient.TopologyToVTP(filename="TopologyCollaterals.vtp")
+
+#####
+# # infarct growth toy model
+# from dolfin import *
+#
+# u_n = interpolate(Constant(1.0), K2_space)
+# v = TestFunction(K2_space)
+# u = TrialFunction(K2_space)
+#
+# t = 0
+# num_steps = 100
+# dt = 0.01
+#
+# # death rate is non-zero in possible infarction zones given by infarct variable
+# deathrate = project(infarct * pow(perfusion_change, 2) * 1e-4, K2_space, solver_type='bicgstab',
+#                     preconditioner_type='amg')
+#
+# F = (u - u_n) * v * dx + dt * deathrate * u * v * dx
+# a, L = lhs(F), rhs(F)
+# import os
+#
+# infarctpath = Patient.Folders.PatientFolder + "/infarct/"
+# try:
+#     os.mkdir(infarctpath)
+#     # copy_tree("/home/raymond/Desktop/1d-blood-flow/DataFiles/DefaultPatient/", patient_folder)
+# except OSError:
+#     print("Creation of the directory %s failed" % infarctpath)
+# else:
+#     print("Successfully created the directory %s " % infarctpath)
+#
+# vtkfile = File(infarctpath + '/solution.pvd')
+# u = Function(K2_space, name="Tissue State")
+#
+# u_n.rename("Tissue State", "label")
+# vtkfile << (u_n, t)
+#
+# for n in range(num_steps):
+#     t += dt
+#     solve(a == L, u)
+#     vtkfile << (u, t)
+#     u_n.assign(u)

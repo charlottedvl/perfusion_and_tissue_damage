@@ -17,8 +17,9 @@ import os
 #%% settings
 
 parser = argparse.ArgumentParser(description="Impose boundary conditions without considering large arteries")
-parser.add_argument("--healthy", help="healthy (True) or occluded (False)",
+parser.add_argument("--healthy", help="used only in healthy cases (optional)",
                     type=bool, default=True)
+parser.add_argument('--occluded', help="must be used in occluded cases", dest='healthy', action='store_false')
 parser.add_argument("--occl_ID", help="a list of integers containing occluded major cerebral artery IDs (e.g. 24 25 26)",
                     nargs='+', type=int, default=[25])
 parser.add_argument("--folder", help="folder of output file (string ended with /)",

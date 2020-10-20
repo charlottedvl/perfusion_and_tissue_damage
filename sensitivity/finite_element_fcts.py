@@ -143,7 +143,7 @@ def set_up_fe_solver2(mesh, subdomains, boundaries, V, v_1, v_2, v_3, \
             b1 = [1000 * BC_data[1]]
             boundary_labels = [BC_data[0]]
             n_labels = len(boundary_labels)
-        # print(boundary_labels)
+        print(boundary_labels)
         # set constant venous pressure
         for i in range(n_labels):
             BCs.append( DirichletBC(V.sub(2), Constant(pv), boundaries, int(boundary_labels[i])) )
@@ -172,12 +172,12 @@ def set_up_fe_solver2(mesh, subdomains, boundaries, V, v_1, v_2, v_3, \
             dS = ds(subdomain_data=boundaries)
             for i in range(n_labels):
                 boundary_id = int(boundary_labels[i])
-                if BC_data[i,4] == 0: # Dirichlet (pressure) boundary condition
+                if BC_data[:,4] == 0: # Dirichlet (pressure) boundary condition
                     if BC_data.ndim>1:
                         BCs.append( DirichletBC(V.sub(0), Constant(BC_data[i,2]), boundaries, boundary_id) )
                     else:
                         BCs.append( DirichletBC(V.sub(0), Constant(BC_data[2]), boundaries, boundary_id) )
-                elif BC_data[i,4] == 1: # Neumann (pressure gradient ~ flux) boundary condition
+                elif BC_data[:,4] == 1: # Neumann (pressure gradient ~ flux) boundary condition
                     area = assemble( Constant(1)*dS(boundary_id,domain=mesh) )
                     b1[i] = b1[i]/area
                 else:
@@ -186,7 +186,7 @@ def set_up_fe_solver2(mesh, subdomains, boundaries, V, v_1, v_2, v_3, \
             # b1 includes the average surface-normal velocity for the perfusion regions
             # computed from the volumentric flow rate [mm^3/s] and the surface area [mm^2]
             for i in range(n_labels):
-                if BC_data[i,4] == 1: # Neumann (pressure gradient ~ flux) boundary condition
+                if BC_data[:,4] == 1: # Neumann (pressure gradient ~ flux) boundary condition
                     if b1[i]>0:
                         integrals_N.append(b1[i]*v_1*dS( int(boundary_labels[i]) ))
         else:

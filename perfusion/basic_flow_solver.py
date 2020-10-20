@@ -53,23 +53,23 @@ parser.add_argument("--res_fldr", help="path to results folder (string ended wit
                 type=str, default=None)
 config_file = parser.parse_args().config_file
 
-configs = IO_fcts.basic_flow_config_reader2(config_file,parser)
+configs = IO_fcts.basic_flow_config_reader_yml(config_file,parser)
 # physical parameters
-p_arterial, p_venous = configs.physical.p_arterial, configs.physical.p_venous
+p_arterial, p_venous = configs['physical']['p_arterial'], configs['physical']['p_venous']
 K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat = \
-    configs.physical.K1gm_ref, configs.physical.K2gm_ref, configs.physical.K3gm_ref, configs.physical.gmowm_perm_rat
+    configs['physical']['K1gm_ref'], configs['physical']['K2gm_ref'], configs['physical']['K3gm_ref'], configs['physical']['gmowm_perm_rat']
 beta12gm, beta23gm, gmowm_beta_rat = \
-    configs.physical.beta12gm, configs.physical.beta23gm, configs.physical.gmowm_beta_rat
+    configs['physical']['beta12gm'], configs['physical']['beta23gm'], configs['physical']['gmowm_beta_rat']
 
 # read mesh
-mesh, subdomains, boundaries = IO_fcts.mesh_reader(configs.input.mesh_file)
+mesh, subdomains, boundaries = IO_fcts.mesh_reader(configs['input']['mesh_file'])
 
 # determine fct spaces
 Vp, Vvel, v_1, v_2, v_3, p, p1, p2, p3, K1_space, K2_space = \
-    fe_mod.alloc_fct_spaces(mesh, configs.simulation.fe_degr)
+    fe_mod.alloc_fct_spaces(mesh, configs['simulation']['fe_degr'])
 
 # initialise permeability tensors
-K1, K2, K3 = IO_fcts.initialise_permeabilities(K1_space,K2_space,mesh,configs.input.permeability_folder)
+K1, K2, K3 = IO_fcts.initialise_permeabilities(K1_space,K2_space,mesh,configs['input']['permeability_folder'])
 
 
 if rank == 0: print('\t Scaling coupling coefficients and permeability tensors')
@@ -77,11 +77,11 @@ if rank == 0: print('\t Scaling coupling coefficients and permeability tensors')
 # set coupling coefficients
 beta12, beta23 = suppl_fcts.scale_coupling_coefficients(subdomains, \
                                 beta12gm, beta23gm, gmowm_beta_rat, \
-                                K2_space, configs.output.res_fldr, configs.output.save_pvd)
+                                K2_space, configs['output']['res_fldr'], configs['output']['save_pvd'])
 
 K1, K2, K3 = suppl_fcts.scale_permeabilities(subdomains, K1, K2, K3, \
                                   K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat, \
-                                  configs.output.res_fldr,configs.output.save_pvd)
+                                  configs['output']['res_fldr'],configs['output']['save_pvd'])
 end1 = time.time()
 
 
@@ -90,12 +90,11 @@ if rank == 0: print('Step 2: Defining and solving governing equations')
 start2 = time.time()
 
 # set up finite element solver
-# TODO: handle Neuman/dirichlet boundary conditions
 LHS, RHS, sigma1, sigma2, sigma3, BCs = \
 fe_mod.set_up_fe_solver2(mesh, subdomains, boundaries, Vp, v_1, v_2, v_3, \
                          p, p1, p2, p3, K1, K2, K3, beta12, beta23, \
                          p_arterial, p_venous, \
-                         configs.input.read_inlet_boundary, configs.input.inlet_boundary_file, configs.input.inlet_BC_type)
+                         configs['input']['read_inlet_boundary'], configs['input']['inlet_boundary_file'], configs['input']['inlet_BC_type'])
 
 lin_solver, precond, rtol, mon_conv, init_sol = 'bicgstab', 'amg', False, False, False
 
@@ -128,23 +127,23 @@ vars2save = [ps, vels, Ks]
 fnames = ['press','vel','K']
 for idx, fname in enumerate(fnames):
     for i in range(3):
-        with XDMFFile(configs.output.res_fldr+fname+str(i+1)+'.xdmf') as myfile:
+        with XDMFFile(configs['output']['res_fldr']+fname+str(i+1)+'.xdmf') as myfile:
             myfile.write_checkpoint(vars2save[idx][i],fname+str(i+1), 0, XDMFFile.Encoding.HDF5, False)
 
-with XDMFFile(configs.output.res_fldr+'beta12.xdmf') as myfile:
+with XDMFFile(configs['output']['res_fldr']+'beta12.xdmf') as myfile:
     myfile.write_checkpoint(beta12,"beta12", 0, XDMFFile.Encoding.HDF5, False)
-with XDMFFile(configs.output.res_fldr+'beta23.xdmf') as myfile:
+with XDMFFile(configs['output']['res_fldr']+'beta23.xdmf') as myfile:
     myfile.write_checkpoint(beta23,"beta23", 0, XDMFFile.Encoding.HDF5, False)
-with XDMFFile(configs.output.res_fldr+'perfusion.xdmf') as myfile:
+with XDMFFile(configs['output']['res_fldr']+'perfusion.xdmf') as myfile:
     myfile.write_checkpoint(perfusion,'perfusion', 0, XDMFFile.Encoding.HDF5, False)
 
 fheader = 'FE degree, K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat, beta12gm, beta23gm, gmowm_beta_rat'
-dom_props = numpy.array([configs.simulation.fe_degr,K1gm_ref,K2gm_ref,K3gm_ref,gmowm_perm_rat,beta12gm,beta23gm,gmowm_beta_rat])
-numpy.savetxt(configs.output.res_fldr+'dom_props.csv', [dom_props],"%d,%e,%e,%e,%e,%e,%e,%e",header=fheader)
+dom_props = numpy.array([configs['simulation']['fe_degr'],K1gm_ref,K2gm_ref,K3gm_ref,gmowm_perm_rat,beta12gm,beta23gm,gmowm_beta_rat])
+numpy.savetxt(configs['output']['res_fldr']+'dom_props.csv', [dom_props],"%d,%e,%e,%e,%e,%e,%e,%e",header=fheader)
 
 #%%
 
-if configs.output.comp_ave == True:
+if configs['output']['comp_ave'] == True:
     # obtain fluxes (ID, surface area, flux1, flux2, flux3)
     fluxes, surf_p_values = suppl_fcts.surface_ave(mesh,boundaries,vels,ps)
     
@@ -158,16 +157,16 @@ if configs.output.comp_ave == True:
         # print(vol_vel_values,'\n')
         
         fheader = 'surface ID, Area [mm^2], Qa [mm^3/s], Qc [mm^3/s], Qv [mm^3/s]'
-        numpy.savetxt(configs.output.res_fldr+'fluxes.csv', fluxes,"%d,%e,%e,%e,%e",header=fheader)
+        numpy.savetxt(configs['output']['res_fldr']+'fluxes.csv', fluxes,"%d,%e,%e,%e,%e",header=fheader)
         
         fheader = 'surface ID, Area [mm^2], pa [Pa], pc [Pa], pv [Pa]'
-        numpy.savetxt(configs.output.res_fldr+'surf_p_values.csv', surf_p_values,"%d,%e,%e,%e,%e",header=fheader)
+        numpy.savetxt(configs['output']['res_fldr']+'surf_p_values.csv', surf_p_values,"%d,%e,%e,%e,%e",header=fheader)
         
         fheader = 'volume ID, Volume [mm^3], pa [Pa], pc [Pa], pv [Pa]'
-        numpy.savetxt(configs.output.res_fldr+'vol_p_values.csv', vol_p_values,"%e,%e,%e,%e,%e",header=fheader)
+        numpy.savetxt(configs['output']['res_fldr']+'vol_p_values.csv', vol_p_values,"%e,%e,%e,%e,%e",header=fheader)
         
         fheader = 'volume ID, Volume [mm^3], ua [m/s], uc [m/s], uv [m/s]'
-        numpy.savetxt(configs.output.res_fldr+'vol_vel_values.csv', vol_vel_values,"%d,%e,%e,%e,%e",header=fheader)
+        numpy.savetxt(configs['output']['res_fldr']+'vol_vel_values.csv', vol_vel_values,"%d,%e,%e,%e,%e",header=fheader)
 
 end3 = time.time()
 end0 = time.time()
@@ -175,7 +174,7 @@ end0 = time.time()
 #%% REPORT EXECUTION TIME
 if rank == 0:
     oldstdout = sys.stdout
-    logfile = open(configs.output.res_fldr+"time_info.log", 'w')
+    logfile = open(configs['output']['res_fldr']+"time_info.log", 'w')
     sys.stdout = logfile
     print ('Total execution time [s]; \t\t\t', end0 - start0)
     print ('Step 1: Reading input files [s]; \t\t', end1 - start1)

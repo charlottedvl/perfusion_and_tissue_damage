@@ -28,6 +28,7 @@ import time
 import IO_fcts
 import suppl_fcts
 import finite_element_fcts as fe_mod
+import yaml
 
 # solver runs is "silent" mode
 set_log_level(50)
@@ -40,12 +41,12 @@ size = comm.Get_size()
 #%% READ INPUT
 if rank == 0: print('Step 1: Reading input files')
 
-config_file = 'config_permeability_initialiser.xml'
-mesh_file, e_ref, K1_form, res_fldr, save_subres = \
-    IO_fcts.perm_init_config_reader(config_file)
+config_file = 'config_permeability_initialiser.yml'
+configs = IO_fcts.perm_init_config_reader_yml(config_file)
+
 
 # read mesh
-mesh, subdomains, boundaries = IO_fcts.mesh_reader(mesh_file)
+mesh, subdomains, boundaries = IO_fcts.mesh_reader(configs['input']['mesh_file'])
 
 
 #%% COMPUTE PERMEABILITIES
@@ -53,11 +54,11 @@ if rank == 0: print('Step 2: Computing permeability tensor')
 
 K_space = TensorFunctionSpace(mesh, "DG", 0)
 
-e_loc, main_direction = suppl_fcts.comp_vessel_orientation(subdomains,boundaries,mesh,res_fldr,save_subres)
+e_loc, main_direction = suppl_fcts.comp_vessel_orientation(subdomains,boundaries,mesh,configs['output']['res_fldr'],configs['output']['save_subres'])
 
 start1 = time.time()
 # compute permeability tensor
-K1 = suppl_fcts.perm_tens_comp(K_space,subdomains,mesh,e_ref,e_loc,K1_form)
+K1 = suppl_fcts.perm_tens_comp(K_space,subdomains,mesh,configs['physical']['e_ref'],e_loc,configs['physical']['K1_form'])
 end1 = time.time()
 if rank == 0: print ("\t permeability tensor computation on processor 0 took ", '{:.2f}'.format(end1 - start1), '[s]\n')
 
@@ -65,10 +66,10 @@ if rank == 0: print ("\t permeability tensor computation on processor 0 took ", 
 """TODO: compress output and add postprocessing option!!!"""
 if rank == 0: print('Step 3: Saving output files')
 
-with XDMFFile(res_fldr+'K1_form.xdmf') as myfile:
+with XDMFFile(configs['output']['res_fldr']+'K1_form.xdmf') as myfile:
     myfile.write_checkpoint(K1,"K1_form", 0, XDMFFile.Encoding.HDF5, False)
-with XDMFFile(res_fldr+'e_loc.xdmf') as myfile:
+with XDMFFile(configs['output']['res_fldr']+'e_loc.xdmf') as myfile:
     myfile.write_checkpoint(e_loc,"e_loc", 0, XDMFFile.Encoding.HDF5, False)
 # main_direction is non-essential output
-with XDMFFile(res_fldr+'main_direction.xdmf') as myfile:
+with XDMFFile(configs['output']['res_fldr']+'main_direction.xdmf') as myfile:
     myfile.write(main_direction)

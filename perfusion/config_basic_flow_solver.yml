@@ -20,3 +20,10 @@ physical:
   p_venous: 0.0
 simulation:
   fe_degr: 1
+optimisation:
+  parameters: ['gmowm_beta_rat','K1gm_ref']
+  Fmintarget: 10.0
+  Fmaxtarget: 80.0
+  FGtarget: 56.0
+  FWtarget: 21.0
+  optimisation_method: 'Nelder-Mead'

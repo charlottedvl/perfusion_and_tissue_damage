@@ -26,4 +26,4 @@ optimisation:
   Fmaxtarget: 80.0
   FGtarget: 56.0
   FWtarget: 21.0
-  optimisation_method: 'Nelder-Mead'
+  method: 'Nelder-Mead'

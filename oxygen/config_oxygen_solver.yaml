@@ -1,0 +1,37 @@
+input:
+    mesh_file: ../brain_meshes/b0000/clustered.xdmf
+    para_path: ../VP_results/p0000/perfusion_healthy/
+    beta_ac: beta12
+    beta_cv: beta23
+    pa: press1
+    pc: press2
+    pv: press3
+    ua: vel1
+    uc: vel2
+    depth: depth_func_DG
+    read_inlet_boundary: true
+    pialBC_file: ../perfusion/boundary_data/BCs.csv
+output:
+    rslt: ../VP_results/p0000/oxygen_healthy/
+parameter:
+    phiA: 0.01813
+    phiC: 0.01415
+    phiT: 0.96772
+    D_a: 1.0e-3
+    D_c: 1.0e-3
+    D_t: 1.0e-3
+    tau: 0.01
+    SaVa: 118.23
+    ScVc: 615.579
+    gammaA: 1.0e-4
+    gammaC: 1.0e-4
+    M: 1.0e-3
+    G: 1.005e-3
+    C50: 5.2e-5
+    PehCon: 0.5
+    PehExp: 0.9*depth+0.01
+simulation:
+    eleD: 1
+    BCa: 0.2
+    Pehdepth: false
+    nonLinear: false

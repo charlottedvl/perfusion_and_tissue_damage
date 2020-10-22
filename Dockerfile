@@ -1,21 +1,34 @@
-FROM ubuntu:18.04
+# The first stage `builder` constructs an `fenics` environment to perform the
+# required preprocessing. The outcome of the preprocessing is stored in the
+# second stage to prevent preprocessing on repeated calls to the container.
+FROM quay.io/fenicsproject/stable:latest AS builder
 
-RUN apt update
-RUN apt install -y --no-install-recommends software-properties-common
-RUN add-apt-repository ppa:fenics-packages/fenics
-RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y fenics python3-h5py python3-lxml python3-coverage python3-vtk7 python3-tables g++
+WORKDIR /app 
 
-RUN apt install -y ssh
-
-RUN apt install python3-pip --yes
+# install python requirements 
+# strip `eventmodule`: not required for preprocessing
+COPY requirements.txt ./
 RUN pip3 install --upgrade pip
-RUN pip3 install untangle
-RUN pip3 install scipy
-RUN pip3 install argparse
-RUN pip3 install PyYAML
+RUN cat requirements.txt | sed '/eventmodule/d' | pip install --no-cache-dir -r /dev/stdin
 
-COPY ./brain_meshes /brain_meshes
-COPY ./perfusion /perfusion
-COPY ./runner.py /runner.py
+# extract the brain mesh
+ADD brain_meshes.tar.xz ./
+COPY perfusion ./perfusion
+COPY . .
 
-CMD ["python", "./runner.py"]
+# preprocessing
+RUN cd perfusion && python3 permeability_initialiser.py
+
+FROM quay.io/fenicsproject/stable:latest
+WORKDIR /app
+
+# install python requirements 
+COPY eventmodule ./eventmodule
+COPY requirements.txt ./
+RUN pip3 install --upgrade pip
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+# copy preprocessing results 
+COPY --from=builder /app .
+
+ENTRYPOINT ["python3", "API.py"]

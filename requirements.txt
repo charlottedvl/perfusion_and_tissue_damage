@@ -1,0 +1,5 @@
+./eventmodule
+untangle
+scipy==1.5.2
+argparse
+PyYAML

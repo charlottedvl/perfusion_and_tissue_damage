@@ -8,6 +8,8 @@ import sys
 perfusion_config_file = '/app/perfusion/config_basic_flow_solver.yml'
 blood_flow_dir = 'bf_sim'
 perfusion_dir = 'pf_sim'
+# filename used for boundary conditions in CSV format
+bc_fn = 'boundary_condition_file.csv'
 
 
 class API(eventhandler.EventHandler):
@@ -33,8 +35,7 @@ class API(eventhandler.EventHandler):
 
         # ensure boundary conditions are being read from input files
         solver_config['input']['read_inlet_boundary'] = True
-        bc_file = self.result_dir.joinpath(
-            f'{blood_flow_dir}/boundary_condition_file.csv')
+        bc_file = self.result_dir.joinpath(f'{blood_flow_dir}/{bc_fn}')
         solver_config['input']['inlet_boundary_file'] = str(bc_file.resolve())
 
         # cannot proceed without boundary conditions
@@ -56,6 +57,34 @@ class API(eventhandler.EventHandler):
         subprocess.run(solve_cmd, check=True, cwd="/app/perfusion")
 
     def handle_example(self):
+        # when running the example, we need to generate some dummy input
+        # for the boundary conditions, for this, use the `BC_creator.py`
+        res_folder = self.result_dir.joinpath(f"{perfusion_dir}")
+        os.makedirs(res_folder, exist_ok=True)
+
+        bc_cmd = [
+            "python3",
+            "BC_creator.py",
+            "--occluded",
+            "--res_fldr",
+            f"{res_folder}/",
+            "--config_file",
+            f"{perfusion_config_file}",
+            "--folder",
+            f"{res_folder}/",
+        ]
+
+        print(f"Evaluating: '{' '.join(bc_cmd)}'", flush=True)
+        subprocess.run(bc_cmd, check=True, cwd="/app/perfusion")
+
+        # rename the boundary conditions file to match the trial scenario
+        src = res_folder.joinpath('BCs.csv')
+        dst = self.result_dir.joinpath(f"bf_sim/{bc_fn}")
+
+        os.makedirs(dst.parent, exist_ok=True)
+        os.rename(src, dst)
+
+        # run event with example boundary conditions
         self.handle_event()
 
     def handle_test(self):

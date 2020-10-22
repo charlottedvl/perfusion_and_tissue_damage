@@ -8,3 +8,6 @@ Runing the 3D oxygen solver:
    For parallel execution, use:
    mpirun -n #number_of_processors python3 oxygen_main.py
    Using 6 cores and first order finite elements, the excution is slightly over 2 minutes.
+
+Note: still presents numerical instability in the results.
+      to visualise the results set data range to 0-0.2 in paraview.

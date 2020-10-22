@@ -57,7 +57,13 @@ parser.add_argument("--config_file", help="path to configuration file (string en
                     type=str, default='./config_coupled_flow_solver.xml')
 parser.add_argument("--res_fldr", help="path to results folder (string ended with /)",
                     type=str, default=None)
-config_file = parser.parse_args().config_file
+parser.add_argument("--baseline", help="path to perfusion output of baseline scenario",
+        type=str, default=None)
+parser.add_argument("--occluded", help="path to perfusion output of stroke scenario",
+        type=str, default=None)
+
+args = parser.parse_args()
+config_file = args.config_file
 
 configs = IO_fcts.basic_flow_config_reader2(config_file, parser)
 # physical parameters
@@ -74,8 +80,9 @@ mesh, subdomains, boundaries = IO_fcts.mesh_reader(configs.input.mesh_file)
 Vp, Vvel, v_1, v_2, v_3, p, p1, p2, p3, K1_space, K2_space = \
     fe_mod.alloc_fct_spaces(mesh, configs.simulation.fe_degr)
 
-healthyfile = configs.output.res_fldr + 'perfusion.xdmf'
-strokefile = configs.output.res_fldr + 'perfusion_stroke.xdmf'
+# get paths to healthy and stroke scenario outputs
+healthyfile = getattr(args, 'baseline', configs.output.res_fldr+'perfusion.xdmf')
+strokefile = getattr(args, 'occluded', configs.output.res_fldr+'perfusion_stroke.xdmf')
 
 print('Step 2: Reading perfusion files')
 # Load previous results

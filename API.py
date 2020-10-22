@@ -10,6 +10,8 @@ blood_flow_dir = 'bf_sim'
 perfusion_dir = 'pf_sim'
 # filename used for boundary conditions in CSV format
 bc_fn = 'boundary_condition_file.csv'
+# filename used for perfusion output required for simplified infarct values
+pf_outfile = 'perfusion.xdmf'
 
 
 class API(eventhandler.EventHandler):
@@ -27,7 +29,7 @@ class API(eventhandler.EventHandler):
             subprocess.run(permeability_cmd, check=True, cwd="/app/perfusion")
 
         # output paths for perfusion simulation
-        res_folder = self.result_dir.joinpath(f"{perfusion_dir}/VP_result")
+        res_folder = self.result_dir.joinpath(f"{perfusion_dir}")
         os.makedirs(res_folder, exist_ok=True)
 
         # update configuration for perfusion
@@ -55,6 +57,37 @@ class API(eventhandler.EventHandler):
 
         print(f"Evaluating: '{' '.join(solve_cmd)}'", flush=True)
         subprocess.run(solve_cmd, check=True, cwd="/app/perfusion")
+
+        # terminate baseline scenario
+        if self.state is None or self.state == 0:
+            return
+
+        # baseline scenario result directories
+        baseline = self.patient_dir.joinpath(self.states[0])
+        baseline = baseline.joinpath(perfusion_dir)
+        baseline = baseline.joinpath(pf_outfile)
+
+        # occluded scenario assumed to be the current result
+        occluded = res_folder.joinpath(pf_outfile)
+
+        for path in [baseline, occluded]:
+            assert os.path.exists(path), f"File not found: '{path}'."
+
+        # evaluate preliminary infarct volumes at multiple thresholds
+        infarct_cmd = [
+            "python3",
+            "infarct_calculation_thresholds.py",
+            "--config_file",
+            f"{str(config_path)}",
+            "--baseline",
+            f"{str(baseline)}",
+            "--occluded",
+            f"{str(occluded)}",
+            "--res_fldr",
+            f"{res_folder}/",
+        ]
+        print(f"Evaluating: '{' '.join(infarct_cmd)}'", flush=True)
+        subprocess.run(infarct_cmd, check=True, cwd="/app/perfusion")
 
     def handle_example(self):
         # when running the example, we need to generate some dummy input

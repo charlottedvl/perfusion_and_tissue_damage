@@ -259,7 +259,7 @@ def set_up_fe_solver2(mesh, subdomains, boundaries, V, v_1, v_2, v_3, \
 
 
 #%%s
-def solve_lin_sys(Vp,LHS,RHS,BCs,lin_solver,precond,rtol,mon_conv,init_sol):
+def solve_lin_sys(Vp,LHS,RHS,BCs,lin_solver,precond,rtol,mon_conv,init_sol,**kwarg):
     comm = MPI.comm_world
     rank = comm.Get_rank()
     size = comm.Get_size()
@@ -290,7 +290,12 @@ def solve_lin_sys(Vp,LHS,RHS,BCs,lin_solver,precond,rtol,mon_conv,init_sol):
     start = time.time()
     solver.solve()
     end = time.time()
-    if rank == 0: print ('\t\t pressure computation took', end - start, '[s]')
+    if rank == 0:
+        if 'timer' in kwarg:
+            if kwarg.get('timer')==True:
+                print ('\t\t pressure computation took', end - start, '[s]')
+        else:
+            print ('\t\t pressure computation took', end - start, '[s]')
     
     # syntax for adaptive solver (does not work in parallel)
     #p_1, p_2, p_3 = split(p)

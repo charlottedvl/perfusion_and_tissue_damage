@@ -55,6 +55,15 @@ def perm_init_config_reader(input_file_path):
     
     return mesh_file, e_ref, K1_form, res_fldr, save_subres
 
+#%%
+def perm_init_config_reader_yml(input_file_path):
+    with open(input_file_path, "r") as configfile:
+        configs = yaml.load(configfile, yaml.SafeLoader)
+    configs['physical']['K1_form'] = np.array( configs['physical']['K1_form'] ).reshape((3, 3))
+    configs['physical']['e_ref'] =   np.array( configs['physical']['e_ref'] )
+    
+    return configs
+
 
 #%%
 def basic_flow_config_reader(input_file_path):
@@ -123,6 +132,22 @@ def basic_flow_config_reader2(input_file_path,parser):
     
     if parser.parse_args().res_fldr != None:
         configs.output.res_fldr = parser.parse_args().res_fldr
+    
+    return configs
+
+
+#%%
+def basic_flow_config_reader_yml(input_file_path,parser):
+    config_format = input_file_path[-3::] # xml or yml
+    
+    if config_format == 'yml':
+        with open(input_file_path, "r") as configfile:
+            configs = yaml.load(configfile, yaml.SafeLoader)
+    else:
+        raise Exception("unknown input file format: " + config_format)
+    
+    if parser.parse_args().res_fldr != None:
+        configs['output']['res_fldr'] = parser.parse_args().res_fldr
     
     return configs
 

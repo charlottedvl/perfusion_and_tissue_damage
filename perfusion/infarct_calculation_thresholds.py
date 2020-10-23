@@ -61,6 +61,8 @@ parser.add_argument("--baseline", help="path to perfusion output of baseline sce
         type=str, default=None)
 parser.add_argument("--occluded", help="path to perfusion output of stroke scenario",
         type=str, default=None)
+parser.add_argument("--thresholds", help="number of thresholds to evaluate",
+        type=int, default=21)
 
 args = parser.parse_args()
 config_file = args.config_file
@@ -102,7 +104,15 @@ perfusion_change = project(((perfusion - perfusion_stroke) / perfusion) * -100, 
                            preconditioner_type='amg')
 
 # thresholds = [-10, -20, -30, -40, -50, -60, -70, -80, -90, -100]
-thresholds = numpy.linspace(0, -100, 21)
+thresholds = numpy.linspace(0, -100, args.thresholds)
+
+# For now a value of `-70%` is assumed as a desired threshold value to determine
+# infarct volume from perfusion data. Thus, we ensure that `-70%` is present
+# within the considered threshold values
+target = -70
+if target not in thresholds:
+    # [::-1] to reverse sort direction, maintain descending order
+    thresholds = np.sort(np.append(thresholds, target))[::-1]
 
 vol_infarct_values_thresholds = numpy.empty((0, 4), float)
 

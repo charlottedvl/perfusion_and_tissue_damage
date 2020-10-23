@@ -62,6 +62,11 @@ class API(eventhandler.EventHandler):
         if self.state is None or self.state == 0:
             return
 
+        # extract settings
+        event = self._get_event(self.event_id)
+        if not event.get('evaluate_infarct_estimates', True):
+            return
+
         # baseline scenario result directories
         baseline = self.patient_dir.joinpath(self.states[0])
         baseline = baseline.joinpath(perfusion_dir)
@@ -85,6 +90,8 @@ class API(eventhandler.EventHandler):
             f"{str(occluded)}",
             "--res_fldr",
             f"{res_folder}/",
+            "--thresholds",
+            f"{event.get('infarct_levels', 21)}",
         ]
         print(f"Evaluating: '{' '.join(infarct_cmd)}'", flush=True)
         subprocess.run(infarct_cmd, check=True, cwd="/app/perfusion")

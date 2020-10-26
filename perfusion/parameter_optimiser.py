@@ -32,9 +32,15 @@ def cost_function(param_values,configs,mesh,subdomains,boundaries,K2_space,K1for
         FG = assemble( perfusion*dV(12) )/V_gm
         #P_brain = assemble( perfusion*dx )/V_brain
         
-# TODO: use MPI to compute global minimum and maximum
-        Fmin = min(perfusion.vector()[:])
-        Fmax = max(perfusion.vector()[:])
+        Fmin_loc = min(perfusion.vector()[:])
+        Fmax_loc = max(perfusion.vector()[:])
+        
+        MPI.comm_world.barrier()
+        Fmin = MPI.min(MPI.comm_world, Fmin_loc)
+        Fmax = MPI.max(MPI.comm_world, Fmax_loc)
+        
+        # check global minimum and maximum computation
+        # print(Fmin,Fmin_loc,Fmax,Fmax_loc,MPI.comm_world.Get_rank())
         
         J = 0
         J = int(Fmin<configs['optimisation']['Fmintarget'])*pow(Fmin-configs['optimisation']['Fmintarget'],2)   \
@@ -73,8 +79,8 @@ def cost_function(param_values,configs,mesh,subdomains,boundaries,K2_space,K1for
     info.append(J)
     iter_info.append(info)
     if (len(iter_info)-2) % 5 == 0:
-        print(len(iter_info)-2,info)
-    print(Fmin,Fmax,FG,FW,J)
+        if MPI.comm_world.Get_rank() == 0: print(len(iter_info)-2,info)
+    if MPI.comm_world.Get_rank() == 0: print(Fmin,Fmax,FG,FW,J)
     return J
     
     

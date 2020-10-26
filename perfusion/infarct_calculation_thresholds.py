@@ -57,7 +57,15 @@ parser.add_argument("--config_file", help="path to configuration file (string en
                     type=str, default='./config_coupled_flow_solver.xml')
 parser.add_argument("--res_fldr", help="path to results folder (string ended with /)",
                     type=str, default=None)
-config_file = parser.parse_args().config_file
+parser.add_argument("--baseline", help="path to perfusion output of baseline scenario",
+        type=str, default=None)
+parser.add_argument("--occluded", help="path to perfusion output of stroke scenario",
+        type=str, default=None)
+parser.add_argument("--thresholds", help="number of thresholds to evaluate",
+        type=int, default=21)
+
+args = parser.parse_args()
+config_file = args.config_file
 
 configs = IO_fcts.basic_flow_config_reader2(config_file, parser)
 # physical parameters
@@ -74,8 +82,9 @@ mesh, subdomains, boundaries = IO_fcts.mesh_reader(configs.input.mesh_file)
 Vp, Vvel, v_1, v_2, v_3, p, p1, p2, p3, K1_space, K2_space = \
     fe_mod.alloc_fct_spaces(mesh, configs.simulation.fe_degr)
 
-healthyfile = configs.output.res_fldr + 'perfusion.xdmf'
-strokefile = configs.output.res_fldr + 'perfusion_stroke.xdmf'
+# get paths to healthy and stroke scenario outputs
+healthyfile = getattr(args, 'baseline', configs.output.res_fldr+'perfusion.xdmf')
+strokefile = getattr(args, 'occluded', configs.output.res_fldr+'perfusion_stroke.xdmf')
 
 print('Step 2: Reading perfusion files')
 # Load previous results
@@ -95,7 +104,15 @@ perfusion_change = project(((perfusion - perfusion_stroke) / perfusion) * -100, 
                            preconditioner_type='amg')
 
 # thresholds = [-10, -20, -30, -40, -50, -60, -70, -80, -90, -100]
-thresholds = numpy.linspace(0, -100, 21)
+thresholds = numpy.linspace(0, -100, args.thresholds)
+
+# For now a value of `-70%` is assumed as a desired threshold value to determine
+# infarct volume from perfusion data. Thus, we ensure that `-70%` is present
+# within the considered threshold values
+target = -70
+if target not in thresholds:
+    # [::-1] to reverse sort direction, maintain descending order
+    thresholds = np.sort(np.append(thresholds, target))[::-1]
 
 vol_infarct_values_thresholds = numpy.empty((0, 4), float)
 

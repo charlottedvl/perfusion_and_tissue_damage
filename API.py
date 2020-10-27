@@ -5,7 +5,7 @@ import sys
 
 # Default path (inside the container) pointing to the YAML configuration for
 # the `basic_flow_solver` routine.
-perfusion_config_file = '/app/perfusion/config_basic_flow_solver.yml'
+perfusion_config_file = '/app/perfusion/config_basic_flow_solver.yaml'
 blood_flow_dir = 'bf_sim'
 perfusion_dir = 'pf_sim'
 # filename used for boundary conditions in CSV format
@@ -46,7 +46,7 @@ class API(eventhandler.EventHandler):
 
         # update output settings
         config_path = self.result_dir.joinpath(
-            f'{perfusion_dir}/perfusion_config.yml')
+            f'{perfusion_dir}/perfusion_config.yaml')
         eventhandler.write_yaml(solver_config, config_path)
 
         # form command to evaluate perfusion

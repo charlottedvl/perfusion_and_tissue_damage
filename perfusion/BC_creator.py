@@ -25,7 +25,7 @@ parser.add_argument("--occl_ID", help="a list of integers containing occluded ma
 parser.add_argument("--folder", help="folder of output file (string ended with /)",
                     type=str, default=None)
 parser.add_argument("--config_file", help="path to configuration file (string)",
-                    type=str, default='./config_basic_flow_solver.xml')
+                    type=str, default='./config_basic_flow_solver.yaml')
 parser.add_argument("--res_fldr", help="path to results folder (string ended with /)",
                 type=str, default=None)
 
@@ -36,16 +36,16 @@ cmd_flags = [args.healthy, args.occl_ID, args.folder, args.config_file]
 [healthy, occl_ID, out_folder, config_file] = cmd_flags
 
 #%%
-configs = IO_fcts.basic_flow_config_reader2(config_file,parser)
+configs = IO_fcts.basic_flow_config_reader_yml(config_file,parser)
 
-if out_folder == None: res_file = configs.input.inlet_boundary_file
+if out_folder == None: res_file = configs['input']['inlet_boundary_file']
 else: res_file = out_folder + 'BCs.csv'
 
 if not os.path.exists(res_file.rsplit('/', 1)[0]):
     os.makedirs(res_file.rsplit('/', 1)[0])
 
 # read mesh
-mesh, subdomains, boundaries = IO_fcts.mesh_reader(configs.input.mesh_file)
+mesh, subdomains, boundaries = IO_fcts.mesh_reader(configs['input']['mesh_file'])
 
 # volumetric flow rate to the brain [ml / s]
 Q_brain = 10.0
@@ -74,10 +74,10 @@ total_surface_area = sum(mask*surf_area)
 Q = mask*surf_area*Q_brain/total_surface_area
 
 # define pressure
-p = mask * configs.physical.p_arterial
+p = mask * configs['physical']['p_arterial']
 
-if configs.input.mesh_file.rsplit('/', 1)[-1] == 'clustered.xdmf':
-    boundary_mapper = np.loadtxt(configs.input.mesh_file.rsplit('/', 1)[0]+'/boundary_mapper.csv',skiprows=1,delimiter=',')
+if configs['input']['mesh_file'].rsplit('/', 1)[-1] == 'clustered.xdmf':
+    boundary_mapper = np.loadtxt(configs['input']['mesh_file'].rsplit('/', 1)[0]+'/boundary_mapper.csv',skiprows=1,delimiter=',')
     boundary_values = np.array(list(set( (boundary_mapper[:,1]>2)*boundary_mapper[:,1] ))[1::],dtype=int)
     boundary_map = np.zeros(len(boundary_values))
     cter = 0
@@ -90,7 +90,7 @@ if configs.input.mesh_file.rsplit('/', 1)[-1] == 'clustered.xdmf':
 boundary_matrix = []
 for i in range(len(mask)):
     if mask[i]>0:
-        if configs.input.mesh_file.rsplit('/', 1)[-1] == 'clustered.xdmf':
+        if configs['input']['mesh_file'].rsplit('/', 1)[-1] == 'clustered.xdmf':
             boundary_matrix.append([boundary_labels[i],Q[i],p[i],boundary_map[np.argwhere(boundary_values==boundary_labels[i])],0])
         else:
             boundary_matrix.append([boundary_labels[i],Q[i],p[i],0,0])
@@ -102,7 +102,7 @@ if healthy == False:
     for i in range(boundary_matrix.shape[0]):
         for j in range(len(occl_ID)):
             if boundary_matrix[i,3]==occl_ID[j]:
-                boundary_matrix[i,1:3] = np.array([0,configs.physical.p_venous])
+                boundary_matrix[i,1:3] = np.array([0,configs['physical']['p_venous']])
                 boundary_matrix[i,4] = 1
 
 # save file

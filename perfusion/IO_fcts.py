@@ -106,9 +106,7 @@ def basic_flow_config_reader(input_file_path):
 
 #%%
 def basic_flow_config_reader2(input_file_path,parser):
-    config_format = input_file_path[-3::] # xml or yml
-    
-    if config_format == 'xml':
+    if input_file_path.endswith('xml'):
         configs = untangle.parse(input_file_path).basic_flow_solver_settings       
         from pydoc import locate
         
@@ -123,7 +121,7 @@ def basic_flow_config_reader2(input_file_path,parser):
                         setattr(getattr(configs,mydir),mysubdir, converter(mydata.cdata.strip()))
                     else:
                         setattr(getattr(configs,mydir),mysubdir, mydata.cdata.strip()=='True')
-    elif config_format == 'yml':
+    elif input_file_path.endswith('yaml'):
         with open(input_file_path, "r") as configfile:
             configs = yaml.load(configfile, yaml.SafeLoader)
         configs = dict2obj(configs)
@@ -138,9 +136,7 @@ def basic_flow_config_reader2(input_file_path,parser):
 
 #%%
 def basic_flow_config_reader_yml(input_file_path,parser):
-    config_format = input_file_path[-3::] # xml or yml
-    
-    if config_format == 'yml':
+    if input_file_path.endswith('yaml'):
         with open(input_file_path, "r") as configfile:
             configs = yaml.load(configfile, yaml.SafeLoader)
     else:

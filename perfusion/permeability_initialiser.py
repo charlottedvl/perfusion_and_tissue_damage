@@ -41,7 +41,7 @@ size = comm.Get_size()
 #%% READ INPUT
 if rank == 0: print('Step 1: Reading input files')
 
-config_file = 'config_permeability_initialiser.yml'
+config_file = 'config_permeability_initialiser.yaml'
 configs = IO_fcts.perm_init_config_reader_yml(config_file)
 
 

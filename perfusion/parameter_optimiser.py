@@ -1,8 +1,6 @@
-# TODO: define cost function
 def cost_function(param_values,configs,mesh,subdomains,boundaries,K2_space,K1form,K2form,K3form,p,p1,p2,p3,iter_info,save_fields):
     for i in range(len(configs['optimisation']['parameters'])):
         configs['physical'][ configs['optimisation']['parameters'][i] ] = pow(10,param_values[i])
-    
     # set coupling coefficients
     beta12, beta23 = suppl_fcts.scale_coupling_coefficients(subdomains, \
                                     configs['physical']['beta12gm'], configs['physical']['beta23gm'], configs['physical']['gmowm_beta_rat'], \
@@ -40,13 +38,14 @@ def cost_function(param_values,configs,mesh,subdomains,boundaries,K2_space,K1for
         Fmax = MPI.max(MPI.comm_world, Fmax_loc)
         
         # check global minimum and maximum computation
-        # print(Fmin,Fmin_loc,Fmax,Fmax_loc,MPI.comm_world.Get_rank())
+        # print(Fmin,Fmin_loc,Fmax,Fmax_loc,rank)
         
         J = 0
         J = int(Fmin<configs['optimisation']['Fmintarget'])*pow(Fmin-configs['optimisation']['Fmintarget'],2)   \
             + int(Fmax>configs['optimisation']['Fmaxtarget'])*pow(Fmax-configs['optimisation']['Fmaxtarget'],2) \
             + pow(FW-configs['optimisation']['FWtarget'],2) + pow(FG-configs['optimisation']['FGtarget'],2)
         
+# TODO: fix so that if solver fails for initial guess then new guess is tried
     except RuntimeError:
         J = 1e15
     
@@ -79,8 +78,7 @@ def cost_function(param_values,configs,mesh,subdomains,boundaries,K2_space,K1for
     info.append(J)
     iter_info.append(info)
     if (len(iter_info)-2) % 5 == 0:
-        if MPI.comm_world.Get_rank() == 0: print(len(iter_info)-2,info)
-    if MPI.comm_world.Get_rank() == 0: print(Fmin,Fmax,FG,FW,J)
+        if rank == 0: print(len(iter_info)-2,info)
     return J
     
     
@@ -138,7 +136,7 @@ start1 = time.time()
 
 parser = argparse.ArgumentParser(description="perfusion computation based on multi-compartment Darcy flow model")
 parser.add_argument("--config_file", help="path to configuration file",
-                    type=str, default='./config_basic_flow_solver.yml')
+                    type=str, default='./config_basic_flow_solver.yaml')
 parser.add_argument("--res_fldr", help="path to results folder (string ended with /)",
                 type=str, default=None)
 config_file = parser.parse_args().config_file
@@ -170,31 +168,43 @@ param_values = numpy.log10( numpy.array(param_values) )
 iter_info = []
 save_fields = False
 
-# # TODO: add random initialisation option
+# Test cost function evaluation
+start = time.time()
+cost_function(param_values,configs,mesh,subdomains,boundaries,K2_space,K1form,K2form,K3form,p,p1,p2,p3,iter_info,save_fields)
+end = time.time()
+if rank == 0: print ('\t\t a single iteration took', end - start, '[s]')
 
+# random initialisation
+initial_values = param_values
+param_bounds = []
+if configs['optimisation']['random_init'] == True:
+    init_param_range = numpy.log10( numpy.array(configs['optimisation']['init_param_range']) )
+    init_param_mean = init_param_range.mean(axis=1)
+    for i in range(len(initial_values)):
+        initial_values[i] = init_param_mean[i] + 0.5*( init_param_range[i].max() - init_param_range[i].min() ) * (1-2*numpy.random.rand())
+        param_bounds.append( (init_param_range[i].min(),init_param_range[i].max()) )
+# ensure that every process starts with the same random initialisation
+comm.Bcast(initial_values, root=0)
 
-# #    init_cost1 = cost_function(x0,Vp,K2_ref,K1in,K2in,K3in,v_1,v_2,v_3,BCs,integrals_N,subdomains,iter_info,inlet_BC_type, beta12, beta23, True)
+start = time.time()
+res = minimize(cost_function, param_values, \
+      args=(configs,mesh,subdomains,boundaries,K2_space,K1form,K2form,K3form,p,p1,p2,p3,iter_info,False),
+      method=configs['optimisation']['method'], bounds=param_bounds,
+      options={'disp':True, 'maxfev':1000, 'maxiter':len(param_values)*800})
+print('\n\n',res.x,'\n',rank)
 
-# # TODO: organise function call and output
-# res = minimize(cost_function, param_values, \
-#       args=(configs,mesh,subdomains,boundaries,K2_space,K1form,K2form,K3form,p,p1,p2,p3,iter_info,False),
-#       method=configs['optimisation']['method'], bounds=[(3,4),(0,1)],
-#       options={'disp':True, 'maxfev':1000, 'maxiter':len(param_values)*800})
-# # #     args=(Vp,K2_ref,K1in,K2in,K3in,v_1,v_2,v_3,BCs,integrals_N,subdomains, \
-# # #           iter_info,inlet_BC_type, beta12, beta23, False), \
-# # #           method=opt_method, bounds=[(3,4),(0,1)], \
-# # #     options={'disp':True, 'maxfev':1000, 'maxiter':len(x0)*800})
-# print('\n\n',res.x,'\n')
+end = time.time()
+if rank == 0: print ('\t\t The optimisation took', end - start, '[s]')
 
-# fheader =''
-# data_format = ''
-# for i in range(len(configs['optimisation']['parameters'])):
-#     fheader += configs['optimisation']['parameters'][i] + ', '
-#     data_format += '%e,'
-# fheader +='Fmin, Fmax, FW, FG, J'
-# data_format += '%e,%e,%e,%e,%e'
+fheader =''
+data_format = ''
+for i in range(len(configs['optimisation']['parameters'])):
+    fheader += configs['optimisation']['parameters'][i] + ', '
+    data_format += '%e,'
+fheader +='Fmin, Fmax, FW, FG, J'
+data_format += '%e,%e,%e,%e,%e'
 
-# np.savetxt('opt_res_' + configs['optimisation']['method'] + '.csv', np.array(iter_info),data_format,header=fheader)
+if rank == 0: numpy.savetxt('opt_res_' + configs['optimisation']['method'] + '.csv', numpy.array(iter_info),data_format,header=fheader)
 
 
 #%% DEBUG
@@ -243,8 +253,3 @@ save_fields = False
 #     J = 1e15
 
 # print(Fmin,Fmax,FG,FW,J)
-
-start = time.time()
-cost_function(param_values,configs,mesh,subdomains,boundaries,K2_space,K1form,K2form,K3form,p,p1,p2,p3,iter_info,save_fields)
-end = time.time()
-print ('\t\t a single iteration took', end - start, '[s]')

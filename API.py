@@ -5,7 +5,7 @@ if __name__ == "__main__":
     args = eventhandler.parse_args(sys.argv[1:])
     path = eventhandler.path_to_config(args['--patient'])
     event = eventhandler.read_event(path, args['--event'])
-    analysis = event['type']
+    analysis = event.get('type')
 
     if analysis == 'PERFUSION':
         from perfusion.API import API

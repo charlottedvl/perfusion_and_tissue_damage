@@ -1,0 +1,16 @@
+events:
+- event: perfusion_and_tissue_damage
+  id: 1
+  state: 0
+  status: false
+  type: PERFUSION
+- event: perfusion_and_tissue_damage
+  id: 2
+  state: 0
+  status: false
+  type: OXYGEN
+states:
+- baseline
+- stroke
+- treatment
+status: false

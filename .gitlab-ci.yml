@@ -42,7 +42,9 @@ verify_docker:
         script:
                 - docker load -i ${CONTAINER}/docker.tar
                 - mkdir -p ${MOUNT_POINT}/docker
-                - docker run -v ${MOUNT_POINT}/docker:/patient ${IMAGE} test -p /patient
+                - cp ./test_patient.yml ${MOUNT_POINT}/docker/patient.yml
+                - docker run -v ${MOUNT_POINT}/docker:/patient ${IMAGE} test -p /patient -e 1
+                - docker run -v ${MOUNT_POINT}/docker:/patient ${IMAGE} test -p /patient -e 2
 
 build_singularity:
         <<: *docker_definition
@@ -67,5 +69,7 @@ verify_singularity:
         stage: verify
         script:
                 - mkdir -p ${MOUNT_POINT}/singularity
+                - cp ./test_patient.yml ${MOUNT_POINT}/singularity/patient.yml
                 - cp ${CONTAINER}/singularity.sif ${MOUNT_POINT}/${IMAGE}.sif
-                - docker run --privileged -v ${MOUNT_POINT}:/patient quay.io/singularity/singularity:v3.6.2 run -B /patient/singularity:/patient /patient/${IMAGE}.sif test -p /patient
+                - docker run --privileged -v ${MOUNT_POINT}:/patient quay.io/singularity/singularity:v3.6.2 run -B /patient/singularity:/patient /patient/${IMAGE}.sif test -p /patient -e 1
+                - docker run --privileged -v ${MOUNT_POINT}:/patient quay.io/singularity/singularity:v3.6.2 run -B /patient/singularity:/patient /patient/${IMAGE}.sif test -p /patient -e 2

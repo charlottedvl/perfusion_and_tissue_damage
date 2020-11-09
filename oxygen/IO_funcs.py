@@ -15,8 +15,8 @@ def oxygen_config_reader(input_file_path, parser):
         raise Exception("unknown input file format: " + config_format)
     
     if parser.parse_args().rslt != None:
-        configs.output.rslt = parser.parse_args().reslt
-    
+        configs.output.rslt = parser.parse_args().rslt
+
     return configs
 
 #%%

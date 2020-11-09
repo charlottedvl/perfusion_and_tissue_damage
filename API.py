@@ -12,6 +12,7 @@ if __name__ == "__main__":
         sys.exit(API(sys.argv[1:]).evaluate())
 
     if analysis == 'OXYGEN':
-        pass
+        from oxygen.API import API
+        sys.exit(API(sys.argv[1:]).evaluate())
 
     sys.exit("No model was evaluated.")

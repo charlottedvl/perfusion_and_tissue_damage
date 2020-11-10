@@ -58,16 +58,16 @@ class API(eventhandler.EventHandler):
         subprocess.run(solve_cmd, check=True, cwd="/app/perfusion")
 
         # terminate baseline scenario
-        if self.state is None or self.state == 0:
+        if self.event is None or self.event == 0:
             return
 
         # extract settings
-        event = self.get_event()
-        if not event.get('evaluate_infarct_estimates', True):
+        model = self.get_model()
+        if not model.get('evaluate_infarct_estimates', True):
             return
 
         # baseline scenario result directories
-        baseline = self.patient_dir.joinpath(self.states[0])
+        baseline = self.patient_dir.joinpath(self.events[0])
         baseline = baseline.joinpath(perfusion_dir)
         baseline = baseline.joinpath(pf_outfile)
 
@@ -90,7 +90,7 @@ class API(eventhandler.EventHandler):
             "--res_fldr",
             f"{res_folder}/",
             "--thresholds",
-            f"{event.get('infarct_levels', 21)}",
+            f"{model.get('infarct_levels', 21)}",
         ]
         print(f"Evaluating: '{' '.join(infarct_cmd)}'", flush=True)
         subprocess.run(infarct_cmd, check=True, cwd="/app/perfusion")

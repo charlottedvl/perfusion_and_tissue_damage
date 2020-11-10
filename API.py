@@ -4,8 +4,10 @@ import sys
 if __name__ == "__main__":
     args = eventhandler.parse_args(sys.argv[1:])
     path = eventhandler.path_to_config(args['--patient'])
-    event = eventhandler.read_event(path, args['--event'])
-    analysis = event.get('type')
+    model = eventhandler.read_model(path, args['--event'])
+
+    k = next(iter(model))
+    analysis = model[k]['type']
 
     if analysis == 'PERFUSION':
         from perfusion.API import API

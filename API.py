@@ -1,20 +1,16 @@
-from eventmodule import eventhandler
+from perfusion.API import API as perfusion_API
+from oxygen.API import API as oxygen_API
 import sys
 
-if __name__ == "__main__":
-    args = eventhandler.parse_args(sys.argv[1:])
-    path = eventhandler.path_to_config(args['--patient'])
-    model = eventhandler.read_model(path, args['--event'])
 
-    k = next(iter(model))
-    analysis = model[k]['type']
+if __name__ == "__main__":
+    api = perfusion_API(sys.argv[1:])
+    analysis = api.model['type']
 
     if analysis == 'PERFUSION':
-        from perfusion.API import API
-        sys.exit(API(sys.argv[1:]).evaluate())
+        sys.exit(perfusion_API(sys.argv[1:]).evaluate())
 
     if analysis == 'OXYGEN':
-        from oxygen.API import API
-        sys.exit(API(sys.argv[1:]).evaluate())
+        sys.exit(oxygen_API(sys.argv[1:]).evaluate())
 
     sys.exit("No model was evaluated.")

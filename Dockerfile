@@ -14,7 +14,7 @@ RUN cat requirements.txt | sed '/eventmodule/d' | pip install --no-cache-dir -r 
 # extract the brain mesh
 ADD brain_meshes.tar.xz ./
 COPY perfusion ./perfusion
-COPY . .
+COPY oxygen ./oxygen
 
 # preprocessing
 RUN cd perfusion && python3 permeability_initialiser.py
@@ -28,7 +28,10 @@ COPY requirements.txt ./
 RUN pip3 install --upgrade pip
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-# copy preprocessing results 
+# copy all local contents
+COPY . .
+
+# overwrite with preprocessing results
 COPY --from=builder /app .
 
 ENTRYPOINT ["python3", "API.py"]

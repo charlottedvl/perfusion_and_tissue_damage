@@ -104,7 +104,8 @@ coarseCollaterals = False
 solver = "krylov"
 # solver = ""
 clotactive = False
-frictionconstant = 8  # 8 = laminar, 22 is blunt
+scale_resistance = True
+
 if rank == 0:
     Patient = Patient.Patient(patient_folder)
     Patient.LoadBFSimFiles()
@@ -112,9 +113,13 @@ if rank == 0:
     Patient.LoadClusteringMapping(Patient.Folders.ModellingFolder + "Clusters.csv")
     Patient.LoadPositions()
 
+    frictionconstant = Patient.ModelParameters["FRICTION_C"]  # 8 = laminar, 22 = blunt
+    # frictionconstant = 8
+
     Patient.Initiate1DSteadyStateModel()  # run with original wk elements
     Patient.Run1DSteadyStateModel(model="Linear", tol=1e-12, clotactive=clotactive, PressureInlets=True,
-                                  coarseCollaterals=coarseCollaterals, frictionconstant=frictionconstant)
+                                  coarseCollaterals=coarseCollaterals, frictionconstant=frictionconstant,
+                                  scale_resistance=scale_resistance)
 
     # boundary condition before coupling
     # Patient.Perfusion.UpdateMappedRegionsFlowdata(inlet_boundary_file)
@@ -131,16 +136,17 @@ if rank == 0:
     # set venous pressure
     # for node in Patient.Topology.OutletNodes:
     #     node.OutPressure = 0
-    UniformPressure = True
-    if UniformPressure:
+    # update boundary conditions
+    # UniformPressure = True
+    # if UniformPressure:
         # uniform pressure
-        Patient.UpdatePressureCouplingPoints(p_arterial)
-    else:
-        # pressure drop fraction
-        pressuredrop = 0.3  # fraction
-        surfacepressure = [(1 - pressuredrop) * cp.Node.Pressure for _, cp in
-                           enumerate(Patient.Perfusion.CouplingPoints)]
-        Patient.UpdatePressureCouplingPoints(surfacepressure)
+    Patient.UpdatePressureCouplingPoints(p_arterial)
+    # else:
+    #     # pressure drop fraction
+    #     pressuredrop = 0.3  # fraction
+    #     surfacepressure = [(1 - pressuredrop) * cp.Node.Pressure for _, cp in
+    #                        enumerate(Patient.Perfusion.CouplingPoints)]
+    #     Patient.UpdatePressureCouplingPoints(surfacepressure)
 
     # update boundary file
     for outlet in Patient.Topology.OutletNodes:
@@ -186,55 +192,130 @@ Ks = [K1, K2, K3]
 # get surface values
 fluxes, surf_p_values = suppl_fcts.surface_ave(mesh, boundaries, vels, ps)
 
-FlowRateAtBoundary = fluxes[:, 2][
-                     2:] * -1  # Flow rate from the perfusion model (sign to match 1-d bf model, positive flow towards the brain)
+FlowRateAtBoundary = fluxes[:, 2][2:] * -1  # Flow rate from the perfusion model (sign to match 1-d bf model, positive flow towards the brain)
 PressureAtBoundary = surf_p_values[:, 2][2:]  # Pressure from the perfusion model
 sys.stdout.flush()
+
 # %% OPTIMIZE 1-D BLOOD FLOW MODEL
 if rank == 0:
-    print("\tOptimize 1-D blood flow model to match perfusion model.")
+    start_r = time.time()
+    perfusion_target = 600 # mL/min
+    print("Optimizing 1-D blood flow model to achieve pre-set perfusion values.")
+    for index, cp in enumerate(Patient.Perfusion.CouplingPoints):
+        cp.Node.R2 += cp.Node.R1
+        cp.Node.R1 = 0
+
+    current_value = sum([node.Node.WKNode.AccumulatedFlowRate for node in Patient.Perfusion.CouplingPoints]) * 60
+    perfusion_diff = current_value/perfusion_target
+    while abs(perfusion_diff-1) > 1e-6:
+        # print(perfusion_diff)
+        # scale cerebral resistances only
+        for index, cp in enumerate(Patient.Perfusion.CouplingPoints):
+            cp.Node.R1 = 0
+            cp.Node.R2 *= perfusion_diff
+
+        with contextlib.redirect_stdout(None):
+            Patient.Run1DSteadyStateModel(model="Linear", tol=1e-10, clotactive=clotactive, PressureInlets=True,
+                                              coarseCollaterals=coarseCollaterals, frictionconstant=frictionconstant,
+                                              scale_resistance=True)
+        current_value = sum([node.Node.WKNode.AccumulatedFlowRate for node in Patient.Perfusion.CouplingPoints]) * 60
+        perfusion_diff = current_value / perfusion_target
+    print(f"\tTotal cerebral flow:{sum([cp.Node.WKNode.AccumulatedFlowRate for cp in Patient.Perfusion.CouplingPoints]) * 60} mL/min")
+    print(f"\tInlet pressure:{Patient.Topology.InletNodes[0][0].Pressure} Pa")
+    print(f"\tInlet flow:{Patient.Topology.InletNodes[0][0].FlowRate} mL/s")
+    for index, node in enumerate(Patient.Topology.OutletNodes):
+        node.OldFlow = node.WKNode.AccumulatedFlowRate
+
+    print("Optimize 1-D blood flow model to match perfusion model.")
+    correction = 600 / (sum([FlowRateAtBoundary[index] * 1e-3 for index, _ in enumerate(Patient.Perfusion.CouplingPoints)]) * 60)
+    print(f"\033[91m\tCorrection factor:{correction}\033[m")
     # update boundary condition
     for index, cp in enumerate(Patient.Perfusion.CouplingPoints):
-        cp.Node.TargetFlow = FlowRateAtBoundary[index] * 1e-3
-    # erorratio = [p_arterial / p for p in PressureAtBoundary]
-    # print(erorratio)
+        cp.Node.TargetFlow = FlowRateAtBoundary[index] * 1e-3 * correction  # todo remove scaling to compensate for low bc resolution
+        # print(f"\tCurrent flow:{cp.Node.WKNode.AccumulatedFlowRate}, Target flow:{cp.Node.TargetFlow}")
 
-    # optimize wk elements
-    # calibration step such that the 1d-bd and perfusion models agree on flowrate and pressure in the healthy scenario
-    rel_tol = 1e-5
-    relative_residual = 1
-    start_r = time.time()
-
-    while relative_residual > rel_tol:
-        oldR = numpy.array([node.Node.R1 + node.Node.R2 for node in Patient.Perfusion.CouplingPoints])
+    # update boundary conditions (original value)
+    Patient.UpdatePressureCouplingPoints(Patient.ModelParameters["OUT_PRESSURE"])
+    def coupling_resistance(R):
         for index, cp in enumerate(Patient.Perfusion.CouplingPoints):
-            cp.Node.R1 = (cp.Node.Pressure - cp.Node.OutPressure) / (cp.Node.TargetFlow * 1e-6)
-            cp.Node.R2 = 1
+            cp.Node.R1 = 0
+            cp.Node.R2 = R[index]
         with contextlib.redirect_stdout(None):
-            Patient.Run1DSteadyStateModel(model="Linear", tol=1e-12, clotactive=clotactive, PressureInlets=True,
-                                          coarseCollaterals=coarseCollaterals, frictionconstant=frictionconstant)
-        # residual = [Node.Node.TargetFlow - Node.Node.WKNode.AccumulatedFlowRate for index, Node in
-        #             enumerate(Patient.Perfusion.CouplingPoints)]
-        # newr = numpy.array([node.Node.R1 for node in Patient.Perfusion.CouplingPoints])
-        # diff = oldR - newr
-        # sq_diff = sum(numpy.power(diff, 2))
-        # print(f'\tResidual: {sq_diff}')
-        relative_residual = max(
-            [abs(node.Node.R1 + node.Node.R2 - oldR[index]) / (node.Node.R1 + node.Node.R2) for index, node in
-             enumerate(Patient.Perfusion.CouplingPoints)])
-        print(f'\tMax relative residual: {relative_residual}')
-        sys.stdout.flush()
+            Patient.Run1DSteadyStateModel(model="Linear", tol=1e-10, clotactive=clotactive, PressureInlets=True,
+                                          coarseCollaterals=coarseCollaterals, frictionconstant=frictionconstant,
+                                          scale_resistance=False)
+        residuals = [cp.Node.WKNode.AccumulatedFlowRate - cp.Node.TargetFlow for cp in Patient.Perfusion.CouplingPoints]
+        return residuals
+
+    print(f"\tTotal cerebral flow:{sum([cp.Node.WKNode.AccumulatedFlowRate for cp in Patient.Perfusion.CouplingPoints]) * 60} mL/min")
+    print(f"\tInlet pressure:{Patient.Topology.InletNodes[0][0].Pressure} Pa")
+    print(f"\tInlet flow:{Patient.Topology.InletNodes[0][0].FlowRate} mL/s")
+
+    guess_resistance = numpy.array([1e10 for node in Patient.Perfusion.CouplingPoints])  # healthy scenario
+    sol = scipy.optimize.root(coupling_resistance, guess_resistance, method='krylov',
+                              options={'disp': True, 'maxiter': 50, 'fatol': 1e-6})
+    print(f"\tTotal cerebral flow:{sum([cp.Node.WKNode.AccumulatedFlowRate for cp in Patient.Perfusion.CouplingPoints]) * 60} mL/min")
+    print(f"\tInlet pressure:{Patient.Topology.InletNodes[0][0].Pressure} Pa")
+    print(f"\tInlet flow:{Patient.Topology.InletNodes[0][0].FlowRate} mL/s")
+    pressure_minimal = min([cp.Node.Pressure for cp in Patient.Perfusion.CouplingPoints])
+    print(f"\tMinimal pressure found:{pressure_minimal}")
+    if pressure_minimal < p_arterial:
+        print("\033[91mSurface pressure is higher than expected! Optimizing inlet pressure \033[m")
+        while pressure_minimal < p_arterial:
+            difference_surface_pressure = p_arterial-pressure_minimal
+            #increase inlet pressure
+            Patient.Topology.InletNodes[0][0].InletPressure += difference_surface_pressure
+            with contextlib.redirect_stdout(None):
+                Patient.Run1DSteadyStateModel(model="Linear", tol=1e-10, clotactive=clotactive, PressureInlets=True,
+                                                  coarseCollaterals=coarseCollaterals, frictionconstant=frictionconstant,
+                                                  scale_resistance=True)
+            pressure_minimal = min([cp.Node.Pressure for cp in Patient.Perfusion.CouplingPoints])
+
+        print(f"\033[91mNew inlet Pressure:{Patient.Topology.InletNodes[0][0].InletPressure} \033[m")
+        print(f"\tTotal cerebral flow:{sum([cp.Node.WKNode.AccumulatedFlowRate for cp in Patient.Perfusion.CouplingPoints]) * 60} mL/min")
+        print(f"\tInlet pressure:{Patient.Topology.InletNodes[0][0].Pressure} Pa")
+        print(f"\tInlet flow:{Patient.Topology.InletNodes[0][0].FlowRate} mL/s")
+
+    print(f"Updating boundary conditions")
+    guess_resistance = numpy.array([node.Node.R2 - (p_arterial - node.Node.OutPressure)/(node.Node.TargetFlow*1e-6)
+                                    for node in Patient.Perfusion.CouplingPoints])  # healthy scenario
+    guess_resistance = numpy.array([1e10 for node in Patient.Perfusion.CouplingPoints])  # healthy scenario
+    Patient.UpdatePressureCouplingPoints(p_arterial)
+    sol = scipy.optimize.root(coupling_resistance, guess_resistance, method='krylov',
+                              options={'disp': True, 'maxiter': 50, 'fatol': 1e-6})
+
+    pressure_diff = Patient.Topology.InletNodes[0][0].Pressure / Patient.Topology.InletNodes[0][0].InletPressure
+    flow_rate_diff = 1e-6 * Patient.Topology.InletNodes[0][0].FlowRate / Patient.Topology.InletNodes[0][0].InletFlowRate
+    while abs(pressure_diff-1) > 1e-6 or abs(flow_rate_diff-1) > 1e-6:
+        # update total resistance to maintain inlet boundary conditions.
+        with contextlib.redirect_stdout(None):
+            Patient.Run1DSteadyStateModel(model="Linear", tol=1e-10, clotactive=clotactive, PressureInlets=True,
+                                          coarseCollaterals=coarseCollaterals, frictionconstant=frictionconstant,
+                                          scale_resistance=True)
+
+        # update cerebral resistance to obtain target flow rates.
+        guess_resistance = numpy.array([node.Node.R2 for node in Patient.Perfusion.CouplingPoints])  # healthy scenario
+        sol = scipy.optimize.root(coupling_resistance, guess_resistance, method='krylov',
+                                      options={'disp': True, 'maxiter': 50, 'fatol': 1e-6})
+        for index, node in enumerate(Patient.Perfusion.CouplingPoints):
+            node.Node.R2 = sol.x[index]
+
+        pressure_diff = Patient.Topology.InletNodes[0][0].Pressure / Patient.Topology.InletNodes[0][0].InletPressure
+        flow_rate_diff = 1e-6 * Patient.Topology.InletNodes[0][0].FlowRate / Patient.Topology.InletNodes[0][0].InletFlowRate
+        print(f"\tTotal cerebral flow:{sum([cp.Node.WKNode.AccumulatedFlowRate for cp in Patient.Perfusion.CouplingPoints])*60} mL/min")
+        print(f"\tInlet pressure:{Patient.Topology.InletNodes[0][0].Pressure} Pa")
+        print(f"\tInlet flow:{Patient.Topology.InletNodes[0][0].FlowRate} mL/s")
+        print(f"\tPressure difference:{pressure_diff}")
+        print(f"\tFlow rate difference:{flow_rate_diff}")
 
     end_r = time.time()
-    print('\tExecution time: \t', end_r - start_r, '[s]')
+    print("Optimization complete.")
+    print('Execution time: \t', end_r - start_r, '[s]')
 
-comm.Barrier()
-
-# save optimization results and model parameters
-if rank == 0:
+    # save optimization results and model parameters
     with open(patient_folder + 'Model_values_Healthy.csv', "w") as f:
         f.write(
-            "Region,Resistance,Outlet Pressure(pa),WK Pressure, Perfusion Surface Pressure(pa),Old Flow Rate,Flow Rate(mm^3/s),Perfusion Flow Rate(mm^3/s)\n")
+            "Region,Resistance,Outlet Pressure(pa),WK Pressure, Perfusion Surface Pressure(pa),Old Flow Rate,Flow Rate(mL/s),Perfusion Flow Rate(mL/s)\n")
         for index, cp in enumerate(Patient.Perfusion.CouplingPoints):
             f.write("%d,%.12g,%.12g,%.12g,%.12g,%.12g,%.12g,%.12g\n" % (
                 fluxes[:, 0][2:][index],
@@ -263,6 +344,7 @@ if rank == 0:
     Patient.Perfusion.UpdateMappedRegionsFlowdata(configs.input.inlet_boundary_file)
 
 comm.Barrier()
+# todo save optimized model settings to speed up multiple consecutive runs.
 
 # %% RUN COUPLED MODEL
 def coupledmodel(P, stopp):
@@ -305,11 +387,10 @@ def coupledmodel(P, stopp):
         if rank == 0:
             Patient.Run1DSteadyStateModel(model="Linear", tol=1e-12, clotactive=clotactive, PressureInlets=True,
                                           FlowRateOutlets=False, coarseCollaterals=coarseCollaterals,
-                                          frictionconstant=frictionconstant)
+                                          frictionconstant=frictionconstant, scale_resistance=scale_resistance)
 
             # return residuals
-            flowrate1d = [Node.Node.WKNode.AccumulatedFlowRate for index, Node in
-                          enumerate(Patient.Perfusion.CouplingPoints)]
+            flowrate1d = [Node.Node.WKNode.AccumulatedFlowRate for index, Node in enumerate(Patient.Perfusion.CouplingPoints)]
             # pressure1d = [Node.Node.WKNode.Pressure for index, Node in enumerate(Patient.Perfusion.CouplingPoints)]
             residualFlowrate = [(i * 1e-3 - j) for i, j in zip(FlowRateAtBoundary, flowrate1d)]
         residualFlowrate = comm.bcast(residualFlowrate, root=0)
@@ -323,18 +404,17 @@ def coupledmodel(P, stopp):
     #     sys.stdout.flush()
     return residualFlowrate
 
-
 clotactive = True
 if solver == "krylov":
     # Find the pressure at coupling points (identical to the surface regions) such that flowrate of the models are equal.
     if rank == 0:
-        print("\tRunning two-way coupling by root finding.")
+        print("\033[96mRunning two-way coupling by root finding.\033[m")
         sys.stdout.flush()
         guessPressure = numpy.array(
             [node.Node.WKNode.Pressure for node in Patient.Perfusion.CouplingPoints])  # healthy scenario
         stop = [0]
         sol = scipy.optimize.root(coupledmodel, guessPressure, args=(stop,), method='krylov',
-                                  options={'disp': True, 'maxiter': 50, 'ftol': 1e-12})
+                                  options={'disp': True, 'maxiter': 50, 'fatol': 1e-6})
         stop = [1]
         coupledmodel(guessPressure, stop)
         print(sol)
@@ -399,7 +479,7 @@ elif solver == "loop":
         with contextlib.redirect_stdout(None):
             Patient.Run1DSteadyStateModel(model="Linear", tol=1e-12, clotactive=clotactive, PressureInlets=True,
                                           FlowRateOutlets=True, coarseCollaterals=coarseCollaterals,
-                                          frictionconstant=frictionconstant)
+                                          frictionconstant=frictionconstant, scale_resistance=scale_resistance)
 
         # update boundary file
         for index, node in enumerate(Patient.Perfusion.CouplingPoints):
@@ -433,7 +513,7 @@ else:
     if rank == 0:
         Patient.Run1DSteadyStateModel(model="Linear", tol=1e-12, clotactive=clotactive, PressureInlets=True,
                                       FlowRateOutlets=False, coarseCollaterals=coarseCollaterals,
-                                      frictionconstant=frictionconstant)
+                                      frictionconstant=frictionconstant, scale_resistance=scale_resistance)
         # update boundary file
         for outlet in Patient.Topology.OutletNodes:
             if abs(outlet.FlowRate) < 1e-12:
@@ -472,8 +552,8 @@ if rank == 0:
     PressureAtBoundary = surf_p_values[:, 2][2:]
     Patient.UpdatePressureCouplingPoints(PressureAtBoundary)
     Patient.Run1DSteadyStateModel(model="Linear", tol=1e-12, clotactive=clotactive, PressureInlets=True,
-                                  FlowRateOutlets=False,
-                                  coarseCollaterals=coarseCollaterals, frictionconstant=frictionconstant)
+                                  FlowRateOutlets=False, coarseCollaterals=coarseCollaterals,
+                                  frictionconstant=frictionconstant, scale_resistance=scale_resistance)
     # export some results
     Patient.Results1DSteadyStateModel()
     # export data in same format at the 1-D pulsatile model
@@ -510,7 +590,6 @@ if rank == 0:
                 cp.Node.WKNode.Pressure,
                 PressureAtBoundary[index],
                 cp.Node.OldFlow,
-                # cp.Node.FlowRate,
                 cp.Node.WKNode.AccumulatedFlowRate,
                 FlowRateAtBoundary[index] * 1e-3))
 

@@ -19,9 +19,9 @@ from dolfin import *
 import time
 import sys
 import argparse
-import numpy
+import numpy as np
 
-numpy.set_printoptions(linewidth=200)
+np.set_printoptions(linewidth=200)
 
 # ghost mode options: 'none', 'shared_facet', 'shared_vertex'
 parameters['ghost_mode'] = 'none'
@@ -30,13 +30,6 @@ parameters['ghost_mode'] = 'none'
 import IO_fcts
 import suppl_fcts
 import finite_element_fcts as fe_mod
-
-# # location of the 1-D blood flow model
-# sys.path.insert(0, "../../1d-blood-flow/")
-# from Blood_Flow_1D import Patient, Results
-import contextlib
-import copy
-import scipy.optimize
 
 # solver runs is "silent" mode
 set_log_level(50)
@@ -104,7 +97,7 @@ perfusion_change = project(((perfusion - perfusion_stroke) / perfusion) * -100, 
                            preconditioner_type='amg')
 
 # thresholds = [-10, -20, -30, -40, -50, -60, -70, -80, -90, -100]
-thresholds = numpy.linspace(0, -100, args.thresholds)
+thresholds = np.linspace(0, -100, args.thresholds)
 
 # For now a value of `-70%` is assumed as a desired threshold value to determine
 # infarct volume from perfusion data. Thus, we ensure that `-70%` is present
@@ -114,15 +107,16 @@ if target not in thresholds:
     # [::-1] to reverse sort direction, maintain descending order
     thresholds = np.sort(np.append(thresholds, target))[::-1]
 
-vol_infarct_values_thresholds = numpy.empty((0, 4), float)
+vol_infarct_values_thresholds = np.empty((0, 4), float)
 
 for threshold in thresholds:
     infarct = project(conditional(gt(perfusion_change, Constant(threshold)), Constant(0.0), Constant(1.0)), K2_space,
                       solver_type='bicgstab', preconditioner_type='amg')
     infarctvolume = suppl_fcts.infarct_vol(mesh, subdomains, infarct)
-    vol_infarct_values = numpy.concatenate((numpy.array([threshold,threshold,threshold])[:, numpy.newaxis], infarctvolume), axis=1)
-    vol_infarct_values_thresholds = numpy.append(vol_infarct_values_thresholds, vol_infarct_values, axis=0)
+    vol_infarct_values = np.concatenate((np.array([threshold,threshold,threshold])[:, np.newaxis], infarctvolume), axis=1)
+    vol_infarct_values_thresholds = np.append(vol_infarct_values_thresholds, vol_infarct_values, axis=0)
 
-fheader = 'threshold [%],volume ID,Volume [mm^3],infarct volume [mL]'
-numpy.savetxt(configs.output.res_fldr + 'vol_infarct_values_thresholds.csv', vol_infarct_values_thresholds, "%e,%d,%e,%e", header=fheader)
+if rank == 0:
+    fheader = 'threshold [%],volume ID,Volume [mm^3],infarct volume [mL]'
+    np.savetxt(configs.output.res_fldr + 'vol_infarct_values_thresholds.csv', vol_infarct_values_thresholds, "%e,%d,%e,%e", header=fheader)
 

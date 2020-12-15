@@ -2,13 +2,13 @@
 
 <input>
     <!--tetrahedral brain mesh file with labelled boundaries and subdomains-->
-	<mesh_file> Coarse_Collaterals/BH0025_0/bf_sim/clustered_mesh.xdmf </mesh_file>
+	<mesh_file> patient_0/bf_sim/clustered_mesh.xdmf </mesh_file>
 
 	<!--inlet boundary condition file-->
 	<read_inlet_boundary type='bool'> True </read_inlet_boundary>
 
 	<!--inlet boundary condition file-->
-	<inlet_boundary_file> Coarse_Collaterals/BH0025_0/bf_sim/boundary_condition_file.csv </inlet_boundary_file>
+	<inlet_boundary_file> patient_0/bf_sim/boundary_condition_file.csv </inlet_boundary_file>
 
 	<!--boundary settings (DBC/NBC)-->
 	<inlet_BC_type> DBC </inlet_BC_type>
@@ -19,41 +19,41 @@
 
 <physical>
     <!--arterial pressure boundary condition [Pa]-->
-	<p_arterial type='float'> 6500.0 </p_arterial>
+	<p_arterial type='float'> 8000.0 </p_arterial>
 
 	<!--venous pressure boundary condition [Pa]-->
 	<p_venous type='float'>  0.0 </p_venous>
 
 	<!--arteriole compartment - reference permeability [mm^3 s / g]-->
-	<K1gm_ref type='float'> 1.234e-3 </K1gm_ref>
+	<K1gm_ref type='float'> 0.001986975 </K1gm_ref>
 
 	<!--capillary compartment - reference permeability [mm^3 s / g]-->
 	<K2gm_ref type='float'> 4.28e-7 </K2gm_ref>
 
 	<!--venule compartment - reference permeability [mm^3 s / g]-->
-	<K3gm_ref type='float'> 2.468e-3 </K3gm_ref>
+	<K3gm_ref type='float'> 0.00397395 </K3gm_ref>
 
 	<!--K_GM/K_WM (grey matter & white matter permeability ratio)-->
 	<gmowm_perm_rat type='float'> 1.0 </gmowm_perm_rat>
 
 	<!--grey matter coupling coefficient - arteriole & capillary compartments [Pa / s]-->
-	<beta12gm type='float'> 1.326e-6 </beta12gm>
+	<beta12gm type='float'> 1.624e-06 </beta12gm>
 
 	<!--grey matter coupling coefficient - capillary & venule compartments [Pa / s]-->
-	<beta23gm type='float'> 4.641e-06 </beta23gm>
+	<beta23gm type='float'> 5.683e-06 </beta23gm>
 
 	<!--beta12/beta23-->
-	<gmowm_beta_rat type='float'> 2.538 </gmowm_beta_rat>
+	<gmowm_beta_rat type='float'> 2.582052 </gmowm_beta_rat>
 </physical>
 
 <simulation>
     <!--polynomial degree of finite elements-->
-	<fe_degr type='int'> 1 </fe_degr>
+	<fe_degr type='int'> 2 </fe_degr>
 </simulation>
 
 <output>
     <!--folder for results-->
-	<res_fldr>  Coarse_Collaterals/BH0025_0/perfusion/  </res_fldr>
+	<res_fldr>  patient_0/perfusion/  </res_fldr>
 	<!--folder for results-->
 	<save_pvd type='bool'> True </save_pvd>
 	<!--compute surface and volume averaged variables-->

@@ -24,6 +24,7 @@ d pe / d n = 0 @ brain stem cut plane
 #%% IMPORT MODULES
 from dolfin import *
 import time
+import argparse
 
 import IO_fcts
 import suppl_fcts
@@ -41,7 +42,11 @@ size = comm.Get_size()
 #%% READ INPUT
 if rank == 0: print('Step 1: Reading input files')
 
-config_file = 'config_permeability_initialiser.yaml'
+parser = argparse.ArgumentParser(description="perfusion computation based on multi-compartment Darcy flow model")
+parser.add_argument("--config_file", help="path to configuration file",
+                    type=str, default='./config_permeability_initialiser.yaml')
+config_file = parser.parse_args().config_file
+
 configs = IO_fcts.perm_init_config_reader_yml(config_file)
 
 

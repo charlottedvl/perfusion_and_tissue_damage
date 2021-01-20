@@ -1,1 +1,2 @@
 TODO: implement metabolism and tissue damage model
+Yidan will start to work on this

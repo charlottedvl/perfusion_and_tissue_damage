@@ -1,12 +1,12 @@
 input:
   inlet_BC_type: mixed
-  inlet_boundary_file: BC_template_RMCAo.csv
+  inlet_boundary_file: BC_template_LMCAo.csv
   mesh_file: ../brain_meshes/b0000/clustered.xdmf
   permeability_folder: ../brain_meshes/b0000/permeability/
   read_inlet_boundary: true
 output:
   comp_ave: false
-  res_fldr: ../VP_results/p0000/perfusion_RMCAo/
+  res_fldr: ../VP_results/p0000/perfusion_LMCAo/
   save_pvd: false
 physical:
   K1gm_ref: 0.001234

@@ -27,6 +27,12 @@ class API(eventhandler.EventHandler):
 
             subprocess.run(permeability_cmd, check=True, cwd="/app/perfusion")
 
+        # convert the clustered mesh from .msh to .xmdf
+        if not os.path.exists('/patient/baseline/bf_sim/clustered_mesh.xdmf'):
+            assert os.path.exists('/patient/baseline/bf_sim/clustered_mesh.msh')
+            cmd = ["python3", "/app/perfusion/convert_msh2hdf5.py"]
+            subprocess.run(cmd, check=True, cwd='/patient/baseline/bf_sim')
+
         # output paths for perfusion simulation
         res_folder = self.result_dir.joinpath(f"{perfusion_dir}")
         os.makedirs(res_folder, exist_ok=True)
@@ -39,6 +45,7 @@ class API(eventhandler.EventHandler):
         solver_config['input']['read_inlet_boundary'] = True
         bc_file = self.result_dir.joinpath(f'{blood_flow_dir}/{bc_fn}')
         solver_config['input']['inlet_boundary_file'] = str(bc_file.resolve())
+        solver_config['input']['mesh_file'] = '/patient/baseline/bf_sim/clustered_mesh.xdmf'
 
         # cannot proceed without boundary conditions
         msg = f"Boundary conditions `1d-blood-flow` not present: `{bc_file}`"

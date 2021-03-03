@@ -7,7 +7,14 @@ else
 fi
 
 cd perfusion
-mpirun -n 6 python3 permeability_initialiser.py
+if [ -e "../brain_meshes/b0000/permeability/K1_form.h5" ] 
+then
+    echo "The permeability tensor form has been computed already"
+else
+    echo "The permeability tensor form will be computed" 
+    mpirun -n 6 python3 permeability_initialiser.py
+fi
+
 mpirun -n 6 python3 basic_flow_solver.py
 mpirun -n 6 python3 basic_flow_solver.py --config_file ./config_basic_flow_solver_LMCAo.yaml
 mpirun -n 6 python3 basic_flow_solver.py --config_file ./config_basic_flow_solver_RMCAo.yaml

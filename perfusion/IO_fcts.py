@@ -181,16 +181,32 @@ def inlet_file_reader(inlet_boundary_file):
 
 
 #%%
-def initialise_permeabilities(K1_space,K2_space,mesh, permeability_folder):
+def initialise_permeabilities(K1_space,K2_space,mesh, permeability_folder,**kwarg):
+    if 'model_type' in kwarg:
+        model_type = kwarg.get('model_type')
+    else:
+        model_type = 'acv'
+    
     comm = MPI.comm_world
+    
+    if model_type == 'acv':
+        K1 = Function(K1_space)
+        K2 = Function(K2_space)
         
-    K1 = Function(K1_space)
-    K2 = Function(K2_space)
+        with XDMFFile(comm,permeability_folder+"K1_form.xdmf") as myfile:
+            myfile.read_checkpoint(K1, "K1_form")
+        
+        K3 = K1.copy(deepcopy=True)
+    elif model_type == 'a':
+        K1 = Function(K1_space)
+        K2, K3 = [], []
+        
+        with XDMFFile(comm,permeability_folder+"K1_form.xdmf") as myfile:
+            myfile.read_checkpoint(K1, "K1_form")
+    else:
+        raise Exception("unknown model type: " + model_type)
     
-    with XDMFFile(permeability_folder+"K1_form.xdmf") as myfile:
-        myfile.read_checkpoint(K1, "K1_form")
-    
-    return K1, K2, K1.copy(deepcopy=True)
+    return K1, K2, K3
 
 
 #%%

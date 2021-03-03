@@ -157,59 +157,101 @@ def perm_tens_comp(K_space,subdomains,mesh,e_ref,e_loc,K1_form):
 
 #%%
 def scale_permeabilities(subdomains, K1, K2, K3, \
-                         K1_ref_gm, K2_ref_gm, K3_ref_gm, gmowm_perm_rat,res_fldr,save_pvd):
-    """TODO: take care of appropriate scaling!!!"""    
+                         K1_ref_gm, K2_ref_gm, K3_ref_gm, gmowm_perm_rat,res_fldr,save_pvd,**kwarg): 
+    if 'model_type' in kwarg:
+        model_type = kwarg.get('model_type')
+    else:
+        model_type = 'acv'
+    
     loc1 = subdomains.where_equal(11)# white matter cell indices
     loc2 = subdomains.where_equal(12)# gray matter cell indices
     
-    K1_array = K1.vector().get_local()
-    K2_array = K2.vector().get_local()
-    K3_array = K3.vector().get_local()
-    
-    # obtain reference values    
-    K1_ref_wm = K1_ref_gm/gmowm_perm_rat
-    K2_ref_wm = K2_ref_gm/gmowm_perm_rat
-    K3_ref_wm = K3_ref_gm/gmowm_perm_rat
-    
-    location = 0
-    for loc in [loc1,loc2]:
-        for i in range(len(loc)):
-            idx1 = int(loc[i])*9
-            idx2 = int(loc[i])*9+9
-            if location == 0: #WM
-                K1_array[idx1:idx2] *= K1_ref_wm
-                K3_array[idx1:idx2] *= K3_ref_wm
-                K2_array[loc[i]] = K2_ref_wm
-            else: #GM
-                K1_array[idx1:idx2] *= K1_ref_gm
-                K3_array[idx1:idx2] *= K3_ref_gm
-                K2_array[loc[i]] = K2_ref_gm
-        location = location + 1
-    
-    K1.vector().set_local(K1_array)
-    K2.vector().set_local(K2_array)
-    K3.vector().set_local(K3_array)
+    if model_type == 'acv':
+        K1_array = K1.vector().get_local()
+        K2_array = K2.vector().get_local()
+        K3_array = K3.vector().get_local()
+        
+        # obtain reference values    
+        K1_ref_wm = K1_ref_gm/gmowm_perm_rat
+        K2_ref_wm = K2_ref_gm/gmowm_perm_rat
+        K3_ref_wm = K3_ref_gm/gmowm_perm_rat
+        
+        location = 0
+        for loc in [loc1,loc2]:
+            for i in range(len(loc)):
+                idx1 = int(loc[i])*9
+                idx2 = int(loc[i])*9+9
+                if location == 0: #WM
+                    K1_array[idx1:idx2] *= K1_ref_wm
+                    K3_array[idx1:idx2] *= K3_ref_wm
+                    K2_array[loc[i]] = K2_ref_wm
+                else: #GM
+                    K1_array[idx1:idx2] *= K1_ref_gm
+                    K3_array[idx1:idx2] *= K3_ref_gm
+                    K2_array[loc[i]] = K2_ref_gm
+            location = location + 1
+        
+        K1.vector().set_local(K1_array)
+        K2.vector().set_local(K2_array)
+        K3.vector().set_local(K3_array)
+    elif model_type == 'a':
+        K1_array = K1.vector().get_local()
+        
+        # obtain reference values    
+        K1_ref_wm = K1_ref_gm/gmowm_perm_rat
+        
+        location = 0
+        for loc in [loc1,loc2]:
+            for i in range(len(loc)):
+                idx1 = int(loc[i])*9
+                idx2 = int(loc[i])*9+9
+                if location == 0: #WM
+                    K1_array[idx1:idx2] *= K1_ref_wm
+                else: #GM
+                    K1_array[idx1:idx2] *= K1_ref_gm
+            location = location + 1
+        
+        K1.vector().set_local(K1_array)
+    else:
+        raise Exception("unknown model type: " + model_type)
     
     return K1, K2, K3
     
 #%%
 def scale_coupling_coefficients(subdomains, beta12gm, beta23gm, gmowm_beta_rat, \
-                                K2_space, res_fldr,save_pvd):
+                                K2_space, res_fldr,save_pvd,**kwarg): 
+    if 'model_type' in kwarg:
+        model_type = kwarg.get('model_type')
+    else:
+        model_type = 'acv'
+    
     loc1 = subdomains.where_equal(11)# white matter cell indices
     loc2 = subdomains.where_equal(12)# gray matter cell indices
     
-    beta12 = Function(K2_space)
-    beta23 = Function(K2_space)
-    beta12_array = beta12.vector().get_local()
-    beta23_array = beta23.vector().get_local()
-    
-    beta12_array[loc2] = beta12gm
-    beta12_array[loc1] = beta12gm/gmowm_beta_rat
-    beta23_array[loc2] = beta23gm
-    beta23_array[loc1] = beta23gm/gmowm_beta_rat
-    
-    beta12.vector().set_local(beta12_array)
-    beta23.vector().set_local(beta23_array)
+    if model_type == 'acv':
+        beta12 = Function(K2_space)
+        beta23 = Function(K2_space)
+        beta12_array = beta12.vector().get_local()
+        beta23_array = beta23.vector().get_local()
+        
+        beta12_array[loc2] = beta12gm
+        beta12_array[loc1] = beta12gm/gmowm_beta_rat
+        beta23_array[loc2] = beta23gm
+        beta23_array[loc1] = beta23gm/gmowm_beta_rat
+        
+        beta12.vector().set_local(beta12_array)
+        beta23.vector().set_local(beta23_array)
+    elif model_type == 'a':
+        beta12 = Function(K2_space)
+        beta23 = []
+        beta12_array = beta12.vector().get_local()
+        
+        beta12_array[loc2] = beta12gm
+        beta12_array[loc1] = beta12gm/gmowm_beta_rat
+        
+        beta12.vector().set_local(beta12_array)
+    else:
+        raise Exception("unknown model type: " + model_type)
     
     return beta12, beta23
     

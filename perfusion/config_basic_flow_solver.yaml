@@ -20,6 +20,8 @@ physical:
   p_venous: 0.0
 simulation:
   fe_degr: 1
+  model_type: acv
+  vel_order: 1
 optimisation:
   parameters: ['gmowm_beta_rat','K1gm_ref']
   random_init: true

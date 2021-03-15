@@ -4,7 +4,7 @@ This Python script can predict the infarction based on the perfusion results in 
 
 The relationship between hypoxia and perfusion is a sigmoidal function based on statistical capillary networks (El-Bouri and Payne, 2015) and Green's function simulations (Secomb et al., 2004).
 
-The required inputs and model parameters are included in config_tissue_damage.yaml. It should be noted that the VVUQ of these parameter values is not finished yet.
+The required inputs and model parameters are included in config_tissue_damage.yaml. It should be noted that the VVUQ of these parameter values has not been finished yet.
 
 ###
 Serial computation:

@@ -79,7 +79,7 @@ Vp, Vvel, v_1, v_2, v_3, p, p1, p2, p3, K1_space, K2_space = \
 healthyfile = getattr(args, 'baseline', configs.output.res_fldr+'perfusion.xdmf')
 strokefile = getattr(args, 'occluded', configs.output.res_fldr+'perfusion_stroke.xdmf')
 
-print('Step 2: Reading perfusion files')
+if rank == 0: print('Step 2: Reading perfusion files')
 # Load previous results
 perfusion = Function(K2_space)
 f_in = XDMFFile(healthyfile)
@@ -91,7 +91,7 @@ f_in = XDMFFile(strokefile)
 f_in.read_checkpoint(perfusion_stroke, 'perfusion', 0)
 f_in.close()
 
-print('Step 3: Calculating change in perfusion and infarct volume')
+if rank == 0: print('Step 3: Calculating change in perfusion and infarct volume')
 # calculate change in perfusion and infarct
 perfusion_change = project(((perfusion - perfusion_stroke) / perfusion) * -100, K2_space, solver_type='bicgstab',
                            preconditioner_type='amg')

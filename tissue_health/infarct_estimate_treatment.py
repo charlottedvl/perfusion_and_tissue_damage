@@ -105,36 +105,27 @@ f_in.close()
 if rank == 0:
     print('Step 3: Calculating the infarct fraction')
 
-perfusion_healthy.vector()
-perfusion_healthy.vector()[:]
 perfusion_healthy_vec = perfusion_healthy.vector().get_local()
-perfusion_stroke.vector()
-perfusion_stroke.vector()[:]
 perfusion_stroke_vec = perfusion_stroke.vector().get_local()
-perfusion_treatment.vector()
-perfusion_treatment.vector()[:]
 perfusion_treatment_vec = perfusion_treatment.vector().get_local()
 
 # define the dead fraction and toxic state in each element
 
 dead = Function(K2_space)
-dead.vector()
-dead.vector()[:]
 dead_vec = dead.vector().get_local()
 toxic = Function(K2_space)
-toxic.vector()
-toxic.vector()[:]
 toxic_vec = toxic.vector().get_local()
 
 # initialise the ODEs
 # before treatment - time in seconds now
-t_b = np.linspace(0,arrival_time*3600,arrival_time*120+1)
+t_b = np.linspace(0,arrival_time*3600,2)
 # after treatment - time in seconds now
-t_a = np.linspace(0,recovery_time*3600,recovery_time*12+1)
+t_a = np.linspace(0,recovery_time*3600,2)
 
+start1 = time.time()
 # for grey matter
 for i in range(num_gm_idx):
-    # if the change in perfuison is smaller than 5% - no cell death
+    # if the change in perfusion is smaller than 5% - no cell death
     if (perfusion_healthy_vec[gm_idx[i]]-perfusion_stroke_vec[gm_idx[i]])/perfusion_healthy_vec[gm_idx[i]] < 0.05:
         dead_vec[gm_idx[i]] = 0
     # if the change is larger
@@ -149,7 +140,7 @@ for i in range(num_gm_idx):
 
 # for white matter
 for i in range(num_wm_idx):
-    # if the change in perfuison is smaller than 5% - no cell death
+    # if the change in perfusion is smaller than 5% - no cell death
     if (perfusion_healthy_vec[wm_idx[i]]-perfusion_stroke_vec[wm_idx[i]])/perfusion_healthy_vec[wm_idx[i]] < 0.05:
         dead_vec[wm_idx[i]] = 0
     # if the change is larger
@@ -162,6 +153,7 @@ for i in range(num_wm_idx):
         hs = odeint(cell_death, hi2, t_a)
         dead_vec[wm_idx[i]] = hs[-1,0]	
     
+end1 = time.time()
 dead.vector().set_local(dead_vec)
 
 # vtkfile = File(configs['output']['res_fldr']+'infarct_'+str(arrival_time)+'_'+str(recovery_time)+'.xdmf')
@@ -172,4 +164,6 @@ with XDMFFile(configs['output']['res_fldr']+'infarct_'+str(arrival_time)+'_'+str
 
 end0 = time.time()
 
-print('Simulation finished - Total execution time [s]; \t\t\t', end0 - start0)
+if rank == 0:
+    print('Infarct computation time [s]; \t\t\t', end1 - start1)
+    print('Simulation finished - Total execution time [s]; \t\t\t', end0 - start0)

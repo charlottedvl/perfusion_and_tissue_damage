@@ -1,12 +1,12 @@
 input:
   mesh_file: ../brain_meshes/b0000/clustered.xdmf
-  healthyfile: ../VP_results/p0000/healthy/perfusion.xdmf
-  strokefile: ../VP_results/p0000/RMCAo/perfusion.xdmf
-  treatmentfile: ../VP_results/p0000/RMCAt/perfusion.xdmf
+  healthyfile: ../VP_results/p0000/perfusion_healthy/perfusion.xdmf
+  strokefile: ../VP_results/p0000/perfusion_RMCAo/perfusion.xdmf
+  treatmentfile: ../VP_results/p0000/perfusion_RMCAo/perfusion.xdmf
   arrival_time: 3
   recovery_time: 120
 output:
-  res_fldr: ../VP_results/p0000/tissue_damage/
+  res_fldr: ../VP_results/p0000/tissue_damage_RMCAo/
 parameter:
   kf: 0.00044719
   kt: 0.00039441

@@ -149,7 +149,7 @@ for i in range(num_wm_idx):
         hs = odeint(cell_death, hi1, t_b)
         Dead = hs[-1,0]
         Toxic = hs[-1,1]
-        hi2 = [Dead,Toxic,hypoxia_estimate(perfusion_treatment_vec[wm_idx[i]])*perfusion_scale] # second input: after treatment
+        hi2 = [Dead,Toxic,hypoxia_estimate(perfusion_treatment_vec[wm_idx[i]]*perfusion_scale)] # second input: after treatment
         hs = odeint(cell_death, hi2, t_a)
         dead_vec[wm_idx[i]] = hs[-1,0]	
     

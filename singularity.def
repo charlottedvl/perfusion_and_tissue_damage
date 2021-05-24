@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: quay.io/fenicsproject/stable:latest 
+From: quay.io/fenicsproject/stable:latest
 stage: builder
 
 %files
@@ -7,22 +7,39 @@ stage: builder
 
 %post
         pip install --upgrade pip
-        cat /app/requirements.txt | sed '/eventmodule/d' | pip install --no-cache-dir -r /dev/stdin
+        pip install --no-cache-dir -r /app/requirements.txt
 
-        tar -C /app/ -xvf /app/brain_meshes.tar.xz 
-
+        tar -C /app/ -xvf /app/brain_meshes.tar.xz
         cd /app/perfusion && python3 permeability_initialiser.py
 
 Bootstrap: docker
-From: quay.io/fenicsproject/stable:latest 
+From: quay.io/fenicsproject/stable:latest
 stage: final
 
 %files from builder
         /app/* /app/
 
 %post
-        pip install --upgrade pip
-        cd /app/ && pip install --no-cache-dir -r requirements.txt
+        apt-get update && apt-get install -y \
+                software-properties-common
+
+        add-apt-repository ppa:deadsnakes/ppa
+
+        apt-get update && apt-get install -y \
+                python3 \
+                python3-pip \
+                python3.9 \
+                python3.9-distutils
+
+        # ensure the installation is working and pip is available
+        python3.9 -m pip install pip --user
+        python3.9 -m pip install --upgrade pip distlib wheel setuptools
+
+        # install the in-silico-trial package in 3.9
+        cd /app/ && python3.9 -m pip install --no-cache-dir ./in-silico-trial
+
+        # and all the rest in the other one
+        cd /app/ && python3 -m pip install --no-cache-dir -r requirements.txt
 
 %runscript
-        cd /app/ && exec python3 API.py "$@"
+        cd /app/ && exec python3.9 API.py "$@"

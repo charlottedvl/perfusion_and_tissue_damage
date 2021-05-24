@@ -1,5 +1,6 @@
 from perfusion.API import API as Perfusion_API
 from oxygen.API import API as Oxygen_API
+from tissue_health.API import API as TissueHealth_API
 import sys
 
 
@@ -21,6 +22,10 @@ class Dispatch(API):
 
         if self.current_model.get('type') == 'OXYGEN':
             api = event_handler(Oxygen_API)
+            return api
+
+        if self.current_model.get('type') == 'TISSUE-HEALTH':
+            api = event_handler(TissueHealth_API)
             return api
 
         print(f"No API has been evaluated for model: `{self.current_model}`.")

@@ -15,6 +15,7 @@ from scipy.integrate import odeint
 import numpy as np
 import yaml
 import time
+import sys
 
 # added module
 import IO_fcts
@@ -31,7 +32,8 @@ if rank == 0:
     print('Step 1: Reading the input')
 
 # read the .yaml file
-with open('./config_tissue_damage.yaml', "r") as configfile:
+path = './config_tissue_damage.yaml' if len(sys.argv) == 0 else sys.argv[1]
+with open(path, "r") as configfile:
     configs = yaml.load(configfile, yaml.SafeLoader)
 
 # read the mesh

@@ -67,13 +67,17 @@ class API(API):
         if not self.current_model.get('evaluate_infarct_estimates', False):
             return
 
+        labels = [event.get('event') for event in self.events]
+
         # baseline scenario result directories
-        baseline = self.patient_dir.joinpath(self.event_from_id(0))
+        baseline = self.patient_dir.joinpath(labels[0])
         baseline = baseline.joinpath(perfusion_dir)
         baseline = baseline.joinpath(pf_outfile)
 
         # occluded scenario assumed to be the current result
-        occluded = res_folder.joinpath(pf_outfile)
+        occluded = self.patient_dir.joinpath(labels[1])
+        occluded = occluded.joinpath(perfusion_dir)
+        occluded = occluded.joinpath(pf_outfile)
 
         for path in [baseline, occluded]:
             assert os.path.exists(path), f"File not found: '{path}'."

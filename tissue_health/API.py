@@ -33,9 +33,18 @@ class API(API):
         solver_config['input']['treatmentfile'] = str(treatment_dir)
         solver_config['output']['res_fldr'] = str(res_folder)
 
-        # TODO: set arrival time and recovery times
-        solver_config['input']['arrival_time'] = 3
-        solver_config['input']['recovery_time'] = 120
+        # Note: the timestamps provided by the virtual patient model are given
+        # in minutes, whereas the tissue health model works with hours. Thus,
+        # the required conversion from minutes to hours is included here.
+        arrival_time = self.patient.get('dur_oer', 180) / 60
+
+        # The recovery time when the tissue health is reevaluated, currently
+        # the default is set to 120 hours (given in minutes here)
+        recovery_time = self.patient.get('recovery_time', 120*60) / 60
+
+        # assigns the time frame to the configuration
+        solver_config['input']['arrival_time'] = arrival_time
+        solver_config['input']['recovery_time'] = recovery_time
 
         # write the updated yaml to the patient directory
         config_path = self.result_dir.joinpath(

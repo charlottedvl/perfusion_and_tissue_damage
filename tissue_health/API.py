@@ -33,18 +33,21 @@ class API(API):
         solver_config['input']['treatmentfile'] = str(treatment_dir)
         solver_config['output']['res_fldr'] = str(res_folder)
 
-        # Note: the timestamps provided by the virtual patient model are given
-        # in minutes, whereas the tissue health model works with hours. Thus,
-        # the required conversion from minutes to hours is included here.
-        arrival_time = self.patient.get('dur_oer', 180) / 60
-
-        # The recovery time when the tissue health is reevaluated, currently
-        # the default is set to 120 hours (given in minutes here)
-        recovery_time = self.patient.get('recovery_time', 120*60) / 60
-
-        # assigns the time frame to the configuration
+        # Set arrival time from onset to treatment, the sum of `dur_oer`
+        # and `dur_erg`, converted from minutes to hours.
+        arrival_time = self.patient['dur_onset_groin'] / 60
         solver_config['input']['arrival_time'] = arrival_time
-        solver_config['input']['recovery_time'] = recovery_time
+
+        # The recovery time is expressed as the interval in number of days
+        # after which the tissue health is re-evaluated. The default value is
+        # set to a single day if no value is provided in the virtual patient.
+        #
+        # TODO: we might want to support arrays of recovery times, i.e.
+        # `recovery_time = [1, 5, 7]`, to allow for probing the difference in
+        # tissue health across various measurement intervals after treatment
+        # (see issue #11 in `insist-trials` repository).
+        num_recovery_days = self.patient.get('tissue_health_follow_up_days', 1)
+        solver_config['input']['recovery_time'] = num_recovery_days * 24
 
         # write the updated yaml to the patient directory
         config_path = self.result_dir.joinpath(

@@ -123,6 +123,7 @@ t_b = np.linspace(0,arrival_time*3600,2)
 t_a = np.linspace(0,recovery_time*3600,2)
 
 start1 = time.time()
+core = 0
 # for grey matter
 for i in range(num_gm_idx):
     # if the change in perfusion is smaller than 5% - no cell death
@@ -137,6 +138,10 @@ for i in range(num_gm_idx):
         hi2 = [Dead,Toxic,hypoxia_estimate(perfusion_treatment_vec[gm_idx[i]])] # second input: after treatment
         hs = odeint(cell_death, hi2, t_a)
         dead_vec[gm_idx[i]] = hs[-1,0]
+        # core volume
+        if dead_vec[gm_idx[i]] > 0.8:
+            ID = int(gm_idx[i])
+            core = core + Cell(mesh, ID).volume()/1000
 
 # for white matter
 for i in range(num_wm_idx):
@@ -151,8 +156,12 @@ for i in range(num_wm_idx):
         Toxic = hs[-1,1]
         hi2 = [Dead,Toxic,hypoxia_estimate(perfusion_treatment_vec[wm_idx[i]]*perfusion_scale)] # second input: after treatment
         hs = odeint(cell_death, hi2, t_a)
-        dead_vec[wm_idx[i]] = hs[-1,0]	
-    
+        dead_vec[wm_idx[i]] = hs[-1,0]
+        # core volume	
+        if dead_vec[wm_idx[i]] > 0.8:
+            ID = int(wm_idx[i])
+            core = core + Cell(mesh, ID).volume()/1000
+
 end1 = time.time()
 dead.vector().set_local(dead_vec)
 
@@ -165,5 +174,6 @@ with XDMFFile(configs['output']['res_fldr']+'infarct_'+str(arrival_time)+'_'+str
 end0 = time.time()
 
 if rank == 0:
+    print('The core volume is '+str(core)+' mL')
     print('Infarct computation time [s]; \t\t\t', end1 - start1)
     print('Simulation finished - Total execution time [s]; \t\t\t', end0 - start0)

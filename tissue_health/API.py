@@ -54,9 +54,16 @@ class API(API):
                 f'{perfusion_dir}/tissue_health_config.yaml')
         write_yaml(config_path, solver_config)
 
+        # the path where we are going to write the infarct volumes
+        outcome_path = self.patient_dir.joinpath('tissue_health_outcome.yml')
+
         # initialise the simulation with the updated configuration files
         tissue_health_cmd = [
-                "python3", "infarct_estimate_treatment.py", str(config_path)]
+            "python3",
+            "infarct_estimate_treatment.py",
+            str(config_path),
+            str(outcome_path),
+        ]
         subprocess.run(tissue_health_cmd, check=True, cwd="/app/tissue_health")
 
     def example(self):

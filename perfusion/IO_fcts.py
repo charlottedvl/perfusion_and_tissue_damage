@@ -130,7 +130,12 @@ def basic_flow_config_reader2(input_file_path,parser):
     
     if parser.parse_args().res_fldr != None:
         configs.output.res_fldr = parser.parse_args().res_fldr
-    
+
+    if parser.parse_args().mesh_file != None:
+        configs.input.mesh_file = parser.parse_args().mesh_file
+
+    if parser.parse_args().inlet_boundary_file != None:
+        configs.input.inlet_boundary_file = parser.parse_args().inlet_boundary_file
     return configs
 
 

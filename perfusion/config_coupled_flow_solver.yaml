@@ -1,0 +1,33 @@
+input:
+  inlet_BC_type: DBC
+  inlet_boundary_file: patient_0/bf_sim/boundary_condition_file.csv
+  mesh_file: patient_0/bf_sim/clustered_mesh.xdmf
+  permeability_folder: ../brain_meshes/b0000/permeability/
+  read_inlet_boundary: True
+output:
+  comp_ave: True
+  res_fldr: patient_0/perfusion/
+  save_pvd: True
+physical:
+  K1gm_ref: 0.001986975
+  K2gm_ref: 4.28e-07
+  K3gm_ref: 0.00397395
+  beta12gm: 1.624e-06
+  beta23gm: 5.683e-06
+  gmowm_beta_rat: 2.582052
+  gmowm_perm_rat: 1.0
+  p_arterial: 8000.0
+  p_venous: 0.0
+simulation:
+  fe_degr: 2
+  model_type: acv
+  vel_order: 1
+optimisation:
+  parameters: ['gmowm_beta_rat','K1gm_ref']
+  random_init: true
+  init_param_range: [[0.1,10],[0.0001,0.01]]
+  Fmintarget: 0.0
+  Fmaxtarget: 100.0
+  FGtarget: 55.67
+  FWtarget: 20.62
+  method: 'Nelder-Mead'

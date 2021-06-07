@@ -43,12 +43,16 @@ start0 = time.time()
 
 # %% READ INPUT
 if rank == 0: print('Step 1: Reading input files, initialising functions and parameters')
-start1 = time.time()
+start1 = time.time() 
 
 parser = argparse.ArgumentParser(description="perfusion computation based on multi-compartment Darcy flow model")
 parser.add_argument("--config_file", help="path to configuration file (string ended with /)",
-                    type=str, default='./config_coupled_flow_solver.xml')
+                    type=str, default='./config_coupled_flow_solver.yaml')
 parser.add_argument("--res_fldr", help="path to results folder (string ended with /)",
+                    type=str, default=None)
+parser.add_argument("--mesh_file", help="path to mesh_file",
+                    type=str, default=None)
+parser.add_argument("--inlet_boundary_file", help="path to inlet_boundary_file",
                     type=str, default=None)
 parser.add_argument("--baseline", help="path to perfusion output of baseline scenario",
         type=str, default=None)
@@ -60,24 +64,42 @@ parser.add_argument("--thresholds", help="number of thresholds to evaluate",
 args = parser.parse_args()
 config_file = args.config_file
 
-configs = IO_fcts.basic_flow_config_reader2(config_file, parser)
+configs = IO_fcts.basic_flow_config_reader_yml(config_file, parser)
 # physical parameters
-p_arterial, p_venous = configs.physical.p_arterial, configs.physical.p_venous
+p_arterial, p_venous = configs['physical']['p_arterial'], configs['physical']['p_venous']
 K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat = \
-    configs.physical.K1gm_ref, configs.physical.K2gm_ref, configs.physical.K3gm_ref, configs.physical.gmowm_perm_rat
+    configs['physical']['K1gm_ref'], configs['physical']['K2gm_ref'], configs['physical']['K3gm_ref'], \
+    configs['physical']['gmowm_perm_rat']
 beta12gm, beta23gm, gmowm_beta_rat = \
-    configs.physical.beta12gm, configs.physical.beta23gm, configs.physical.gmowm_beta_rat
+    configs['physical']['beta12gm'], configs['physical']['beta23gm'], configs['physical']['gmowm_beta_rat']
+
+try:
+    compartmental_model = configs['simulation']['model_type'].lower().strip()
+except KeyError:
+    compartmental_model = 'acv'
+
+try:
+    velocity_order = configs['simulation']['vel_order']
+except KeyError:
+    velocity_order = configs['simulation']['fe_degr'] - 1
 
 # read mesh
-mesh, subdomains, boundaries = IO_fcts.mesh_reader(configs.input.mesh_file)
+mesh, subdomains, boundaries = IO_fcts.mesh_reader(configs['input']['mesh_file'])
 
 # determine fct spaces
 Vp, Vvel, v_1, v_2, v_3, p, p1, p2, p3, K1_space, K2_space = \
-    fe_mod.alloc_fct_spaces(mesh, configs.simulation.fe_degr)
+    fe_mod.alloc_fct_spaces(mesh, configs['simulation']['fe_degr'], model_type=compartmental_model,
+                            vel_order=velocity_order)
 
 # get paths to healthy and stroke scenario outputs
-healthyfile = getattr(args, 'baseline', configs.output.res_fldr+'perfusion.xdmf')
-strokefile = getattr(args, 'occluded', configs.output.res_fldr+'perfusion_stroke.xdmf')
+healthyfile = getattr(args, 'baseline', configs['output']['res_fldr']+'perfusion.xdmf')
+strokefile = getattr(args, 'occluded', configs['output']['res_fldr']+'perfusion_stroke.xdmf')
+# this will never work since None also counts as an attribute
+# script will therefore only work if the optional arguments are used
+# getattr does not overwrite the default
+# solution is to set default in parser
+healthyfile = configs['output']['res_fldr'] + 'perfusion.xdmf'
+strokefile = configs['output']['res_fldr'] + 'perfusion_stroke.xdmf'
 
 if rank == 0: print('Step 2: Reading perfusion files')
 # Load previous results
@@ -118,5 +140,5 @@ for threshold in thresholds:
 
 if rank == 0:
     fheader = 'threshold [%],volume ID,Volume [mm^3],infarct volume [mL]'
-    np.savetxt(configs.output.res_fldr + 'vol_infarct_values_thresholds.csv', vol_infarct_values_thresholds, "%e,%d,%e,%e", header=fheader)
+    np.savetxt(configs['output']['res_fldr'] + 'vol_infarct_values_thresholds.csv', vol_infarct_values_thresholds, "%e,%d,%e,%e", header=fheader)
 

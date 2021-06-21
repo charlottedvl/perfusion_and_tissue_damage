@@ -1,5 +1,4 @@
-./eventmodule
-untangle
 scipy==1.5.2
+untangle
 argparse
 PyYAML

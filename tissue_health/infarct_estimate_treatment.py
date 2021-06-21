@@ -1,11 +1,20 @@
 """
-Estimate the tissue health (infarct fraction) based on perfusion in each element 
+Estimate the tissue health (infarct fraction) based on perfusion in each element
 and the Green's function simulation results
 
 This code considers the treatment (perfusion recovery) and its outcome
 
 p - perfusion [mL/100mL/min]
 t - time [hour]
+
+The script can be ran with and without arguments. When no arguments are given,
+the default configuration file at `./config_tissue_damage.yaml` is considered
+and no `tissue_health_outcome.yml` is written (the latter is a insist-pipeline
+specific outcome.
+
+When passing two arguments, the first arguments contains the path to an
+alternative YAML file to be used as the configuration file and the second
+argument the path where to write an outcome summary as YAML to.
 
 Yidan Xue - 2021/03
 """
@@ -15,6 +24,7 @@ from scipy.integrate import odeint
 import numpy as np
 import yaml
 import time
+import sys
 
 # added module
 import IO_fcts
@@ -27,11 +37,12 @@ rank = comm.Get_rank()
 start0 = time.time()
 
 # %% READ INPUT
-if rank == 0: 
+if rank == 0:
     print('Step 1: Reading the input')
 
 # read the .yaml file
-with open('./config_tissue_damage.yaml', "r") as configfile:
+path = './config_tissue_damage.yaml' if len(sys.argv) == 0 else sys.argv[1]
+with open(path, "r") as configfile:
     configs = yaml.load(configfile, yaml.SafeLoader)
 
 # read the mesh
@@ -157,7 +168,7 @@ for i in range(num_wm_idx):
         hi2 = [Dead,Toxic,hypoxia_estimate(perfusion_treatment_vec[wm_idx[i]]*perfusion_scale)] # second input: after treatment
         hs = odeint(cell_death, hi2, t_a)
         dead_vec[wm_idx[i]] = hs[-1,0]
-        # core volume	
+        # core volume
         if dead_vec[wm_idx[i]] > 0.8:
             ID = int(wm_idx[i])
             core = core + Cell(mesh, ID).volume()/1000
@@ -170,6 +181,15 @@ dead.vector().set_local(dead_vec)
 
 with XDMFFile(configs['output']['res_fldr']+'infarct_'+str(arrival_time)+'_'+str(recovery_time)+'.xdmf') as myfile:
     myfile.write_checkpoint(dead,"dead", 0, XDMFFile.Encoding.HDF5, False)
+
+if len(sys.argv) >= 2:
+    # The second argument indicates the path where to write a summary of
+    # outcome parameters too, this now considers only the infarct core volume.
+    with open(sys.argv[2], 'w') as outfile:
+        yaml.safe_dump(
+            {'core-volume': core},
+            outfile
+        )
 
 end0 = time.time()
 

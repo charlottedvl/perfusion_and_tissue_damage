@@ -1,6 +1,8 @@
-from eventmodule import eventhandler
 import os
 import subprocess
+
+from desist.eventhandler.api import API
+from desist.isct.utilities import read_yaml, write_yaml
 
 # Default path (inside the container) pointing to the YAML configuration for
 # the `basic_flow_solver` routine.
@@ -13,8 +15,8 @@ bc_fn = 'boundary_condition_file.csv'
 pf_outfile = 'perfusion.xdmf'
 
 
-class API(eventhandler.EventHandler):
-    def handle_event(self):
+class API(API):
+    def event(self):
         perm_file = '/app/brain_meshes/b0000/permeability/K1_form.xdmf'
 
         if not os.path.exists(perm_file):
@@ -32,7 +34,7 @@ class API(eventhandler.EventHandler):
         os.makedirs(res_folder, exist_ok=True)
 
         # update configuration for perfusion
-        solver_config = eventhandler.read_yaml(perfusion_config_file)
+        solver_config = read_yaml(perfusion_config_file)
 
         # ensure boundary conditions are being read from input files
         solver_config['input']['read_inlet_boundary'] = True
@@ -46,7 +48,7 @@ class API(eventhandler.EventHandler):
         # update output settings
         config_path = self.result_dir.joinpath(
             f'{perfusion_dir}/perfusion_config.yaml')
-        eventhandler.write_yaml(solver_config, config_path)
+        write_yaml(config_path, solver_config)
 
         # form command to evaluate perfusion
         solve_cmd = [
@@ -62,16 +64,20 @@ class API(eventhandler.EventHandler):
             return
 
         # extract settings
-        if not self.model.get('evaluate_infarct_estimates', True):
+        if not self.current_model.get('evaluate_infarct_estimates', False):
             return
 
+        labels = [event.get('event') for event in self.events]
+
         # baseline scenario result directories
-        baseline = self.patient_dir.joinpath(self.event_from_id(0))
+        baseline = self.patient_dir.joinpath(labels[0])
         baseline = baseline.joinpath(perfusion_dir)
         baseline = baseline.joinpath(pf_outfile)
 
         # occluded scenario assumed to be the current result
-        occluded = res_folder.joinpath(pf_outfile)
+        occluded = self.patient_dir.joinpath(labels[1])
+        occluded = occluded.joinpath(perfusion_dir)
+        occluded = occluded.joinpath(pf_outfile)
 
         for path in [baseline, occluded]:
             assert os.path.exists(path), f"File not found: '{path}'."
@@ -89,12 +95,12 @@ class API(eventhandler.EventHandler):
             "--res_fldr",
             f"{res_folder}/",
             "--thresholds",
-            f"{self.model.get('infarct_levels', 21)}",
+            f"{self.current_model.get('infarct_levels', 21)}",
         ]
         print(f"Evaluating: '{' '.join(infarct_cmd)}'", flush=True)
         subprocess.run(infarct_cmd, check=True, cwd="/app/perfusion")
 
-    def handle_example(self):
+    def example(self):
         # when running the example, we need to generate some dummy input
         # for the boundary conditions, for this, use the `BC_creator.py`
         res_folder = self.result_dir.joinpath(f"{perfusion_dir}")
@@ -123,7 +129,7 @@ class API(eventhandler.EventHandler):
         os.rename(src, dst)
 
         # run event with example boundary conditions
-        self.handle_event()
+        self.event()
 
-    def handle_test(self):
-        self.handle_example()
+    def test(self):
+        self.example()

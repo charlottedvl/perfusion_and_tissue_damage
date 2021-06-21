@@ -3,13 +3,12 @@
 # second stage to prevent preprocessing on repeated calls to the container.
 FROM quay.io/fenicsproject/stable:latest AS builder
 
-WORKDIR /app 
+WORKDIR /app
 
-# install python requirements 
-# strip `eventmodule`: not required for preprocessing
+# install python requirements
 COPY requirements.txt ./
 RUN pip3 install --upgrade pip
-RUN cat requirements.txt | sed '/eventmodule/d' | pip install --no-cache-dir -r /dev/stdin
+RUN pip install --no-cache-dir -r /app/requirements.txt
 
 # extract the brain mesh
 ADD brain_meshes.tar.xz ./
@@ -22,11 +21,25 @@ RUN cd perfusion && python3 permeability_initialiser.py
 FROM quay.io/fenicsproject/stable:latest
 WORKDIR /app
 
-# install python requirements 
-COPY eventmodule ./eventmodule
+# install python requirements
+COPY in-silico-trial ./in-silico-trial
 COPY requirements.txt ./
-RUN pip3 install --upgrade pip
-RUN pip3 install --no-cache-dir -r requirements.txt
+
+RUN apt-get update && apt-get install -y software-properties-common
+RUN add-apt-repository ppa:deadsnakes/ppa
+RUN apt-get update && apt-get install -y \
+        python3 \
+        python3-pip \
+        python3.9 \
+        python3.9-distutils
+
+# ensure the installation is working and pip is available
+RUN python3.9 -m pip install pip --user
+RUN python3.9 -m pip install --upgrade pip distlib wheel setuptools
+RUN cd /app/ && python3.9 -m pip install --no-cache-dir ./in-silico-trial
+
+# the other requirements to run
+RUN python3 -m pip install --no-cache-dir -r requirements.txt
 
 # copy all local contents
 COPY . .
@@ -34,4 +47,4 @@ COPY . .
 # overwrite with preprocessing results
 COPY --from=builder /app .
 
-ENTRYPOINT ["python3", "API.py"]
+ENTRYPOINT ["python3.9", "API.py"]

@@ -43,7 +43,7 @@ start0 = time.time()
 
 # %% READ INPUT
 if rank == 0: print('Step 1: Reading input files, initialising functions and parameters')
-start1 = time.time() 
+start1 = time.time()
 
 parser = argparse.ArgumentParser(description="perfusion computation based on multi-compartment Darcy flow model")
 parser.add_argument("--config_file", help="path to configuration file (string ended with /)",
@@ -91,15 +91,17 @@ Vp, Vvel, v_1, v_2, v_3, p, p1, p2, p3, K1_space, K2_space = \
     fe_mod.alloc_fct_spaces(mesh, configs['simulation']['fe_degr'], model_type=compartmental_model,
                             vel_order=velocity_order)
 
-# get paths to healthy and stroke scenario outputs
-healthyfile = getattr(args, 'baseline', configs['output']['res_fldr']+'perfusion.xdmf')
-strokefile = getattr(args, 'occluded', configs['output']['res_fldr']+'perfusion_stroke.xdmf')
-# this will never work since None also counts as an attribute
-# script will therefore only work if the optional arguments are used
-# getattr does not overwrite the default
-# solution is to set default in parser
-healthyfile = configs['output']['res_fldr'] + 'perfusion.xdmf'
-strokefile = configs['output']['res_fldr'] + 'perfusion_stroke.xdmf'
+# extract the healthy file
+if args.baseline is None:
+    healthyfile = configs['output']['res_fldr'] + 'perfusion.xdmf'
+else:
+    healthyfile = args.baseline
+
+# extract the occluded scenario
+if args.occluded is None:
+    strokefile = getattr(args, 'occluded', configs['output']['res_fldr']+'perfusion_stroke.xdmf')
+else:
+    strokefile = args.occluded
 
 if rank == 0: print('Step 2: Reading perfusion files')
 # Load previous results

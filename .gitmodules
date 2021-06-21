@@ -1,3 +1,3 @@
-[submodule "eventmodule"]
-	path = eventmodule
-	url = ../eventmodule.git
+[submodule "in-silico-trial"]
+	path = in-silico-trial
+	url = ../in-silico-trial.git

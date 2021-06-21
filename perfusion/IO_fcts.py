@@ -146,15 +146,19 @@ def basic_flow_config_reader_yml(input_file_path,parser):
             configs = yaml.load(configfile, yaml.SafeLoader)
     else:
         raise Exception("unknown input file format: " + config_format)
-    
-    if parser.parse_args().res_fldr != None:
-        configs['output']['res_fldr'] = parser.parse_args().res_fldr
 
-    if parser.parse_args().mesh_file != None:
-        configs['input']['mesh_file'] = parser.parse_args().mesh_file
+    if hasattr(parser.parse_args(), 'res_fldr'):
+        if parser.parse_args().res_fldr is not None:
+            configs['output']['res_fldr'] = parser.parse_args().res_fldr
 
-    if parser.parse_args().inlet_boundary_file != None:
-        configs['input']['inlet_boundary_file'] = parser.parse_args().inlet_boundary_file
+    if hasattr(parser.parse_args(), 'mesh_file'):
+        if parser.parse_args().mesh_file is not None:
+            configs['input']['mesh_file'] = parser.parse_args().mesh_file
+
+    if hasattr(parser.parse_args(), 'inlet_boundary_file'):
+        if parser.parse_args().inlet_boundary_file is not None:
+            configs['input']['inlet_boundary_file'] = parser.parse_args().inlet_boundary_file
+
     return configs
 
 

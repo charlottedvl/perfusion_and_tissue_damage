@@ -35,7 +35,6 @@ import finite_element_fcts as fe_mod
 import sys
 
 sys.path.insert(0, "/app/bloodflow/")
-#sys.path.insert(0, "/home/raymond/INSIST/insist-trials/software/coupledbf/bloodflow/")
 from Blood_Flow_1D import Patient, Results
 import contextlib
 import scipy.optimize
@@ -133,7 +132,9 @@ if rank == 0:
     Patient.LoadClusteringMapping(Patient.Folders.ModellingFolder + "Clusters.csv")
     Patient.LoadPositions()
 
-    frictionconstant = Patient.ModelParameters["FRICTION_C"]  # 8 = laminar, 22 = blunt
+    # frictionconstant = Patient.ModelParameters["FRICTION_C"]  # 8 = laminar, 22 = blunt
+    frictionconstant = 8
+    print(f"\033[91mFriction constant set to 8 currently.\033[m")
 
     # coarse collaterals
     if coarseCollaterals:
@@ -575,12 +576,6 @@ perfusion_change = project(((perfusion - perfusion_stroke) / perfusion) * -100, 
 infarct = project(conditional(gt(perfusion_change, Constant(-70)), Constant(0.0), Constant(1.0)), K2_space,
                   solver_type='bicgstab', preconditioner_type='amg')
 
-vars2save = [ps, vels, Ks]
-fnames = ['press', 'vel', 'K']
-for idx, fname in enumerate(fnames):
-    for i in range(3):
-        with XDMFFile(configs['output']['res_fldr'] + fname + str(i + 1) + '.xdmf') as myfile:
-            myfile.write_checkpoint(vars2save[idx][i], fname + str(i + 1), 0, XDMFFile.Encoding.HDF5, False)
 
 with XDMFFile(configs['output']['res_fldr'] + 'beta12.xdmf') as myfile:
     myfile.write_checkpoint(beta12, "beta12", 0, XDMFFile.Encoding.HDF5, False)
@@ -644,6 +639,25 @@ if configs['output']['comp_ave'] == True:
         numpy.savetxt(configs['output']['res_fldr'] + 'vol_infarct_values.csv', vol_infarct_values, "%d,%e,%e",
                       header=fheader)
 
+if compartmental_model == 'acv':
+    vars2save = [ps, vels, Ks]
+    fnames = ['press', 'vel', 'K']
+    for idx, fname in enumerate(fnames):
+        for i in range(3):
+            with XDMFFile(configs['output']['res_fldr'] + fname + str(i + 1) + '_stroke.xdmf') as myfile:
+                myfile.write_checkpoint(vars2save[idx][i], fname + str(i + 1), 0, XDMFFile.Encoding.HDF5, False)
+elif compartmental_model == 'a':
+    perfusion = project(beta12 * (p - Constant(p_venous)) * 6000, K2_space, solver_type='bicgstab',
+                        preconditioner_type='amg')
+    vel1 = project(-K1 * grad(p), Vvel, solver_type='bicgstab', preconditioner_type='amg')
+    vars2save = [p, vel1, K1, beta12, perfusion]
+    fnames = ['press1', 'vel1', 'K1', 'beta12', 'perfusion']
+    for idx, fname in enumerate(fnames):
+        with XDMFFile(configs['output']['res_fldr'] + fname + '_stroke.xdmf') as myfile:
+            myfile.write_checkpoint(vars2save[idx], fname, 0, XDMFFile.Encoding.HDF5, False)
+else:
+    raise Exception("unknown model type: " + compartmental_model)
+
 end3 = time.time()
 end0 = time.time()
 
@@ -666,3 +680,7 @@ if rank == 0:
 # # export visual of collaterals
 if coarseCollaterals and rank == 0:
     Patient.Topology.addCollateralsToTopology(filename=Patient.Folders.ModellingFolder + "Collaterals.vtp")
+
+# output pressure drop over the clot
+if rank == 0:
+    Patient.ExportClotBFValues()

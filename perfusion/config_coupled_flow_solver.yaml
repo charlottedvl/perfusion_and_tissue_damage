@@ -1,7 +1,7 @@
 input:
   inlet_BC_type: DBC
   inlet_boundary_file: patient_0/bf_sim/boundary_condition_file.csv
-  mesh_file: patient_0/bf_sim/clustered_mesh.xdmf
+  mesh_file: ../brain_meshes/b0000/clustered.xdmf
   permeability_folder: ../brain_meshes/b0000/permeability/
   read_inlet_boundary: True
 output:

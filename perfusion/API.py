@@ -25,7 +25,7 @@ class API(API):
         brain_meshes = self.patient_dir.joinpath(brain_mesh_dir)
         permeability_dir = brain_meshes.joinpath('permeability')
 
-        if not brain_meshes.exists() or not permeability_dir.exists():
+        if not brain_meshes.exists():
             error_msg = f"""Brain meshes and permeability files are not present
             although previous events have been evaluated. This is not supported
             and requires investigation why {brain_meshes} or {permeability_dir}
@@ -45,6 +45,7 @@ class API(API):
             print(f"Evaluating: '{' '.join(brain_mesh_cmd)}'", flush=True)
             subprocess.run(brain_mesh_cmd, check=True, cwd="/app/perfusion")
 
+        if not permeability_dir.exists():
             # generate permeability meshes after clustering
             clustered_mesh = brain_meshes.joinpath('clustered.xdmf')
 
@@ -147,6 +148,19 @@ class API(API):
         res_folder = self.result_dir.joinpath(f"{perfusion_dir}")
         os.makedirs(res_folder, exist_ok=True)
 
+        # The current event simulation does not require the brain meshes and
+        # therefore the default container does not contain the _extracted_
+        # meshes by default. So, when running in CI/CD we extract the
+        # compressed archive manually before running the event.
+        import tarfile
+        tar = tarfile.open("/app/brain_meshes.tar.xz", "r:xz")
+        tar.extractall("/patient/tmp")
+        tar.close()
+
+        # move the contents to the expected brain mesh location
+        import shutil
+        shutil.move("/patient/tmp/brain_meshes/b0000", "/patient/brain_meshes")
+
         bc_cmd = [
             "python3",
             "BC_creator.py",
@@ -157,6 +171,8 @@ class API(API):
             f"{perfusion_config_file}",
             "--folder",
             f"{res_folder}/",
+            "--mesh_file",
+            "/patient/brain_meshes/clustered.xdmf",
         ]
 
         print(f"Evaluating: '{' '.join(bc_cmd)}'", flush=True)

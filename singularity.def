@@ -1,23 +1,8 @@
 Bootstrap: docker
 From: quay.io/fenicsproject/stable:latest
-stage: builder
 
 %files
         ./ /app
-
-%post
-        pip install --upgrade pip
-        pip install --no-cache-dir -r /app/requirements.txt
-
-        tar -C /app/ -xvf /app/brain_meshes.tar.xz
-        cd /app/perfusion && python3 permeability_initialiser.py
-
-Bootstrap: docker
-From: quay.io/fenicsproject/stable:latest
-stage: final
-
-%files from builder
-        /app/* /app/
 
 %post
         apt-get update && apt-get install -y \

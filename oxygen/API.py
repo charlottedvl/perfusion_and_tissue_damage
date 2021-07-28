@@ -28,6 +28,8 @@ class API(API):
         solver_config['input']['para_path'] = f'{res_folder.resolve()}/'
         solver_config['input']['read_inlet_boundary'] = True
         solver_config['input']['pialBC_file'] = bc_file
+        brain_mesh = self.patient_dir.joinpath('brain_meshes/clustered.xdmf')
+        solver_config['input']['mesh_file'] = str(brain_mesh)
 
         # write configuration to disk
         config_path = self.result_dir.joinpath(

@@ -135,7 +135,7 @@ class API(API):
             if self.event_id == 0:
                 solve_cmd.append('--healthy_scenario')
             if self.patient_dir.joinpath('clot_present').exists():
-                solve_cmd.append('--clot-present')
+                solve_cmd.append('--clot_present')
 
         print(f"Evaluating: '{' '.join(solve_cmd)}'", flush=True)
         subprocess.run(solve_cmd, check=True, cwd=str(cwd))

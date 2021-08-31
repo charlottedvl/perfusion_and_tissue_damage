@@ -181,7 +181,7 @@ class API(API):
             str(self.patient_dir.joinpath('brain_meshes/clustered.xdmf'))
         ]
         print(f"Evaluating: '{' '.join(infarct_cmd)}'", flush=True)
-        subprocess.run(infarct_cmd, check=True, cwd="/app/perfusion")
+        subprocess.run(infarct_cmd, check=True, cwd=cwd)
 
     def example(self):
         # when running the example, we need to generate some dummy input

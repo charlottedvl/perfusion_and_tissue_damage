@@ -128,24 +128,24 @@ out_vars = configs['output']['res_vars']
 if compartmental_model == 'acv':
     if len(out_vars)>0:
         p1, p2, p3 = p.split()
-        myResults['p1'], myResults['p2'], myResults['p3'] = p1, p2, p3
+        myResults['press1'], myResults['press2'], myResults['press3'] = p1, p2, p3
         myResults['K1'], myResults['K2'], myResults['K3'] = K1, K2, K3
         myResults['beta12'], myResults['beta23'] = beta12, beta23
         # compute velocities and perfusion
-        if 'v1' in out_vars: myResults['v1'] = project(-K1*grad(p1),Vvel, solver_type='bicgstab', preconditioner_type='amg')
-        if 'v2' in out_vars: myResults['v2'] = project(-K2*grad(p2),Vvel, solver_type='bicgstab', preconditioner_type='amg')
-        if 'v3' in out_vars: myResults['v3'] = project(-K3*grad(p3),Vvel, solver_type='bicgstab', preconditioner_type='amg')
+        if 'vel1' in out_vars: myResults['vel1'] = project(-K1*grad(p1),Vvel, solver_type='bicgstab', preconditioner_type='amg')
+        if 'vel2' in out_vars: myResults['vel2'] = project(-K2*grad(p2),Vvel, solver_type='bicgstab', preconditioner_type='amg')
+        if 'vel3' in out_vars: myResults['vel3'] = project(-K3*grad(p3),Vvel, solver_type='bicgstab', preconditioner_type='amg')
         if 'perfusion' in out_vars: myResults['perfusion'] = project(beta12 * (p1-p2)*6000,K2_space, solver_type='bicgstab', preconditioner_type='amg')
     else:
         if rank==0: print('No variables have been defined for saving!')
     
 elif compartmental_model == 'a':
     if len(out_vars)>0:
-        myResults['p1'] = p
+        myResults['press1'] = p
         myResults['K1'] = K1
         myResults['beta12'] = beta12
         # compute velocities and perfusion
-        if 'v1' in out_vars: myResults['v1'] = project(-K1*grad(p),Vvel, solver_type='bicgstab', preconditioner_type='amg')
+        if 'v1' in out_vars: myResults['vel1'] = project(-K1*grad(p),Vvel, solver_type='bicgstab', preconditioner_type='amg')
         if 'perfusion' in out_vars: myResults['perfusion'] = project(beta12 * (p-Constant(p_venous))*6000,K2_space, solver_type='bicgstab', preconditioner_type='amg')
     else:
         if rank==0: print('No variables have been defined for saving!')

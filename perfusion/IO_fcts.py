@@ -162,10 +162,11 @@ def basic_flow_config_reader_yml(input_file_path,parser):
     
     comm = MPI.comm_world
     rank = comm.Get_rank()
-    if not os.path.exists(configs['output']['res_fldr']):
-        os.makedirs(configs['output']['res_fldr'])
-    with open(configs['output']['res_fldr']+'settings.yaml', 'w') as outfile:
-        yaml.dump(configs, outfile, default_flow_style=False)
+    if rank==0:
+        if not os.path.exists(configs['output']['res_fldr']):
+            os.makedirs(configs['output']['res_fldr'])
+        with open(configs['output']['res_fldr']+'settings.yaml', 'w') as outfile:
+            yaml.dump(configs, outfile, default_flow_style=False)
     
     return configs
 

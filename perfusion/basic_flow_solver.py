@@ -122,47 +122,44 @@ end2 = time.time()
 if rank == 0: print('Step 3: Computing velocity fields, saving results, and extracting some field variables')
 start3 = time.time()
 
+myResults={}
+out_vars = configs['output']['res_vars']
+
 if compartmental_model == 'acv':
-    p1, p2, p3=p.split()
+    if len(out_vars)>0:
+        p1, p2, p3 = p.split()
+        myResults['p1'], myResults['p2'], myResults['p3'] = p1, p2, p3
+        myResults['K1'], myResults['K2'], myResults['K3'] = K1, K2, K3
+        myResults['beta12'], myResults['beta23'] = beta12, beta23
+        # compute velocities and perfusion
+        if 'v1' in out_vars: myResults['v1'] = project(-K1*grad(p1),Vvel, solver_type='bicgstab', preconditioner_type='amg')
+        if 'v2' in out_vars: myResults['v2'] = project(-K2*grad(p2),Vvel, solver_type='bicgstab', preconditioner_type='amg')
+        if 'v3' in out_vars: myResults['v3'] = project(-K3*grad(p3),Vvel, solver_type='bicgstab', preconditioner_type='amg')
+        if 'perfusion' in out_vars: myResults['perfusion'] = project(beta12 * (p1-p2)*6000,K2_space, solver_type='bicgstab', preconditioner_type='amg')
+    else:
+        if rank==0: print('No variables have been defined for saving!')
     
-    perfusion = project(beta12 * (p1-p2)*6000,K2_space, solver_type='bicgstab', preconditioner_type='amg')
-    
-    # compute velocities
-    vel1 = project(-K1*grad(p1),Vvel, solver_type='bicgstab', preconditioner_type='amg')
-    vel2 = project(-K2*grad(p2),Vvel, solver_type='bicgstab', preconditioner_type='amg')
-    vel3 = project(-K3*grad(p3),Vvel, solver_type='bicgstab', preconditioner_type='amg')
-    
-    ps = [p1, p2, p3]
-    vels = [vel1, vel2, vel3]
-    Ks = [K1, K2, K3]
-    
-    vars2save = [ps, vels, Ks]
-    fnames = ['press','vel','K']
-    for idx, fname in enumerate(fnames):
-        for i in range(3):
-            with XDMFFile(configs['output']['res_fldr']+fname+str(i+1)+'.xdmf') as myfile:
-                myfile.write_checkpoint(vars2save[idx][i],fname+str(i+1), 0, XDMFFile.Encoding.HDF5, False)
-    
-    with XDMFFile(configs['output']['res_fldr']+'beta12.xdmf') as myfile:
-        myfile.write_checkpoint(beta12,"beta12", 0, XDMFFile.Encoding.HDF5, False)
-    with XDMFFile(configs['output']['res_fldr']+'beta23.xdmf') as myfile:
-        myfile.write_checkpoint(beta23,"beta23", 0, XDMFFile.Encoding.HDF5, False)
-    with XDMFFile(configs['output']['res_fldr']+'perfusion.xdmf') as myfile:
-        myfile.write_checkpoint(perfusion,'perfusion', 0, XDMFFile.Encoding.HDF5, False)
-    
-    fheader = 'FE degree, K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat, beta12gm, beta23gm, gmowm_beta_rat'
-    dom_props = numpy.array([configs['simulation']['fe_degr'],K1gm_ref,K2gm_ref,K3gm_ref,gmowm_perm_rat,beta12gm,beta23gm,gmowm_beta_rat])
-    numpy.savetxt(configs['output']['res_fldr']+'dom_props.csv', [dom_props],"%d,%e,%e,%e,%e,%e,%e,%e",header=fheader)
 elif compartmental_model == 'a':
-    perfusion = project(beta12 * (p-Constant(p_venous))*6000,K2_space, solver_type='bicgstab', preconditioner_type='amg')
-    vel1 = project(-K1*grad(p),Vvel, solver_type='bicgstab', preconditioner_type='amg')
-    vars2save = [p, vel1, K1, beta12, perfusion]
-    fnames = ['press1','vel1','K1','beta12','perfusion']
-    for idx, fname in enumerate(fnames):
-        with XDMFFile(configs['output']['res_fldr']+fname+'.xdmf') as myfile:
-            myfile.write_checkpoint(vars2save[idx],fname, 0, XDMFFile.Encoding.HDF5, False)
+    if len(out_vars)>0:
+        myResults['p1'] = p
+        myResults['K1'] = K1
+        myResults['beta12'] = beta12
+        # compute velocities and perfusion
+        if 'v1' in out_vars: myResults['v1'] = project(-K1*grad(p),Vvel, solver_type='bicgstab', preconditioner_type='amg')
+        if 'perfusion' in out_vars: myResults['perfusion'] = project(beta12 * (p-Constant(p_venous))*6000,K2_space, solver_type='bicgstab', preconditioner_type='amg')
+    else:
+        if rank==0: print('No variables have been defined for saving!')
 else:
     raise Exception("unknown model type: " + model_type)
+
+# save variables
+res_keys = set(myResults.keys())
+for myvar in out_vars:
+    if myvar in res_keys:
+        with XDMFFile(configs['output']['res_fldr']+myvar+'.xdmf') as myfile:
+            myfile.write_checkpoint(myResults[myvar], myvar, 0, XDMFFile.Encoding.HDF5, False)
+    else:
+        if rank==0: print(myvar+' variable cannot be saved!')
 
 #%%
 

@@ -2,6 +2,7 @@ from dolfin import *
 import numpy as np
 import untangle
 import yaml
+import os
 
 
 #%%
@@ -158,7 +159,14 @@ def basic_flow_config_reader_yml(input_file_path,parser):
     if hasattr(parser.parse_args(), 'inlet_boundary_file'):
         if parser.parse_args().inlet_boundary_file is not None:
             configs['input']['inlet_boundary_file'] = parser.parse_args().inlet_boundary_file
-
+    
+    comm = MPI.comm_world
+    rank = comm.Get_rank()
+    if not os.path.exists(configs['output']['res_fldr']):
+        os.makedirs(configs['output']['res_fldr'])
+    with open(configs['output']['res_fldr']+'settings.yaml', 'w') as outfile:
+        yaml.dump(configs, outfile, default_flow_style=False)
+    
     return configs
 
 

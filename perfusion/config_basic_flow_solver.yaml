@@ -8,6 +8,7 @@ output:
   comp_ave: false
   res_fldr: ../VP_results/p0000/perfusion_healthy/
   save_pvd: false
+  res_vars: {'p1','v1','perfusion'}
 physical:
   K1gm_ref: 0.001234
   K2gm_ref: 4.28e-07

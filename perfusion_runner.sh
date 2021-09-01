@@ -15,6 +15,7 @@ else
     mpirun -n 6 python3 permeability_initialiser.py
 fi
 
+python3 BC_creator.py
 mpirun -n 6 python3 basic_flow_solver.py
 mpirun -n 6 python3 basic_flow_solver.py --config_file ./config_basic_flow_solver_LMCAo.yaml
 mpirun -n 6 python3 basic_flow_solver.py --config_file ./config_basic_flow_solver_RMCAo.yaml

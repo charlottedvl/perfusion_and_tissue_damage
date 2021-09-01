@@ -125,8 +125,8 @@ start3 = time.time()
 myResults={}
 out_vars = configs['output']['res_vars']
 
-if compartmental_model == 'acv':
-    if len(out_vars)>0:
+if len(out_vars)>0:
+    if compartmental_model == 'acv':
         p1, p2, p3 = p.split()
         myResults['press1'], myResults['press2'], myResults['press3'] = p1, p2, p3
         myResults['K1'], myResults['K2'], myResults['K3'] = K1, K2, K3
@@ -136,11 +136,7 @@ if compartmental_model == 'acv':
         if 'vel2' in out_vars: myResults['vel2'] = project(-K2*grad(p2),Vvel, solver_type='bicgstab', preconditioner_type='amg')
         if 'vel3' in out_vars: myResults['vel3'] = project(-K3*grad(p3),Vvel, solver_type='bicgstab', preconditioner_type='amg')
         if 'perfusion' in out_vars: myResults['perfusion'] = project(beta12 * (p1-p2)*6000,K2_space, solver_type='bicgstab', preconditioner_type='amg')
-    else:
-        if rank==0: print('No variables have been defined for saving!')
-    
-elif compartmental_model == 'a':
-    if len(out_vars)>0:
+    elif compartmental_model == 'a':
         myResults['press1'] = p
         myResults['K1'] = K1
         myResults['beta12'] = beta12
@@ -148,9 +144,9 @@ elif compartmental_model == 'a':
         if 'v1' in out_vars: myResults['vel1'] = project(-K1*grad(p),Vvel, solver_type='bicgstab', preconditioner_type='amg')
         if 'perfusion' in out_vars: myResults['perfusion'] = project(beta12 * (p-Constant(p_venous))*6000,K2_space, solver_type='bicgstab', preconditioner_type='amg')
     else:
-        if rank==0: print('No variables have been defined for saving!')
+        raise Exception("unknown model type: " + model_type)
 else:
-    raise Exception("unknown model type: " + model_type)
+    if rank==0: print('No variables have been defined for saving!')
 
 # save variables
 res_keys = set(myResults.keys())
@@ -159,7 +155,7 @@ for myvar in out_vars:
         with XDMFFile(configs['output']['res_fldr']+myvar+'.xdmf') as myfile:
             myfile.write_checkpoint(myResults[myvar], myvar, 0, XDMFFile.Encoding.HDF5, False)
     else:
-        if rank==0: print(myvar+' variable cannot be saved!')
+        if rank==0: print('warning: '+myvar+' variable cannot be saved - variable undefined!')
 
 #%%
 

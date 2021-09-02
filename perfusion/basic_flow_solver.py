@@ -1,14 +1,13 @@
 """
-Multi-compartment Darcy flow model with mixed Dirichlet and Neumann
-boundary conditions
+Multi-compartment Darcy flow model with mixed Dirichlet and Neumann boundary conditions
 
 System of equations (no summation notation)
 Div ( Ki Grad(pi) ) - Sum_j=1^3 beta_ij (pi-pj) = sigma_i
 
-Ki - permeability tensor [mm^3 s / g]
-pi & pj - volume averaged pressure in the ith & jth comparments [Pa]
-beta_ij - coupling coefficient between the ith & jth compartments [Pa / s]
-sigma_i - source term in the ith compartment [1 / s]
+Ki - permeability tensor [mm^3 s g^-1]
+pi & pj - Darcy pressures in the ith & jth comparments [Pa]
+beta_ij - coupling coefficient between the ith & jth compartments [Pa^-1 s^-1]
+sigma_i - source term in the ith compartment [s^-1]
 
 @author: Tamas Istvan Jozsa
 """
@@ -57,7 +56,8 @@ configs = IO_fcts.basic_flow_config_reader_yml(config_file,parser)
 # physical parameters
 p_arterial, p_venous = configs['physical']['p_arterial'], configs['physical']['p_venous']
 K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat = \
-    configs['physical']['K1gm_ref'], configs['physical']['K2gm_ref'], configs['physical']['K3gm_ref'], configs['physical']['gmowm_perm_rat']
+    configs['physical']['K1gm_ref'], configs['physical']['K2gm_ref'], \
+    configs['physical']['K3gm_ref'], configs['physical']['gmowm_perm_rat']
 beta12gm, beta23gm, gmowm_beta_rat = \
     configs['physical']['beta12gm'], configs['physical']['beta23gm'], configs['physical']['gmowm_beta_rat']
 
@@ -80,7 +80,8 @@ Vp, Vvel, v_1, v_2, v_3, p, p1, p2, p3, K1_space, K2_space = \
                             model_type = compartmental_model, vel_order = velocity_order)
 
 # initialise permeability tensors
-K1, K2, K3 = IO_fcts.initialise_permeabilities(K1_space,K2_space,mesh,configs['input']['permeability_folder'], model_type = compartmental_model)
+K1, K2, K3 = IO_fcts.initialise_permeabilities(K1_space,K2_space,mesh,\
+                                               configs['input']['permeability_folder'], model_type = compartmental_model)
 
 
 if rank == 0: print('\t Scaling coupling coefficients and permeability tensors')
@@ -128,7 +129,8 @@ out_vars = configs['output']['res_vars']
 if len(out_vars)>0:
     if compartmental_model == 'acv':
         p1, p2, p3 = p.split()
-        if 'perfusion' in out_vars: myResults['perfusion'] = project(beta12 * (p1-p2)*6000,K2_space, solver_type='bicgstab', preconditioner_type='amg')
+        if 'perfusion' in out_vars: myResults['perfusion'] = project(beta12 * (p1-p2),K2_space,\
+                                                                     solver_type='bicgstab', preconditioner_type='amg')
     elif compartmental_model == 'a':
         p1, p3 = p.copy(deepcopy=False), p.copy(deepcopy=True)
         p3vec = p3.vector().get_local()
@@ -136,7 +138,8 @@ if len(out_vars)>0:
         p3.vector().set_local(p3vec)
         p2 = project( (beta12*p1 + beta23*p3)/(beta12+beta23), Vp, solver_type='bicgstab', preconditioner_type='amg')
         beta_total = project( 1 / (1/beta12+1/beta23), K2_space, solver_type='bicgstab', preconditioner_type='amg')
-        if 'perfusion' in out_vars: myResults['perfusion'] = project( beta_total * (p-Constant(p_venous))*6000,K2_space, solver_type='bicgstab', preconditioner_type='amg')
+        if 'perfusion' in out_vars: myResults['perfusion'] = project( beta_total * (p-Constant(p_venous)),K2_space,\
+                                                                     solver_type='bicgstab', preconditioner_type='amg')
     else:
         raise Exception("unknown model type: " + model_type)
     myResults['press1'], myResults['press2'], myResults['press3'] = p1, p2, p3
@@ -154,7 +157,12 @@ res_keys = set(myResults.keys())
 for myvar in out_vars:
     if myvar in res_keys:
         with XDMFFile(configs['output']['res_fldr']+myvar+'.xdmf') as myfile:
-            myfile.write_checkpoint(myResults[myvar], myvar, 0, XDMFFile.Encoding.HDF5, False)
+            if myvar!='perfusion':
+                myfile.write_checkpoint(myResults[myvar], myvar, 0, XDMFFile.Encoding.HDF5, False)
+            else:
+                perf_scaled = myResults[myvar].copy(deepcopy=True)
+                perf_scaled.vector()[:] = perf_scaled.vector()[:]*6000
+                myfile.write_checkpoint(perf_scaled, myvar, 0, XDMFFile.Encoding.HDF5, False)
     else:
         if rank==0: print('warning: '+myvar+' variable cannot be saved - variable undefined!')
 
@@ -181,36 +189,91 @@ if configs['output']['comp_ave'] == True:
         numpy.savetxt(configs['output']['res_fldr']+'surf_p_values.csv', surf_p_values,"%d,%e,%e,%e,%e",header=fheader)
         
         fheader = 'volume ID, Volume [mm^3], pa [Pa], pc [Pa], pv [Pa]'
-        numpy.savetxt(configs['output']['res_fldr']+'vol_p_values.csv', vol_p_values,"%e,%e,%e,%e,%e",header=fheader)
+        numpy.savetxt(configs['output']['res_fldr']+'vol_p_values.csv', vol_p_values,"%d,%e,%e,%e,%e",header=fheader)
         
         fheader = 'volume ID, Volume [mm^3], ua [m/s], uc [m/s], uv [m/s]'
         numpy.savetxt(configs['output']['res_fldr']+'vol_vel_values.csv', vol_vel_values,"%d,%e,%e,%e,%e",header=fheader)
 
 my_integr_vars = {}
+surf_int_values = []; surf_int_header = ''; surf_int_dat_struct = ''
+volu_int_values = []; volu_int_header = ''; volu_int_dat_struct = ''
+
 int_vars = configs['output']['integral_vars']
 if len(int_vars)>0:
     int_types = set()
     for intvar in int_vars:
         int_types.add( intvar.split('_')[-1] )
-    if 'surfint' in int_types:
+    if 'surfave' in int_types:
         bound_label, n_bound_label = suppl_fcts.region_label_assembler(boundaries)
-    if 'volint' in int_types:
+        bound_label = bound_label[bound_label>0]
+        n_bound_label = len(bound_label)
+        bound_areas = suppl_fcts.compute_boundary_area(mesh,boundaries,bound_label,n_bound_label)
+        surf_int_values.append(bound_label); surf_int_values.append(bound_areas)
+        surf_int_header += 'surf ID,area,'; surf_int_dat_struct += '%d,%e,'
+    elif 'surfint' in int_types:
+        bound_label, n_bound_label = suppl_fcts.region_label_assembler(boundaries)
+        bound_label = bound_label[bound_label>0]
+        n_bound_label = len(bound_label)
+        surf_int_values.append(bound_label)
+        surf_int_header += 'surf ID,'; surf_int_dat_struct += '%d,'
+    if 'voluave' in int_types:
         subdom_label, n_subdom_label = suppl_fcts.region_label_assembler(subdomains)
+        subdom_vols  = suppl_fcts.compute_subdm_vol(mesh,subdomains,subdom_label,n_subdom_label)
+        volu_int_values.append(subdom_label); volu_int_values.append(subdom_vols)
+        volu_int_header += 'volu ID,volu,'; volu_int_dat_struct += '%d,%e,'
+    elif 'voluint' in int_types:
+        subdom_label, n_subdom_label = suppl_fcts.region_label_assembler(subdomains)
+        volu_int_values.append(subdom_label)
+        volu_int_header += 'volu ID,'; volu_int_dat_struct += '%d,'
     
     for intvar in int_vars:
-        int_type = intvar.split('_')[-1]
-        var2int = intvar.strip('_'+int_type)
+        intvar_parts = intvar.split('_')
+        var2int = intvar_parts[0]
+        magn_indicator = intvar.split('_')[1] == 'magn'
+        int_type = intvar_parts[-1]
         if var2int in res_keys:
             if int_type == 'surfint':
-                my_integr_vars[intvar] = 'test_surf' #suppl_fcts.surface_integrate(myResults[var2int],bound_label,n_bound_label)
-            elif int_type == 'volint':
-                my_integr_vars[intvar] = 'test_vol' #suppl_fcts.volume_integrate(myResults[var2int],subdom_label,n_subdom_label)
+                my_integr_vars[intvar] = suppl_fcts.surface_integrate(myResults[var2int],mesh,boundaries,\
+                                                                     bound_label,n_bound_label,magn_indicator)
+            elif int_type == 'voluint':
+                my_integr_vars[intvar] = suppl_fcts.volume_integrate(myResults[var2int],mesh,subdomains,\
+                                                                     subdom_label,n_subdom_label,magn_indicator)
+                if len(my_integr_vars[intvar])==0: del my_integr_vars[intvar]
+            elif int_type == 'surfave':
+                my_integr_vars[intvar] = suppl_fcts.surface_integrate(myResults[var2int],mesh,boundaries,\
+                                                                     bound_label,n_bound_label,magn_indicator)
+                my_integr_vars[intvar] = my_integr_vars[intvar]/bound_areas
+            elif int_type == 'voluave':
+                my_integr_vars[intvar] = suppl_fcts.volume_integrate(myResults[var2int],mesh,subdomains,\
+                                                                     subdom_label,n_subdom_label,magn_indicator)
+                if len(my_integr_vars[intvar])==0: del my_integr_vars[intvar]
             else:
                 if rank==0: print('warning: ' + int_type + ' is not recognised!')
         else:
             if rank==0: print('warning: '+var2int+' variable cannot be integrated - variable undefined!')
+    
+    for intvar in list(my_integr_vars.keys()):
+        int_types = ( intvar.split('_')[-1] )
+        if int_types[:4] == 'surf':
+            surf_int_values.append(my_integr_vars[intvar])
+            surf_int_header += intvar+','; surf_int_dat_struct += '%e,'
+        else:
+            volu_int_values.append(my_integr_vars[intvar])
+            volu_int_header += intvar+','; volu_int_dat_struct += '%e,'
+    surf_int_values = numpy.array(surf_int_values)
+    surf_int_values = surf_int_values.transpose()
+    volu_int_values = numpy.array(volu_int_values)
+    volu_int_values = volu_int_values.transpose()
+    if len(surf_int_values)>0:
+        numpy.savetxt(configs['output']['res_fldr']+'surface_integrals.csv',\
+                      surf_int_values,surf_int_dat_struct[:-1],header=surf_int_header[:-1])
+    if len(volu_int_values)>0:
+        numpy.savetxt(configs['output']['res_fldr']+'volume_integrals.csv',\
+                      volu_int_values,volu_int_dat_struct,header=volu_int_header[:-1])
 else:
     if rank==0: print('No variables have been defined for integration!')
+
+
 
 end3 = time.time()
 end0 = time.time()

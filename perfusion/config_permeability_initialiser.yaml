@@ -5,8 +5,8 @@ output:
   # folder for results
   res_fldr: '../brain_meshes/b0000/permeability/'
   # save sub-results
-  save_subres: true
-  res_vars: {'K1_form','e_loc','main_direction'}
+  save_subres: false
+  res_vars: {'K1_form'}
 physical:
   # normal vector of the cortical surface in the reference coordinate system
   e_ref: [0, 0, 1]

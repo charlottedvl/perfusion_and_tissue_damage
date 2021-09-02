@@ -516,3 +516,64 @@ def region_label_assembler(region):
     return region_labels, n_labels
     
     
+#%%
+def compute_boundary_area(mesh,boundaries,labels,n_labels):
+    area = []
+    
+    n = FacetNormal(mesh)
+    dS = ds(subdomain_data=boundaries)
+    for i in range(n_labels):
+        ID = int(labels[i])
+        area.append( assemble( Constant(1.0)*dS(ID,domain=mesh) ) )
+    return np.array(area)
+
+
+#%%
+def compute_subdm_vol(mesh,subdomains,labels,n_labels):
+    volume = []
+    
+    dV = dx(subdomain_data=subdomains)
+    for i in range(n_labels):
+        ID = int(labels[i])
+        volume.append(  assemble( Constant(1.0)*dV(ID,domain=mesh) ) )
+    return np.array(volume)
+    
+
+#%%
+def surface_integrate(variable,mesh,boundaries,labels,n_labels,magn):
+    dS = ds(subdomain_data=boundaries)
+    surface_integrals = []
+    
+    if variable.value_rank()==0:
+        for i in range(n_labels):
+            ID = int(labels[i])
+            surface_integrals.append( assemble( variable*dS(ID) ) )
+    elif magn:
+        for i in range(n_labels):
+            ID = int(labels[i])
+            surface_integrals.append( assemble( sqrt(inner(variable, variable))*dS(ID) ) )
+    else:
+        n = FacetNormal(mesh)
+        for i in range(n_labels):
+            ID = int(labels[i])
+            surface_integrals.append( assemble(dot(variable,n)*dS(ID)) )
+    return np.array(surface_integrals)
+
+
+#%%
+def volume_integrate(variable,mesh,subdomains,labels,n_labels,magn):
+    dV = dx(subdomain_data=subdomains)
+    volume_integrals = []
+    
+    if variable.value_rank()==0:
+        for i in range(n_labels):
+            ID = int(labels[i])
+            volume_integrals.append( assemble( variable*dV(ID) ) )
+    elif magn:
+        for i in range(n_labels):
+            ID = int(labels[i])
+            volume_integrals.append( assemble( sqrt(inner(variable, variable))*dV(ID) ) )
+    else:
+        print("warning: volumetric integration of non-scalar variables has not been implemented!")
+        return volume_integrals
+    return np.array(volume_integrals)

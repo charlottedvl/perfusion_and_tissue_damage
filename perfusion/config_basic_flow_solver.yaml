@@ -6,9 +6,9 @@ input:
   read_inlet_boundary: false
 output:
   comp_ave: false
-  res_fldr: ../VP_results/p0000/perfusion_healthy/
-  save_pvd: false
+  res_fldr: ../VP_results/p0000/perfusion_healthy_acv_model_o2/
   res_vars: {'press1','press2','press3','vel1','vel2','perfusion','beta12','beta23'}
+  integral_vars: {'press1_volint','press1_surfint'}
 physical:
   K1gm_ref: 0.001234
   K2gm_ref: 4.28e-07
@@ -20,7 +20,7 @@ physical:
   p_arterial: 10000.0
   p_venous: 0.0
 simulation:
-  fe_degr: 1
+  fe_degr: 2
   model_type: acv
   vel_order: 1
 optimisation:

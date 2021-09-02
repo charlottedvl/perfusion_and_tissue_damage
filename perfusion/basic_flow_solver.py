@@ -88,11 +88,11 @@ if rank == 0: print('\t Scaling coupling coefficients and permeability tensors')
 # set coupling coefficients
 beta12, beta23 = suppl_fcts.scale_coupling_coefficients(subdomains, \
                                 beta12gm, beta23gm, gmowm_beta_rat, \
-                                K2_space, configs['output']['res_fldr'], configs['output']['save_pvd'], model_type = compartmental_model)
+                                K2_space, configs['output']['res_fldr'], model_type = compartmental_model)
 
 K1, K2, K3 = suppl_fcts.scale_permeabilities(subdomains, K1, K2, K3, \
                                   K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat, \
-                                  configs['output']['res_fldr'],configs['output']['save_pvd'], model_type = compartmental_model)
+                                  configs['output']['res_fldr'], model_type = compartmental_model)
 end1 = time.time()
 
 
@@ -128,23 +128,24 @@ out_vars = configs['output']['res_vars']
 if len(out_vars)>0:
     if compartmental_model == 'acv':
         p1, p2, p3 = p.split()
-        myResults['press1'], myResults['press2'], myResults['press3'] = p1, p2, p3
-        myResults['K1'], myResults['K2'], myResults['K3'] = K1, K2, K3
-        myResults['beta12'], myResults['beta23'] = beta12, beta23
-        # compute velocities and perfusion
-        if 'vel1' in out_vars: myResults['vel1'] = project(-K1*grad(p1),Vvel, solver_type='bicgstab', preconditioner_type='amg')
-        if 'vel2' in out_vars: myResults['vel2'] = project(-K2*grad(p2),Vvel, solver_type='bicgstab', preconditioner_type='amg')
-        if 'vel3' in out_vars: myResults['vel3'] = project(-K3*grad(p3),Vvel, solver_type='bicgstab', preconditioner_type='amg')
         if 'perfusion' in out_vars: myResults['perfusion'] = project(beta12 * (p1-p2)*6000,K2_space, solver_type='bicgstab', preconditioner_type='amg')
     elif compartmental_model == 'a':
-        myResults['press1'] = p
-        myResults['K1'] = K1
-        myResults['beta12'] = beta12
-        # compute velocities and perfusion
-        if 'v1' in out_vars: myResults['vel1'] = project(-K1*grad(p),Vvel, solver_type='bicgstab', preconditioner_type='amg')
-        if 'perfusion' in out_vars: myResults['perfusion'] = project(beta12 * (p-Constant(p_venous))*6000,K2_space, solver_type='bicgstab', preconditioner_type='amg')
+        p1, p3 = p.copy(deepcopy=False), p.copy(deepcopy=True)
+        p3vec = p3.vector().get_local()
+        p3vec[:] = p_venous
+        p3.vector().set_local(p3vec)
+        p2 = project( (beta12*p1 + beta23*p3)/(beta12+beta23), Vp, solver_type='bicgstab', preconditioner_type='amg')
+        beta_total = project( 1 / (1/beta12+1/beta23), K2_space, solver_type='bicgstab', preconditioner_type='amg')
+        if 'perfusion' in out_vars: myResults['perfusion'] = project( beta_total * (p-Constant(p_venous))*6000,K2_space, solver_type='bicgstab', preconditioner_type='amg')
     else:
         raise Exception("unknown model type: " + model_type)
+    myResults['press1'], myResults['press2'], myResults['press3'] = p1, p2, p3
+    myResults['K1'], myResults['K2'], myResults['K3'] = K1, K2, K3
+    myResults['beta12'], myResults['beta23'] = beta12, beta23
+    # compute velocities and perfusion
+    if 'vel1' in out_vars: myResults['vel1'] = project(-K1*grad(p1),Vvel, solver_type='bicgstab', preconditioner_type='amg')
+    if 'vel2' in out_vars: myResults['vel2'] = project(-K2*grad(p2),Vvel, solver_type='bicgstab', preconditioner_type='amg')
+    if 'vel3' in out_vars: myResults['vel3'] = project(-K3*grad(p3),Vvel, solver_type='bicgstab', preconditioner_type='amg')
 else:
     if rank==0: print('No variables have been defined for saving!')
 
@@ -184,6 +185,32 @@ if configs['output']['comp_ave'] == True:
         
         fheader = 'volume ID, Volume [mm^3], ua [m/s], uc [m/s], uv [m/s]'
         numpy.savetxt(configs['output']['res_fldr']+'vol_vel_values.csv', vol_vel_values,"%d,%e,%e,%e,%e",header=fheader)
+
+my_integr_vars = {}
+int_vars = configs['output']['integral_vars']
+if len(int_vars)>0:
+    int_types = set()
+    for intvar in int_vars:
+        int_types.add( intvar.split('_')[-1] )
+    if 'surfint' in int_types:
+        bound_label, n_bound_label = suppl_fcts.region_label_assembler(boundaries)
+    if 'volint' in int_types:
+        subdom_label, n_subdom_label = suppl_fcts.region_label_assembler(subdomains)
+    
+    for intvar in int_vars:
+        int_type = intvar.split('_')[-1]
+        var2int = intvar.strip('_'+int_type)
+        if var2int in res_keys:
+            if int_type == 'surfint':
+                my_integr_vars[intvar] = 'test_surf' #suppl_fcts.surface_integrate(myResults[var2int],bound_label,n_bound_label)
+            elif int_type == 'volint':
+                my_integr_vars[intvar] = 'test_vol' #suppl_fcts.volume_integrate(myResults[var2int],subdom_label,n_subdom_label)
+            else:
+                if rank==0: print('warning: ' + int_type + ' is not recognised!')
+        else:
+            if rank==0: print('warning: '+var2int+' variable cannot be integrated - variable undefined!')
+else:
+    if rank==0: print('No variables have been defined for integration!')
 
 end3 = time.time()
 end0 = time.time()

@@ -314,10 +314,11 @@ def set_up_fe_solver2(mesh, subdomains, boundaries, V, v_1, v_2, v_3, \
         """ END - VOLUME FLOW RATE READING/COMPUTATION """
         
         # Define variational problem
+        beta_total = 1 / (1/beta12+1/beta23)
         LHS = \
-        inner(K1*grad(p), grad(v_1))*dx + beta12*p*v_1*dx
+        inner(K1*grad(p), grad(v_1))*dx + beta_total*p*v_1*dx
         
-        RHS = sigma1*v_1*dx + sum(integrals_N) + beta12*p_venous*v_1*dx
+        RHS = sigma1*v_1*dx + sum(integrals_N) + beta_total*p_venous*v_1*dx
     else:
         raise Exception("unknown model type: " + model_type)
 

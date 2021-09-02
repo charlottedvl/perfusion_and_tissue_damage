@@ -25,7 +25,7 @@ output:
   # press1_voluave --> volume-averaged value of the arteriole pressure
   # vel1_surfint --> surface integral of the arteriole velocity = inlet volumetric flow rate
   # vel1_magn_voluint --> volume integral of the arteriole velocity magnitude
-  integral_vars: {'press1_voluave','perfusion_voluint','press1_surfave','vel1_surfint'}
+  integral_vars: {}
 physical:
   # arteriole permeability magnitude [mm^3 s g^-1]
   K1gm_ref: 0.001234
@@ -48,7 +48,7 @@ physical:
 simulation:
   # finite element approximation order used for the pressure field
   fe_degr: 1
-  # model type: 1 arteriole compartment ('a'); arteriole-capillary-venule compartments ('acv')
+  # model type --> 1 arteriole compartment ('a'); arteriole-capillary-venule compartments ('acv')
   model_type: 'a'
   # finite element approximation order used for the velocity field
   vel_order: 1

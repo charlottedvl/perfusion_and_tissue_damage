@@ -222,7 +222,7 @@ def initialise_permeabilities(K1_space,K2_space,mesh, permeability_folder,**kwar
     elif model_type == 'a':
         K1 = Function(K1_space)
         K2 = Function(K2_space)
-                
+        
         with XDMFFile(comm,permeability_folder+"K1_form.xdmf") as myfile:
             myfile.read_checkpoint(K1, "K1_form")
         K3 = K1.copy(deepcopy=True)

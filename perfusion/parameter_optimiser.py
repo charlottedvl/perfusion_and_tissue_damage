@@ -1,21 +1,26 @@
 def cost_function(param_values, configs, mesh, subdomains, boundaries, K2_space, K1form, K2form, K3form, p, p1, p2, p3,
-                  iter_info, save_fields):
+                  iter_info, compartmental_model, save_fields):
     for i in range(len(configs['optimisation']['parameters'])):
-        configs['physical'][configs['optimisation']['parameters'][i]] = pow(10, param_values[i])
+        if configs['optimisation']['parameters'][i] != 'beta_total_gm':
+            configs['physical'][configs['optimisation']['parameters'][i]] = pow(10, param_values[i])
+        else:
+            configs['physical'][configs['optimisation']['parameters'][i]] = pow(10, param_values[i])
+            beta_gm_rat = configs['physical']['beta12gm']/configs['physical']['beta23gm']
+            configs['physical']['beta23gm'] = pow(10, param_values[i])*(1+beta_gm_rat)/beta_gm_rat
+            configs['physical']['beta12gm'] = beta_gm_rat*configs['physical']['beta23gm']
     # set coupling coefficients
     beta12, beta23 = suppl_fcts.scale_coupling_coefficients(subdomains,
                                                             configs['physical']['beta12gm'],
                                                             configs['physical']['beta23gm'],
                                                             configs['physical']['gmowm_beta_rat'],
-                                                            K2_space, configs['output']['res_fldr'],
-                                                            configs['output']['save_pvd'])
+                                                            K2_space, configs['output']['res_fldr'])
     configs['physical']['K3gm_ref'] = 2 * configs['physical']['K1gm_ref']
     # set permeabilities
     K1, K2, K3 = suppl_fcts.scale_permeabilities(subdomains, K1form.copy(deepcopy=True), K2form.copy(deepcopy=True),
                                                  K3form.copy(deepcopy=True),
                                                  configs['physical']['K1gm_ref'], configs['physical']['K2gm_ref'],
                                                  configs['physical']['K3gm_ref'], configs['physical']['gmowm_perm_rat'],
-                                                 configs['output']['res_fldr'], configs['output']['save_pvd'])
+                                                 configs['output']['res_fldr'])
 
     # set up finite element solver
     LHS, RHS, sigma1, sigma2, sigma3, BCs = \
@@ -23,17 +28,22 @@ def cost_function(param_values, configs, mesh, subdomains, boundaries, K2_space,
                                  p, p1, p2, p3, K1, K2, K3, beta12, beta23,
                                  configs['physical']['p_arterial'], configs['physical']['p_venous'],
                                  configs['input']['read_inlet_boundary'], configs['input']['inlet_boundary_file'],
-                                 configs['input']['inlet_BC_type'])
+                                 configs['input']['inlet_BC_type'], model_type = compartmental_model)
 
     lin_solver, precond, rtol, mon_conv, init_sol = 'bicgstab', 'amg', False, False, False
 
     try:
-        psol = fe_mod.solve_lin_sys(Vp, LHS, RHS, BCs, lin_solver, precond, rtol, mon_conv, init_sol, timer=False)
+        p = fe_mod.solve_lin_sys(Vp, LHS, RHS, BCs, lin_solver, precond, rtol, mon_conv, init_sol, timer=False)
 
-        p1sol, p2sol, p3sol = psol.split()
-
-        perfusion = project(beta12 * (p1sol - p2sol) * 6000, K2_space, solver_type='bicgstab',
-                            preconditioner_type='amg')
+        if compartmental_model == 'acv':
+            p1, p2, p3 = p.split()
+            perfusion = project(beta12 * (p1-p2) * 6000, K2_space, solver_type='bicgstab', preconditioner_type='amg')
+        elif compartmental_model == 'a':
+            p1 = p.copy(deepcopy=True)
+            beta_total = project( 1 / (1/beta12+1/beta23), K2_space, solver_type='bicgstab', preconditioner_type='amg')
+            perfusion = project( beta_total * (p-Constant(configs['physical']['p_venous'])) * 6000, K2_space, solver_type='bicgstab', preconditioner_type='amg')
+        else:
+            raise Exception("unknown model type: " + model_type)
 
         FW = assemble(perfusion * dV(11)) / V_wm
         FG = assemble(perfusion * dV(12)) / V_gm
@@ -59,6 +69,12 @@ def cost_function(param_values, configs, mesh, subdomains, boundaries, K2_space,
         J = 1e15
 
     if save_fields == True:
+        if compartmental_model == 'a':
+            p3 = p.copy(deepcopy=False)
+            p3vec = p3.vector().get_local()
+            p3vec[:] = configs['physical']['p_venous']
+            p3.vector().set_local(p3vec)
+            p2 = project( (beta12*p1 + beta23*p3)/(beta12+beta23), Vp, solver_type='bicgstab', preconditioner_type='amg')
         wdir = "opt_field_res/"
         vtkfile = File(wdir + "p1.pvd")
         vtkfile << p1
@@ -86,7 +102,7 @@ def cost_function(param_values, configs, mesh, subdomains, boundaries, K2_space,
     info.append(FG)
     info.append(J)
     iter_info.append(info)
-    if (len(iter_info) - 2) % 5 == 0:
+    if (len(iter_info) - 2) % 1 == 0:
         if rank == 0: print(len(iter_info) - 2, info)
     return J
 
@@ -148,6 +164,16 @@ config_file = parser.parse_args().config_file
 
 configs = IO_fcts.basic_flow_config_reader_yml(config_file, parser)
 
+try:
+    compartmental_model = configs['simulation']['model_type'].lower().strip()
+except KeyError:
+    compartmental_model = 'acv'
+
+try:
+    velocity_order = configs['simulation']['vel_order']
+except KeyError:
+    velocity_order = configs['simulation']['fe_degr'] - 1
+
 # read mesh
 mesh, subdomains, boundaries = IO_fcts.mesh_reader(configs['input']['mesh_file'])
 # determine regional volumes
@@ -158,11 +184,22 @@ V_brain = assemble(Constant(1.0) * dx(domain=mesh))
 
 # determine fct spaces
 Vp, Vvel, v_1, v_2, v_3, p, p1, p2, p3, K1_space, K2_space = \
-    fe_mod.alloc_fct_spaces(mesh, configs['simulation']['fe_degr'])
+    fe_mod.alloc_fct_spaces(mesh, configs['simulation']['fe_degr'], \
+                            model_type = compartmental_model, vel_order = velocity_order)
 
 # initialise permeability tensors
 K1form, K2form, K3form = IO_fcts.initialise_permeabilities(K1_space, K2_space, mesh,
                                                            configs['input']['permeability_folder'])
+
+if 'beta_total_gm' in set(configs['optimisation']['parameters']):
+    if 'beta_total_gm' in configs['physical']:
+        beta_gm_rat = configs['physical']['beta12gm']/configs['physical']['beta23gm']
+        configs['physical']['beta23gm'] = configs['physical']['beta_total_gm']*(1+beta_gm_rat)/beta_gm_rat
+        configs['physical']['beta12gm'] = beta_gm_rat*configs['physical']['beta23gm']
+    else:
+        beta12gm = configs['physical']['beta12gm']
+        beta23gm = configs['physical']['beta23gm']
+        configs['physical']['beta_total_gm'] = 1 / (1/beta12gm+1/beta23gm)
 
 param_values = []
 for i in range(len(configs['optimisation']['parameters'])):
@@ -176,7 +213,7 @@ save_fields = False
 # Test cost function evaluation
 start = time.time()
 cost_function(param_values, configs, mesh, subdomains, boundaries, K2_space, K1form, K2form, K3form, p, p1, p2, p3,
-              iter_info, save_fields)
+              iter_info, compartmental_model, save_fields)
 end = time.time()
 if rank == 0:
     print('\t\t a single iteration took', end - start, '[s]')
@@ -197,7 +234,7 @@ comm.Bcast(initial_values, root=0)
 start = time.time()
 res = minimize(cost_function, param_values,
                args=(configs, mesh, subdomains, boundaries, K2_space, K1form, K2form, K3form, p, p1, p2, p3, iter_info,
-                     False),
+                     compartmental_model, False),
                method=configs['optimisation']['method'], bounds=param_bounds,
                options={'disp': True, 'maxfev': 1000, 'maxiter': len(param_values) * 800})
 print('\n\n', res.x, '\n', rank)

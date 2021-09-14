@@ -22,7 +22,11 @@ class API(API):
         for event in self.events:
             path = self.patient_dir.joinpath(event.get('event'))
             path = path.joinpath(perfusion_dir)
-            path = path.joinpath('perfusion.xdmf')
+
+            if path.joinpath('perfusion_stroke.xdmf').exists():
+                path = path.joinpath('perfusion_stroke.xdmf')
+            else:
+                path = path.joinpath('perfusion.xdmf')
             paths.append(path)
 
         baseline_dir, stroke_dir, treatment_dir = paths

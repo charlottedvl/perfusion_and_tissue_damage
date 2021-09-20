@@ -110,7 +110,9 @@ class API(API):
         config['input']['permeability_folder'] = f"{perm_file}/"
 
         # FIXME: this is only for testing purposes
-        config['simulation']['fe_degr'] = 1
+        fe_degr = int(self.current_model.get('finite_element_degree', 2))
+        config['simulation']['fe_degr'] = fe_degr
+        print(f"Running with finite element degree: {fe_degr}", flush=True)
 
         # cannot proceed without boundary conditions
         if not self.coupled:

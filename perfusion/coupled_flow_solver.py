@@ -1,3 +1,4 @@
+# TODO: clear code after testing
 """
 Multi-compartment Darcy flow model with mixed Dirichlet and Neumann
 boundary conditions
@@ -144,13 +145,13 @@ if rank == 0:
     print('\t Scaling coupling coefficients and permeability tensors')
 
 # set coupling coefficients
-beta12, beta23 = suppl_fcts.scale_coupling_coefficients(subdomains,beta12gm, beta23gm, gmowm_beta_rat,
-                                                        K2_space, configs['output']['res_fldr'],
-                                                        configs['output']['save_pvd'], model_type=compartmental_model)
+beta12, beta23 = suppl_fcts.scale_coupling_coefficients(subdomains, \
+                                beta12gm, beta23gm, gmowm_beta_rat, \
+                                K2_space, configs['output']['res_fldr'], model_type = compartmental_model)
 
-K1, K2, K3 = suppl_fcts.scale_permeabilities(subdomains, K1, K2, K3, K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat,
-                                             configs['output']['res_fldr'], configs['output']['save_pvd'],
-                                             model_type=compartmental_model)
+K1, K2, K3 = suppl_fcts.scale_permeabilities(subdomains, K1, K2, K3, \
+                                  K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat, \
+                                  configs['output']['res_fldr'], model_type = compartmental_model)
 end1 = time.time()
 
 # %% SET UP FINITE ELEMENT SOLVER AND SOLVE GOVERNING EQUATIONS
@@ -182,85 +183,94 @@ if not GeneralFunctions.is_non_zero_file(coupled_resistance_file):
     if rank == 0:
         print('Step 3: Computing velocity fields, saving results, and extracting some field variables')
     start3 = time.time()
+    
+    myResults={}
+    suppl_fcts.compute_my_variables(p,K1,K2,K3,beta12,beta23,p_venous,Vp,Vvel,K2_space,configs, \
+                                    myResults,compartmental_model,rank,save_data=False)
+    my_integr_vars = {}
+    surf_int_values, surf_int_header, volu_int_values, volu_int_header = \
+        suppl_fcts.compute_integral_quantities(configs,myResults,my_integr_vars, \
+                                               mesh,subdomains,boundaries,rank,save_data=False)
+    
+    # if compartmental_model == 'acv':
+    #     p1, p2, p3 = p.split()
+    #     perfusion = project(beta12 * (p1 - p2) * 6000, K2_space, solver_type='bicgstab', preconditioner_type='amg')
 
-    if compartmental_model == 'acv':
-        p1, p2, p3 = p.split()
-        perfusion = project(beta12 * (p1 - p2) * 6000, K2_space, solver_type='bicgstab', preconditioner_type='amg')
+    #     # compute velocities
+    #     vel1 = project(-K1 * grad(p1), Vvel, solver_type='bicgstab', preconditioner_type='amg')
+    #     vel2 = project(-K2 * grad(p2), Vvel, solver_type='bicgstab', preconditioner_type='amg')
+    #     vel3 = project(-K3 * grad(p3), Vvel, solver_type='bicgstab', preconditioner_type='amg')
 
-        # compute velocities
-        vel1 = project(-K1 * grad(p1), Vvel, solver_type='bicgstab', preconditioner_type='amg')
-        vel2 = project(-K2 * grad(p2), Vvel, solver_type='bicgstab', preconditioner_type='amg')
-        vel3 = project(-K3 * grad(p3), Vvel, solver_type='bicgstab', preconditioner_type='amg')
+    #     ps = [p1, p2, p3]
+    #     vels = [vel1, vel2, vel3]
+    #     Ks = [K1, K2, K3]
 
-        ps = [p1, p2, p3]
-        vels = [vel1, vel2, vel3]
-        Ks = [K1, K2, K3]
+    #     vars2save = [ps, vels, Ks]
+    #     fnames = ['press', 'vel', 'K']
+    #     for idx, fname in enumerate(fnames):
+    #         for i in range(3):
+    #             with XDMFFile(configs['output']['res_fldr'] + fname + str(i + 1) + '.xdmf') as myfile:
+    #                 myfile.write_checkpoint(vars2save[idx][i], fname + str(i + 1), 0, XDMFFile.Encoding.HDF5, False)
 
-        vars2save = [ps, vels, Ks]
-        fnames = ['press', 'vel', 'K']
-        for idx, fname in enumerate(fnames):
-            for i in range(3):
-                with XDMFFile(configs['output']['res_fldr'] + fname + str(i + 1) + '.xdmf') as myfile:
-                    myfile.write_checkpoint(vars2save[idx][i], fname + str(i + 1), 0, XDMFFile.Encoding.HDF5, False)
+    #     with XDMFFile(configs['output']['res_fldr'] + 'beta12.xdmf') as myfile:
+    #         myfile.write_checkpoint(beta12, "beta12", 0, XDMFFile.Encoding.HDF5, False)
+    #     with XDMFFile(configs['output']['res_fldr'] + 'beta23.xdmf') as myfile:
+    #         myfile.write_checkpoint(beta23, "beta23", 0, XDMFFile.Encoding.HDF5, False)
+    #     with XDMFFile(configs['output']['res_fldr'] + 'perfusion.xdmf') as myfile:
+    #         myfile.write_checkpoint(perfusion, 'perfusion', 0, XDMFFile.Encoding.HDF5, False)
 
-        with XDMFFile(configs['output']['res_fldr'] + 'beta12.xdmf') as myfile:
-            myfile.write_checkpoint(beta12, "beta12", 0, XDMFFile.Encoding.HDF5, False)
-        with XDMFFile(configs['output']['res_fldr'] + 'beta23.xdmf') as myfile:
-            myfile.write_checkpoint(beta23, "beta23", 0, XDMFFile.Encoding.HDF5, False)
-        with XDMFFile(configs['output']['res_fldr'] + 'perfusion.xdmf') as myfile:
-            myfile.write_checkpoint(perfusion, 'perfusion', 0, XDMFFile.Encoding.HDF5, False)
+    #     fheader = 'FE degree, K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat, beta12gm, beta23gm, gmowm_beta_rat'
+    #     dom_props = numpy.array(
+    #         [configs['simulation']['fe_degr'], K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat, beta12gm, beta23gm,
+    #          gmowm_beta_rat])
+    #     numpy.savetxt(configs['output']['res_fldr'] + 'dom_props.csv', [dom_props], "%d,%e,%e,%e,%e,%e,%e,%e",
+    #                   header=fheader)
+    # elif compartmental_model == 'a':
+    #     perfusion = project(beta12 * (p - Constant(p_venous)) * 6000, K2_space, solver_type='bicgstab',
+    #                         preconditioner_type='amg')
+    #     vel1 = project(-K1 * grad(p), Vvel, solver_type='bicgstab', preconditioner_type='amg')
+    #     vars2save = [p, vel1, K1, beta12, perfusion]
+    #     fnames = ['press1', 'vel1', 'K1', 'beta12', 'perfusion']
+    #     for idx, fname in enumerate(fnames):
+    #         with XDMFFile(configs['output']['res_fldr'] + fname + '.xdmf') as myfile:
+    #             myfile.write_checkpoint(vars2save[idx], fname, 0, XDMFFile.Encoding.HDF5, False)
+    # else:
+    #     raise Exception("unknown model type: " + compartmental_model)
 
-        fheader = 'FE degree, K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat, beta12gm, beta23gm, gmowm_beta_rat'
-        dom_props = numpy.array(
-            [configs['simulation']['fe_degr'], K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat, beta12gm, beta23gm,
-             gmowm_beta_rat])
-        numpy.savetxt(configs['output']['res_fldr'] + 'dom_props.csv', [dom_props], "%d,%e,%e,%e,%e,%e,%e,%e",
-                      header=fheader)
-    elif compartmental_model == 'a':
-        perfusion = project(beta12 * (p - Constant(p_venous)) * 6000, K2_space, solver_type='bicgstab',
-                            preconditioner_type='amg')
-        vel1 = project(-K1 * grad(p), Vvel, solver_type='bicgstab', preconditioner_type='amg')
-        vars2save = [p, vel1, K1, beta12, perfusion]
-        fnames = ['press1', 'vel1', 'K1', 'beta12', 'perfusion']
-        for idx, fname in enumerate(fnames):
-            with XDMFFile(configs['output']['res_fldr'] + fname + '.xdmf') as myfile:
-                myfile.write_checkpoint(vars2save[idx], fname, 0, XDMFFile.Encoding.HDF5, False)
-    else:
-        raise Exception("unknown model type: " + compartmental_model)
+    # # obtain fluxes (ID, surface area, flux1, flux2, flux3)
+    # fluxes, surf_p_values = suppl_fcts.surface_ave(mesh, boundaries, vels, ps)
 
-    # obtain fluxes (ID, surface area, flux1, flux2, flux3)
-    fluxes, surf_p_values = suppl_fcts.surface_ave(mesh, boundaries, vels, ps)
-
-    # obtain some characteristic values within the domain (ID, volume, average, min, max)
-    vol_p_values, vol_vel_values = suppl_fcts.vol_ave(mesh, subdomains, ps, vels)
+    # # obtain some characteristic values within the domain (ID, volume, average, min, max)
+    # vol_p_values, vol_vel_values = suppl_fcts.vol_ave(mesh, subdomains, ps, vels)
 
     # Flow rate from the perfusion model (sign to match 1-d bf model, positive flow towards the brain)
-    FlowRateAtBoundary = fluxes[:, 2][2:] * -1
+    FlowRateAtBoundary = my_integr_vars['vel1_surfint'][2:] * -1
+    FlowRateAtBoundary = numpy.append(FlowRateAtBoundary,-numpy.sum(my_integr_vars['vel1_surfint'][:]))
     # Pressure from the perfusion model
-    PressureAtBoundary = surf_p_values[:, 2][2:]
+    PressureAtBoundary = my_integr_vars['press1_surfave'][2:]
     sys.stdout.flush()
 
-    if configs['output']['comp_ave'] == True:
-        # obtain fluxes (ID, surface area, flux1, flux2, flux3)
-        fluxes, surf_p_values = suppl_fcts.surface_ave(mesh, boundaries, vels, ps)
-        # obtain some characteristic values within the domain (ID, volume, average, min, max)
-        vol_p_values, vol_vel_values = suppl_fcts.vol_ave(mesh, subdomains, ps, vels)
+    # if configs['output']['comp_ave'] == True:
+    #     # obtain fluxes (ID, surface area, flux1, flux2, flux3)
+    #     fluxes, surf_p_values = suppl_fcts.surface_ave(mesh, boundaries, vels, ps)
+    #     # obtain some characteristic values within the domain (ID, volume, average, min, max)
+    #     vol_p_values, vol_vel_values = suppl_fcts.vol_ave(mesh, subdomains, ps, vels)
 
-        if rank == 0:
-            fheader = 'surface ID, Area [mm^2], Qa [mm^3/s], Qc [mm^3/s], Qv [mm^3/s]'
-            numpy.savetxt(configs['output']['res_fldr'] + 'fluxes.csv', fluxes, "%d,%e,%e,%e,%e", header=fheader)
+    #     if rank == 0:
+    #         fheader = 'surface ID, Area [mm^2], Qa [mm^3/s], Qc [mm^3/s], Qv [mm^3/s]'
+    #         numpy.savetxt(configs['output']['res_fldr'] + 'fluxes.csv', fluxes, "%d,%e,%e,%e,%e", header=fheader)
 
-            fheader = 'surface ID, Area [mm^2], pa [Pa], pc [Pa], pv [Pa]'
-            numpy.savetxt(configs['output']['res_fldr'] + 'surf_p_values.csv', surf_p_values, "%d,%e,%e,%e,%e",
-                          header=fheader)
+    #         fheader = 'surface ID, Area [mm^2], pa [Pa], pc [Pa], pv [Pa]'
+    #         numpy.savetxt(configs['output']['res_fldr'] + 'surf_p_values.csv', surf_p_values, "%d,%e,%e,%e,%e",
+    #                       header=fheader)
 
-            fheader = 'volume ID, Volume [mm^3], pa [Pa], pc [Pa], pv [Pa]'
-            numpy.savetxt(configs['output']['res_fldr'] + 'vol_p_values.csv', vol_p_values, "%e,%e,%e,%e,%e",
-                          header=fheader)
+    #         fheader = 'volume ID, Volume [mm^3], pa [Pa], pc [Pa], pv [Pa]'
+    #         numpy.savetxt(configs['output']['res_fldr'] + 'vol_p_values.csv', vol_p_values, "%e,%e,%e,%e,%e",
+    #                       header=fheader)
 
-            fheader = 'volume ID, Volume [mm^3], ua [m/s], uc [m/s], uv [m/s]'
-            numpy.savetxt(configs['output']['res_fldr'] + 'vol_vel_values.csv', vol_vel_values, "%d,%e,%e,%e,%e",
-                          header=fheader)
+    #         fheader = 'volume ID, Volume [mm^3], ua [m/s], uc [m/s], uv [m/s]'
+    #         numpy.savetxt(configs['output']['res_fldr'] + 'vol_vel_values.csv', vol_vel_values, "%d,%e,%e,%e,%e",
+    #                       header=fheader)
 
     start_r = time.time()
 
@@ -294,7 +304,7 @@ if not GeneralFunctions.is_non_zero_file(coupled_resistance_file):
         # update boundary condition
         for index, cp in enumerate(Patient.Perfusion.CouplingPoints):
             cp.Node.TargetFlow = FlowRateAtBoundary[
-                                     index] * 1e-3  # * correction  # todo scaling to compensate for low bc resolution
+                                      index] * 1e-3  # * correction  # todo scaling to compensate for low bc resolution
 
 
         def estimate_resistance(patient):
@@ -314,7 +324,7 @@ if not GeneralFunctions.is_non_zero_file(coupled_resistance_file):
                                                   scale_resistance=False)
                 relative_residual = max(
                     [abs(node.Node.R1 + node.Node.R2 - oldR[index]) / (node.Node.R1 + node.Node.R2) for index, node in
-                     enumerate(patient.Perfusion.CouplingPoints)])
+                      enumerate(patient.Perfusion.CouplingPoints)])
                 print(f'\tMax relative residual1: {relative_residual}')
                 sys.stdout.flush()
 
@@ -383,7 +393,8 @@ if not GeneralFunctions.is_non_zero_file(coupled_resistance_file):
                 "Region,Resistance,Outlet Pressure(pa),WK Pressure, Perfusion Surface Pressure(pa),Old Flow Rate,Flow Rate(mL/s),Perfusion Flow Rate(mL/s)\n")
             for index, cp in enumerate(Patient.Perfusion.CouplingPoints):
                 f.write("%d,%.12g,%.12g,%.12g,%.12g,%.12g,%.12g,%.12g\n" % (
-                    fluxes[:, 0][2:][index],
+                    # fluxes[:, 0][2:][index],
+                    surf_int_values[:,0][2:][index],
                     cp.Node.R1 + cp.Node.R2,
                     cp.Node.Pressure,
                     cp.Node.WKNode.Pressure,
@@ -451,7 +462,7 @@ else:
 comm.Barrier()
 exit_program = comm.bcast(exit_program, root=0)
 if exit_program:
-    exit()
+    sys.exit()
 
 # %% RUN COUPLED MODEL
 def coupledmodel(P, stopp):
@@ -471,25 +482,35 @@ def coupledmodel(P, stopp):
 
         LHS, RHS, sigma1, sigma2, sigma3, BCs = \
             fe_mod.set_up_fe_solver2(mesh, subdomains, boundaries, Vp, v_1, v_2, v_3,
-                                     p, p1, p2, p3, K1, K2, K3, beta12, beta23,
-                                     p_arterial, p_venous,
-                                     configs['input']['read_inlet_boundary'], configs['input']['inlet_boundary_file'],
-                                     configs['input']['inlet_BC_type'], model_type=compartmental_model)
+                                      p, p1, p2, p3, K1, K2, K3, beta12, beta23,
+                                      p_arterial, p_venous,
+                                      configs['input']['read_inlet_boundary'], configs['input']['inlet_boundary_file'],
+                                      configs['input']['inlet_BC_type'], model_type=compartmental_model)
 
         p = fe_mod.solve_lin_sys(Vp, LHS, RHS, BCs, lin_solver, precond, rtol, mon_conv, init_sol,
-                                 model_type=compartmental_model)
-        p1, p2, p3 = p.split()
-        # compute velocities
-        vel1 = project(-K1 * grad(p1), Vvel, solver_type='bicgstab', preconditioner_type='amg')
-        vel2 = project(-K2 * grad(p2), Vvel, solver_type='bicgstab', preconditioner_type='amg')
-        vel3 = project(-K3 * grad(p3), Vvel, solver_type='bicgstab', preconditioner_type='amg')
-        ps = [p1, p2, p3]
-        vels = [vel1, vel2, vel3]
-        # get surface values
-        fluxes, surf_p_values = suppl_fcts.surface_ave(mesh, boundaries, vels, ps)
+                                  model_type=compartmental_model)
+        myResults={}
+        suppl_fcts.compute_my_variables(p,K1,K2,K3,beta12,beta23,p_venous,Vp,Vvel,K2_space,configs, \
+                                        myResults,compartmental_model,rank,save_data=False)
+        my_integr_vars = {}
+        surf_int_values, surf_int_header, volu_int_values, volu_int_header = \
+            suppl_fcts.compute_integral_quantities(configs,myResults,my_integr_vars, \
+                                                   mesh,subdomains,boundaries,rank,save_data=False)
+        # p1, p2, p3 = p.split()
+        # # compute velocities
+        # vel1 = project(-K1 * grad(p1), Vvel, solver_type='bicgstab', preconditioner_type='amg')
+        # vel2 = project(-K2 * grad(p2), Vvel, solver_type='bicgstab', preconditioner_type='amg')
+        # vel3 = project(-K3 * grad(p3), Vvel, solver_type='bicgstab', preconditioner_type='amg')
+        # ps = [p1, p2, p3]
+        # vels = [vel1, vel2, vel3]
+        # # get surface values
+        # fluxes, surf_p_values = suppl_fcts.surface_ave(mesh, boundaries, vels, ps)
 
-        FlowRateAtBoundary = fluxes[:, 2][2:] * -1
-        # PressureAtBoundary = surf_p_values[:, 2][2:]
+        # Flow rate from the perfusion model (sign to match 1-d bf model, positive flow towards the brain)
+        FlowRateAtBoundary = my_integr_vars['vel1_surfint'][2:] * -1
+        FlowRateAtBoundary = numpy.append(FlowRateAtBoundary,-numpy.sum(my_integr_vars['vel1_surfint'][:]))
+        # Pressure from the perfusion model
+        # PressureAtBoundary = my_integr_vars['press1_surfave'][2:]
 
         # Run 1-D bf model
         residualFlowrate = 0
@@ -565,23 +586,35 @@ with contextlib.redirect_stdout(None):
 
     LHS, RHS, sigma1, sigma2, sigma3, BCs = \
         fe_mod.set_up_fe_solver2(mesh, subdomains, boundaries, Vp, v_1, v_2, v_3, p, p1, p2, p3, K1, K2, K3, beta12,
-                                 beta23, p_arterial, p_venous,
-                                 configs['input']['read_inlet_boundary'], configs['input']['inlet_boundary_file'],
-                                 configs['input']['inlet_BC_type'], model_type=compartmental_model)
+                                  beta23, p_arterial, p_venous,
+                                  configs['input']['read_inlet_boundary'], configs['input']['inlet_boundary_file'],
+                                  configs['input']['inlet_BC_type'], model_type=compartmental_model)
 
     p = fe_mod.solve_lin_sys(Vp, LHS, RHS, BCs, lin_solver, precond, rtol, mon_conv, init_sol,
-                             model_type=compartmental_model)
-    p1, p2, p3 = p.split()
-    # compute velocities
-    vel1 = project(-K1 * grad(p1), Vvel, solver_type='bicgstab', preconditioner_type='amg')
-    vel2 = project(-K2 * grad(p2), Vvel, solver_type='bicgstab', preconditioner_type='amg')
-    vel3 = project(-K3 * grad(p3), Vvel, solver_type='bicgstab', preconditioner_type='amg')
-    ps = [p1, p2, p3]
-    vels = [vel1, vel2, vel3]
-    # get surface values
-    fluxes, surf_p_values = suppl_fcts.surface_ave(mesh, boundaries, vels, ps)
-    FlowRateAtBoundary = fluxes[:, 2][2:] * -1
-    PressureAtBoundary = surf_p_values[:, 2][2:]  # Pressure from the perfusion model
+                              model_type=compartmental_model)
+    myResults={}
+    suppl_fcts.compute_my_variables(p,K1,K2,K3,beta12,beta23,p_venous,Vp,Vvel,K2_space,configs, \
+                                    myResults,compartmental_model,rank,save_data=False)
+    my_integr_vars = {}
+    surf_int_values, surf_int_header, volu_int_values, volu_int_header = \
+        suppl_fcts.compute_integral_quantities(configs,myResults,my_integr_vars, \
+                                                mesh,subdomains,boundaries,rank,save_data=False)
+    
+    # p1, p2, p3 = p.split()
+    # # compute velocities
+    # vel1 = project(-K1 * grad(p1), Vvel, solver_type='bicgstab', preconditioner_type='amg')
+    # vel2 = project(-K2 * grad(p2), Vvel, solver_type='bicgstab', preconditioner_type='amg')
+    # vel3 = project(-K3 * grad(p3), Vvel, solver_type='bicgstab', preconditioner_type='amg')
+    # ps = [p1, p2, p3]
+    # vels = [vel1, vel2, vel3]
+    # # get surface values
+    # fluxes, surf_p_values = suppl_fcts.surface_ave(mesh, boundaries, vels, ps)
+    
+    # Flow rate from the perfusion model (sign to match 1-d bf model, positive flow towards the brain)
+    FlowRateAtBoundary = my_integr_vars['vel1_surfint'][2:] * -1
+    FlowRateAtBoundary = numpy.append(FlowRateAtBoundary,-numpy.sum(my_integr_vars['vel1_surfint'][:]))
+    # Pressure from the perfusion model
+    PressureAtBoundary = my_integr_vars['press1_surfave'][2:]
 
     perfusion_stroke = project(abs(beta12 * (p1 - p2) * 6000), K2_space, solver_type='bicgstab', preconditioner_type='amg')
 comm.Barrier()
@@ -614,7 +647,8 @@ if rank == 0:
             "Region,Resistance,Outlet Pressure(pa),WK Pressure, Perfusion Surface Pressure(pa),Old Flow Rate,Flow Rate(mL/s),Perfusion Flow Rate(mL/s)\n")
         for index, cp in enumerate(Patient.Perfusion.CouplingPoints):
             f.write("%d,%.12g,%.12g,%.12g,%.12g,%.12g,%.12g,%.12g\n" % (
-                fluxes[:, 0][2:][index],
+                # fluxes[:, 0][2:][index],
+                surf_int_values[:,0][2:][index],
                 cp.Node.R1 + cp.Node.R2,
                 cp.Node.Pressure,
                 cp.Node.WKNode.Pressure,
@@ -623,50 +657,57 @@ if rank == 0:
                 cp.Node.WKNode.AccumulatedFlowRate,
                 FlowRateAtBoundary[index] * 1e-3))
 
-if compartmental_model == 'acv':
-    vars2save = [ps, vels]
-    fnames = ['press', 'vel']
-    for idx, fname in enumerate(fnames):
-        for i in range(3):
-            with XDMFFile(configs['output']['res_fldr'] + fname + str(i + 1) + '_stroke.xdmf') as myfile:
-                myfile.write_checkpoint(vars2save[idx][i], fname + str(i + 1), 0, XDMFFile.Encoding.HDF5, False)
+myResults={}
+suppl_fcts.compute_my_variables(p,K1,K2,K3,beta12,beta23,p_venous,Vp,Vvel,K2_space,configs, \
+                                myResults,compartmental_model,rank)
+my_integr_vars = {}
+surf_int_values, surf_int_header, volu_int_values, volu_int_header = \
+    suppl_fcts.compute_integral_quantities(configs,myResults,my_integr_vars, \
+                                           mesh,subdomains,boundaries,rank)
+# if compartmental_model == 'acv':
+#     vars2save = [ps, vels]
+#     fnames = ['press', 'vel']
+#     for idx, fname in enumerate(fnames):
+#         for i in range(3):
+#             with XDMFFile(configs['output']['res_fldr'] + fname + str(i + 1) + '_stroke.xdmf') as myfile:
+#                 myfile.write_checkpoint(vars2save[idx][i], fname + str(i + 1), 0, XDMFFile.Encoding.HDF5, False)
 
-    with XDMFFile(configs['output']['res_fldr']+'perfusion_stroke.xdmf') as myfile:
-        myfile.write_checkpoint(perfusion_stroke, 'perfusion', 0, XDMFFile.Encoding.HDF5, False)
+#     with XDMFFile(configs['output']['res_fldr']+'perfusion_stroke.xdmf') as myfile:
+#         myfile.write_checkpoint(perfusion_stroke, 'perfusion', 0, XDMFFile.Encoding.HDF5, False)
 
-elif compartmental_model == 'a':
-    perfusion = project(beta12 * (p - Constant(p_venous)) * 6000, K2_space, solver_type='bicgstab',
-                        preconditioner_type='amg')
-    vel1 = project(-K1 * grad(p), Vvel, solver_type='bicgstab', preconditioner_type='amg')
-    vars2save = [p, vel1, perfusion]
-    fnames = ['press1', 'vel1', 'perfusion']
-    for idx, fname in enumerate(fnames):
-        with XDMFFile(configs['output']['res_fldr'] + fname + '_stroke.xdmf') as myfile:
-            myfile.write_checkpoint(vars2save[idx], fname, 0, XDMFFile.Encoding.HDF5, False)
-else:
-    raise Exception("unknown model type: " + compartmental_model)
+# elif compartmental_model == 'a':
+#     perfusion = project(beta12 * (p - Constant(p_venous)) * 6000, K2_space, solver_type='bicgstab',
+#                         preconditioner_type='amg')
+#     vel1 = project(-K1 * grad(p), Vvel, solver_type='bicgstab', preconditioner_type='amg')
+#     vars2save = [p, vel1, perfusion]
+#     fnames = ['press1', 'vel1', 'perfusion']
+#     for idx, fname in enumerate(fnames):
+#         with XDMFFile(configs['output']['res_fldr'] + fname + '_stroke.xdmf') as myfile:
+#             myfile.write_checkpoint(vars2save[idx], fname, 0, XDMFFile.Encoding.HDF5, False)
+# else:
+#     raise Exception("unknown model type: " + compartmental_model)
 
-if configs['output']['comp_ave'] == True:
-    # obtain fluxes (ID, surface area, flux1, flux2, flux3)
-    fluxes, surf_p_values = suppl_fcts.surface_ave(mesh, boundaries, vels, ps)
-    # obtain some characteristic values within the domain (ID, volume, average, min, max)
-    vol_p_values, vol_vel_values = suppl_fcts.vol_ave(mesh, subdomains, ps, vels)
+# if configs['output']['comp_ave'] == True:
+#     # obtain fluxes (ID, surface area, flux1, flux2, flux3)
+#     fluxes, surf_p_values = suppl_fcts.surface_ave(mesh, boundaries, vels, ps)
+#     # obtain some characteristic values within the domain (ID, volume, average, min, max)
+#     vol_p_values, vol_vel_values = suppl_fcts.vol_ave(mesh, subdomains, ps, vels)
 
-    if rank == 0:
-        fheader = 'surface ID, Area [mm^2], Qa [mm^3/s], Qc [mm^3/s], Qv [mm^3/s]'
-        numpy.savetxt(configs['output']['res_fldr'] + 'fluxes_stroke.csv', fluxes, "%d,%e,%e,%e,%e", header=fheader)
+#     if rank == 0:
+#         fheader = 'surface ID, Area [mm^2], Qa [mm^3/s], Qc [mm^3/s], Qv [mm^3/s]'
+#         numpy.savetxt(configs['output']['res_fldr'] + 'fluxes_stroke.csv', fluxes, "%d,%e,%e,%e,%e", header=fheader)
 
-        fheader = 'surface ID, Area [mm^2], pa [Pa], pc [Pa], pv [Pa]'
-        numpy.savetxt(configs['output']['res_fldr'] + 'surf_p_values_stroke.csv', surf_p_values, "%d,%e,%e,%e,%e",
-                      header=fheader)
+#         fheader = 'surface ID, Area [mm^2], pa [Pa], pc [Pa], pv [Pa]'
+#         numpy.savetxt(configs['output']['res_fldr'] + 'surf_p_values_stroke.csv', surf_p_values, "%d,%e,%e,%e,%e",
+#                       header=fheader)
 
-        fheader = 'volume ID, Volume [mm^3], pa [Pa], pc [Pa], pv [Pa]'
-        numpy.savetxt(configs['output']['res_fldr'] + 'vol_p_values_stroke.csv', vol_p_values, "%e,%e,%e,%e,%e",
-                      header=fheader)
+#         fheader = 'volume ID, Volume [mm^3], pa [Pa], pc [Pa], pv [Pa]'
+#         numpy.savetxt(configs['output']['res_fldr'] + 'vol_p_values_stroke.csv', vol_p_values, "%e,%e,%e,%e,%e",
+#                       header=fheader)
 
-        fheader = 'volume ID, Volume [mm^3], ua [m/s], uc [m/s], uv [m/s]'
-        numpy.savetxt(configs['output']['res_fldr'] + 'vol_vel_values_stroke.csv', vol_vel_values, "%d,%e,%e,%e,%e",
-                      header=fheader)
+#         fheader = 'volume ID, Volume [mm^3], ua [m/s], uc [m/s], uv [m/s]'
+#         numpy.savetxt(configs['output']['res_fldr'] + 'vol_vel_values_stroke.csv', vol_vel_values, "%d,%e,%e,%e,%e",
+#                       header=fheader)
 
 end3 = time.time()
 end0 = time.time()

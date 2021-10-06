@@ -1,3 +1,4 @@
+# TODO: clear code after testing
 """
 Multi-compartment Darcy flow model with mixed Dirichlet and Neumann boundary conditions
 
@@ -124,154 +125,160 @@ if rank == 0: print('Step 3: Computing velocity fields, saving results, and extr
 start3 = time.time()
 
 myResults={}
-out_vars = configs['output']['res_vars']
+suppl_fcts.compute_my_variables(p,K1,K2,K3,beta12,beta23,p_venous,Vp,Vvel,K2_space,configs, \
+                         myResults,compartmental_model,rank)
 
-if len(out_vars)>0:
-    if compartmental_model == 'acv':
-        p1, p2, p3 = p.split()
-        if 'perfusion' in out_vars: myResults['perfusion'] = project(beta12 * (p1-p2),K2_space,\
-                                                                     solver_type='bicgstab', preconditioner_type='amg')
-    elif compartmental_model == 'a':
-        p1, p3 = p.copy(deepcopy=False), p.copy(deepcopy=True)
-        p3vec = p3.vector().get_local()
-        p3vec[:] = p_venous
-        p3.vector().set_local(p3vec)
-        p2 = project( (beta12*p1 + beta23*p3)/(beta12+beta23), Vp, solver_type='bicgstab', preconditioner_type='amg')
-        beta_total = project( 1 / (1/beta12+1/beta23), K2_space, solver_type='bicgstab', preconditioner_type='amg')
-        if 'perfusion' in out_vars: myResults['perfusion'] = project( beta_total * (p-Constant(p_venous)),K2_space,\
-                                                                     solver_type='bicgstab', preconditioner_type='amg')
-    else:
-        raise Exception("unknown model type: " + model_type)
-    myResults['press1'], myResults['press2'], myResults['press3'] = p1, p2, p3
-    myResults['K1'], myResults['K2'], myResults['K3'] = K1, K2, K3
-    myResults['beta12'], myResults['beta23'] = beta12, beta23
-    # compute velocities and perfusion
-    if 'vel1' in out_vars: myResults['vel1'] = project(-K1*grad(p1),Vvel, solver_type='bicgstab', preconditioner_type='amg')
-    if 'vel2' in out_vars: myResults['vel2'] = project(-K2*grad(p2),Vvel, solver_type='bicgstab', preconditioner_type='amg')
-    if 'vel3' in out_vars: myResults['vel3'] = project(-K3*grad(p3),Vvel, solver_type='bicgstab', preconditioner_type='amg')
-else:
-    if rank==0: print('No variables have been defined for saving!')
+# if len(out_vars)>0:
+#     if compartmental_model == 'acv':
+#         p1, p2, p3 = p.split()
+#         if 'perfusion' in out_vars: myResults['perfusion'] = project(beta12 * (p1-p2),K2_space,\
+#                                                                       solver_type='bicgstab', preconditioner_type='amg')
+#     elif compartmental_model == 'a':
+#         p1, p3 = p.copy(deepcopy=False), p.copy(deepcopy=True)
+#         p3vec = p3.vector().get_local()
+#         p3vec[:] = p_venous
+#         p3.vector().set_local(p3vec)
+#         p2 = project( (beta12*p1 + beta23*p3)/(beta12+beta23), Vp, solver_type='bicgstab', preconditioner_type='amg')
+#         beta_total = project( 1 / (1/beta12+1/beta23), K2_space, solver_type='bicgstab', preconditioner_type='amg')
+#         if 'perfusion' in out_vars: myResults['perfusion'] = project( beta_total * (p-Constant(p_venous)),K2_space,\
+#                                                                       solver_type='bicgstab', preconditioner_type='amg')
+#     else:
+#         raise Exception("unknown model type: " + model_type)
+#     myResults['press1'], myResults['press2'], myResults['press3'] = p1, p2, p3
+#     myResults['K1'], myResults['K2'], myResults['K3'] = K1, K2, K3
+#     myResults['beta12'], myResults['beta23'] = beta12, beta23
+#     # compute velocities and perfusion
+#     if 'vel1' in out_vars: myResults['vel1'] = project(-K1*grad(p1),Vvel, solver_type='bicgstab', preconditioner_type='amg')
+#     if 'vel2' in out_vars: myResults['vel2'] = project(-K2*grad(p2),Vvel, solver_type='bicgstab', preconditioner_type='amg')
+#     if 'vel3' in out_vars: myResults['vel3'] = project(-K3*grad(p3),Vvel, solver_type='bicgstab', preconditioner_type='amg')
+# else:
+#     if rank==0: print('No variables have been defined for saving!')
 
-# save variables
-res_keys = set(myResults.keys())
-for myvar in out_vars:
-    if myvar in res_keys:
-        with XDMFFile(configs['output']['res_fldr']+myvar+'.xdmf') as myfile:
-            if myvar!='perfusion':
-                myfile.write_checkpoint(myResults[myvar], myvar, 0, XDMFFile.Encoding.HDF5, False)
-            else:
-                perf_scaled = myResults[myvar].copy(deepcopy=True)
-                perf_scaled.vector()[:] = perf_scaled.vector()[:]*6000
-                myfile.write_checkpoint(perf_scaled, myvar, 0, XDMFFile.Encoding.HDF5, False)
-    else:
-        if rank==0: print('warning: '+myvar+' variable cannot be saved - variable undefined!')
+# # save variables
+# res_keys = set(myResults.keys())
+# for myvar in out_vars:
+#     if myvar in res_keys:
+#         with XDMFFile(configs['output']['res_fldr']+myvar+'.xdmf') as myfile:
+#             if myvar!='perfusion':
+#                 myfile.write_checkpoint(myResults[myvar], myvar, 0, XDMFFile.Encoding.HDF5, False)
+#             else:
+#                 perf_scaled = myResults[myvar].copy(deepcopy=True)
+#                 perf_scaled.vector()[:] = perf_scaled.vector()[:]*6000
+#                 myfile.write_checkpoint(perf_scaled, myvar, 0, XDMFFile.Encoding.HDF5, False)
+#     else:
+#         if rank==0: print('warning: '+myvar+' variable cannot be saved - variable undefined!')
 
-#%%
+# #%%
 
-# TODO: implement flexible averaging and solution for model type 'a'
-if configs['output']['comp_ave'] == True:
-    # obtain fluxes (ID, surface area, flux1, flux2, flux3)
-    fluxes, surf_p_values = suppl_fcts.surface_ave(mesh,boundaries,vels,ps)
+# if configs['output']['comp_ave'] == True:
+#     # obtain fluxes (ID, surface area, flux1, flux2, flux3)
+#     fluxes, surf_p_values = suppl_fcts.surface_ave(mesh,boundaries,vels,ps)
     
-    # obtain some characteristic values within the domain (ID, volume, average, min, max)
-    vol_p_values, vol_vel_values = suppl_fcts.vol_ave(mesh,subdomains,ps,vels)
+#     # obtain some characteristic values within the domain (ID, volume, average, min, max)
+#     vol_p_values, vol_vel_values = suppl_fcts.vol_ave(mesh,subdomains,ps,vels)
     
-    if rank ==0:
-        # print(fluxes,'\n')
-        # print(surf_p_values,'\n')
-        # print(vol_p_values,'\n')
-        # print(vol_vel_values,'\n')
+#     if rank ==0:
+#         # print(fluxes,'\n')
+#         # print(surf_p_values,'\n')
+#         # print(vol_p_values,'\n')
+#         # print(vol_vel_values,'\n')
         
-        fheader = 'surface ID, Area [mm^2], Qa [mm^3/s], Qc [mm^3/s], Qv [mm^3/s]'
-        numpy.savetxt(configs['output']['res_fldr']+'fluxes.csv', fluxes,"%d,%e,%e,%e,%e",header=fheader)
+#         fheader = 'surface ID, Area [mm^2], Qa [mm^3/s], Qc [mm^3/s], Qv [mm^3/s]'
+#         numpy.savetxt(configs['output']['res_fldr']+'fluxes.csv', fluxes,"%d,%e,%e,%e,%e",header=fheader)
         
-        fheader = 'surface ID, Area [mm^2], pa [Pa], pc [Pa], pv [Pa]'
-        numpy.savetxt(configs['output']['res_fldr']+'surf_p_values.csv', surf_p_values,"%d,%e,%e,%e,%e",header=fheader)
+#         fheader = 'surface ID, Area [mm^2], pa [Pa], pc [Pa], pv [Pa]'
+#         numpy.savetxt(configs['output']['res_fldr']+'surf_p_values.csv', surf_p_values,"%d,%e,%e,%e,%e",header=fheader)
         
-        fheader = 'volume ID, Volume [mm^3], pa [Pa], pc [Pa], pv [Pa]'
-        numpy.savetxt(configs['output']['res_fldr']+'vol_p_values.csv', vol_p_values,"%d,%e,%e,%e,%e",header=fheader)
+#         fheader = 'volume ID, Volume [mm^3], pa [Pa], pc [Pa], pv [Pa]'
+#         numpy.savetxt(configs['output']['res_fldr']+'vol_p_values.csv', vol_p_values,"%d,%e,%e,%e,%e",header=fheader)
         
-        fheader = 'volume ID, Volume [mm^3], ua [m/s], uc [m/s], uv [m/s]'
-        numpy.savetxt(configs['output']['res_fldr']+'vol_vel_values.csv', vol_vel_values,"%d,%e,%e,%e,%e",header=fheader)
+#         fheader = 'volume ID, Volume [mm^3], ua [m/s], uc [m/s], uv [m/s]'
+#         numpy.savetxt(configs['output']['res_fldr']+'vol_vel_values.csv', vol_vel_values,"%d,%e,%e,%e,%e",header=fheader)
+
 
 my_integr_vars = {}
-surf_int_values = []; surf_int_header = ''; surf_int_dat_struct = ''
-volu_int_values = []; volu_int_header = ''; volu_int_dat_struct = ''
+surf_int_values, surf_int_header, volu_int_values, volu_int_header = \
+    suppl_fcts.compute_integral_quantities(configs,myResults,my_integr_vars, \
+                                           mesh,subdomains,boundaries,rank)
 
-int_vars = configs['output']['integral_vars']
-if len(int_vars)>0:
-    int_types = set()
-    for intvar in int_vars:
-        int_types.add( intvar.split('_')[-1] )
-    if 'surfave' in int_types:
-        bound_label, n_bound_label = suppl_fcts.region_label_assembler(boundaries)
-        bound_label = bound_label[bound_label>0]
-        n_bound_label = len(bound_label)
-        bound_areas = suppl_fcts.compute_boundary_area(mesh,boundaries,bound_label,n_bound_label)
-        surf_int_values.append(bound_label); surf_int_values.append(bound_areas)
-        surf_int_header += 'surf ID,area,'; surf_int_dat_struct += '%d,%e,'
-    elif 'surfint' in int_types:
-        bound_label, n_bound_label = suppl_fcts.region_label_assembler(boundaries)
-        bound_label = bound_label[bound_label>0]
-        n_bound_label = len(bound_label)
-        surf_int_values.append(bound_label)
-        surf_int_header += 'surf ID,'; surf_int_dat_struct += '%d,'
-    if 'voluave' in int_types:
-        subdom_label, n_subdom_label = suppl_fcts.region_label_assembler(subdomains)
-        subdom_vols  = suppl_fcts.compute_subdm_vol(mesh,subdomains,subdom_label,n_subdom_label)
-        volu_int_values.append(subdom_label); volu_int_values.append(subdom_vols)
-        volu_int_header += 'volu ID,volu,'; volu_int_dat_struct += '%d,%e,'
-    elif 'voluint' in int_types:
-        subdom_label, n_subdom_label = suppl_fcts.region_label_assembler(subdomains)
-        volu_int_values.append(subdom_label)
-        volu_int_header += 'volu ID,'; volu_int_dat_struct += '%d,'
+# surf_int_values = []; surf_int_header = ''; surf_int_dat_struct = ''
+# volu_int_values = []; volu_int_header = ''; volu_int_dat_struct = ''
+# res_keys = set(myResults.keys())
+
+# int_vars = configs['output']['integral_vars']
+# if len(int_vars)>0:
+#     int_types = set()
+#     for intvar in int_vars:
+#         int_types.add( intvar.split('_')[-1] )
+#     if 'surfave' in int_types:
+#         bound_label, n_bound_label = suppl_fcts.region_label_assembler(boundaries)
+#         bound_label = bound_label[bound_label>0]
+#         n_bound_label = len(bound_label)
+#         bound_areas = suppl_fcts.compute_boundary_area(mesh,boundaries,bound_label,n_bound_label)
+#         surf_int_values.append(bound_label); surf_int_values.append(bound_areas)
+#         surf_int_header += 'surf ID,area,'; surf_int_dat_struct += '%d,%e,'
+#     elif 'surfint' in int_types:
+#         bound_label, n_bound_label = suppl_fcts.region_label_assembler(boundaries)
+#         bound_label = bound_label[bound_label>0]
+#         n_bound_label = len(bound_label)
+#         surf_int_values.append(bound_label)
+#         surf_int_header += 'surf ID,'; surf_int_dat_struct += '%d,'
+#     if 'voluave' in int_types:
+#         subdom_label, n_subdom_label = suppl_fcts.region_label_assembler(subdomains)
+#         subdom_vols  = suppl_fcts.compute_subdm_vol(mesh,subdomains,subdom_label,n_subdom_label)
+#         volu_int_values.append(subdom_label); volu_int_values.append(subdom_vols)
+#         volu_int_header += 'volu ID,volu,'; volu_int_dat_struct += '%d,%e,'
+#     elif 'voluint' in int_types:
+#         subdom_label, n_subdom_label = suppl_fcts.region_label_assembler(subdomains)
+#         volu_int_values.append(subdom_label)
+#         volu_int_header += 'volu ID,'; volu_int_dat_struct += '%d,'
     
-    for intvar in int_vars:
-        intvar_parts = intvar.split('_')
-        var2int = intvar_parts[0]
-        magn_indicator = intvar.split('_')[1] == 'magn'
-        int_type = intvar_parts[-1]
-        if var2int in res_keys:
-            if int_type == 'surfint':
-                my_integr_vars[intvar] = suppl_fcts.surface_integrate(myResults[var2int],mesh,boundaries,\
-                                                                     bound_label,n_bound_label,magn_indicator)
-            elif int_type == 'voluint':
-                my_integr_vars[intvar] = suppl_fcts.volume_integrate(myResults[var2int],mesh,subdomains,\
-                                                                     subdom_label,n_subdom_label,magn_indicator)
-                if len(my_integr_vars[intvar])==0: del my_integr_vars[intvar]
-            elif int_type == 'surfave':
-                my_integr_vars[intvar] = suppl_fcts.surface_integrate(myResults[var2int],mesh,boundaries,\
-                                                                     bound_label,n_bound_label,magn_indicator)
-                my_integr_vars[intvar] = my_integr_vars[intvar]/bound_areas
-            elif int_type == 'voluave':
-                my_integr_vars[intvar] = suppl_fcts.volume_integrate(myResults[var2int],mesh,subdomains,\
-                                                                     subdom_label,n_subdom_label,magn_indicator)
-                if len(my_integr_vars[intvar])==0: del my_integr_vars[intvar]
-            else:
-                if rank==0: print('warning: ' + int_type + ' is not recognised!')
-        else:
-            if rank==0: print('warning: '+var2int+' variable cannot be integrated - variable undefined!')
+#     for intvar in int_vars:
+#         intvar_parts = intvar.split('_')
+#         var2int = intvar_parts[0]
+#         magn_indicator = intvar.split('_')[1] == 'magn'
+#         int_type = intvar_parts[-1]
+#         if var2int in res_keys:
+#             if int_type == 'surfint':
+#                 my_integr_vars[intvar] = suppl_fcts.surface_integrate(myResults[var2int],mesh,boundaries,\
+#                                                                       bound_label,n_bound_label,magn_indicator)
+#             elif int_type == 'voluint':
+#                 my_integr_vars[intvar] = suppl_fcts.volume_integrate(myResults[var2int],mesh,subdomains,\
+#                                                                       subdom_label,n_subdom_label,magn_indicator)
+#                 if len(my_integr_vars[intvar])==0: del my_integr_vars[intvar]
+#             elif int_type == 'surfave':
+#                 my_integr_vars[intvar] = suppl_fcts.surface_integrate(myResults[var2int],mesh,boundaries,\
+#                                                                       bound_label,n_bound_label,magn_indicator)
+#                 my_integr_vars[intvar] = my_integr_vars[intvar]/bound_areas
+#             elif int_type == 'voluave':
+#                 my_integr_vars[intvar] = suppl_fcts.volume_integrate(myResults[var2int],mesh,subdomains,\
+#                                                                       subdom_label,n_subdom_label,magn_indicator)
+#                 if len(my_integr_vars[intvar])==0: del my_integr_vars[intvar]
+#             else:
+#                 if rank==0: print('warning: ' + int_type + ' is not recognised!')
+#         else:
+#             if rank==0: print('warning: '+var2int+' variable cannot be integrated - variable undefined!')
     
-    for intvar in list(my_integr_vars.keys()):
-        int_types = ( intvar.split('_')[-1] )
-        if int_types[:4] == 'surf':
-            surf_int_values.append(my_integr_vars[intvar])
-            surf_int_header += intvar+','; surf_int_dat_struct += '%e,'
-        else:
-            volu_int_values.append(my_integr_vars[intvar])
-            volu_int_header += intvar+','; volu_int_dat_struct += '%e,'
-    surf_int_values = numpy.array(surf_int_values)
-    surf_int_values = surf_int_values.transpose()
-    volu_int_values = numpy.array(volu_int_values)
-    volu_int_values = volu_int_values.transpose()
-    if len(surf_int_values)>0:
-        numpy.savetxt(configs['output']['res_fldr']+'surface_integrals.csv',\
-                      surf_int_values,surf_int_dat_struct[:-1],header=surf_int_header[:-1])
-    if len(volu_int_values)>0:
-        numpy.savetxt(configs['output']['res_fldr']+'volume_integrals.csv',\
-                      volu_int_values,volu_int_dat_struct,header=volu_int_header[:-1])
-else:
-    if rank==0: print('No variables have been defined for integration!')
+#     for intvar in list(my_integr_vars.keys()):
+#         int_types = ( intvar.split('_')[-1] )
+#         if int_types[:4] == 'surf':
+#             surf_int_values.append(my_integr_vars[intvar])
+#             surf_int_header += intvar+','; surf_int_dat_struct += '%e,'
+#         else:
+#             volu_int_values.append(my_integr_vars[intvar])
+#             volu_int_header += intvar+','; volu_int_dat_struct += '%e,'
+#     surf_int_values = numpy.array(surf_int_values)
+#     surf_int_values = surf_int_values.transpose()
+#     volu_int_values = numpy.array(volu_int_values)
+#     volu_int_values = volu_int_values.transpose()
+#     if len(surf_int_values)>0:
+#         numpy.savetxt(configs['output']['res_fldr']+'surface_integrals.csv',\
+#                       surf_int_values,surf_int_dat_struct[:-1],header=surf_int_header[:-1])
+#     if len(volu_int_values)>0:
+#         numpy.savetxt(configs['output']['res_fldr']+'volume_integrals.csv',\
+#                       volu_int_values,volu_int_dat_struct,header=volu_int_header[:-1])
+# else:
+#     if rank==0: print('No variables have been defined for integration!')
 
 
 

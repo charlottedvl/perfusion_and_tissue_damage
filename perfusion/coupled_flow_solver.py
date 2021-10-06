@@ -538,7 +538,7 @@ if coupled_model:
         guessPressure = numpy.array([node.Node.WKNode.Pressure for node in Patient.Perfusion.CouplingPoints])
         stop = [0]
         sol = scipy.optimize.root(coupledmodel, guessPressure, args=(stop,), method='krylov',
-                                  options={'disp': True, 'maxiter': 5, 'ftol': 1e-9})
+                                  options={'disp': True, 'maxiter': 5, 'ftol': configs['simulation']['cpld_conv_crit']})
         # coupledmodel(guessPressure, stop)
         stop = [1]
         coupledmodel(sol.x, stop)
@@ -594,11 +594,11 @@ with contextlib.redirect_stdout(None):
                               model_type=compartmental_model)
     myResults={}
     suppl_fcts.compute_my_variables(p,K1,K2,K3,beta12,beta23,p_venous,Vp,Vvel,K2_space,configs, \
-                                    myResults,compartmental_model,rank,save_data=False)
+                                    myResults,compartmental_model,rank)
     my_integr_vars = {}
     surf_int_values, surf_int_header, volu_int_values, volu_int_header = \
         suppl_fcts.compute_integral_quantities(configs,myResults,my_integr_vars, \
-                                                mesh,subdomains,boundaries,rank,save_data=False)
+                                                mesh,subdomains,boundaries,rank)
     
     # p1, p2, p3 = p.split()
     # # compute velocities
@@ -616,7 +616,7 @@ with contextlib.redirect_stdout(None):
     # Pressure from the perfusion model
     PressureAtBoundary = my_integr_vars['press1_surfave'][2:]
 
-    perfusion_stroke = project(abs(beta12 * (p1 - p2) * 6000), K2_space, solver_type='bicgstab', preconditioner_type='amg')
+    # perfusion_stroke = project(abs(beta12 * (p1 - p2) * 6000), K2_space, solver_type='bicgstab', preconditioner_type='amg')
 comm.Barrier()
 
 if rank == 0:

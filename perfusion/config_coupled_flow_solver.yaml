@@ -52,6 +52,8 @@ simulation:
   model_type: a
   # finite element approximation order used for the velocity field
   vel_order: 1
+  # convergence criteria of the coupled model
+  cpld_conv_crit: 1.0e-4
 optimisation:
   # parameters to be optimised to match pre-defined perfusion values
   parameters: ['gmowm_beta_rat','K1gm_ref']

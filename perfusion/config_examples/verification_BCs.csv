@@ -1,0 +1,3 @@
+# cluster ID,Q [ml/s],p [Pa],feeding artery,BC: p->0 or Q->1
+3,0.0,10000.0,2,0
+4,0.0,8000.00,3,0

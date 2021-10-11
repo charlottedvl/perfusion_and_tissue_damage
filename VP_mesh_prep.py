@@ -35,6 +35,8 @@ parser.add_argument("--age", help="age of the virtual patient as a float",
 parser.add_argument("--sex", help="sex of the virtual patient as an integer (1-male; 2-female)",
                 type=int, default=1)
 parser.add_argument('--forced', help="must be used to ensure that result folders are overwritten", dest='forced', action='store_true')
+parser.add_argument('--res_fldr', help="output directory", type=str,
+        default=None)
 
 if parser.parse_args().bsl_msh_fldr[-1] != '/':
     bsl_msh_fldr = parser.parse_args().bsl_msh_fldr+'/'
@@ -58,7 +60,12 @@ interpolator = NearestNDInterpolator(list(zip(age, sex)), Maffs)
 Maff = interpolator(parser.parse_args().age,parser.parse_args().sex)
 
 #%% copy and modify files
-res_fldr = bsl_msh_fldr[:-1] + '_age' + '{:04.2f}'.format(parser.parse_args().age) + '_sex' + '{:1d}'.format(parser.parse_args().sex) + '/'
+if parser.parse_args().res_fldr is None:
+    res_fldr = bsl_msh_fldr[:-1] + '_age' + '{:04.2f}'.format(parser.parse_args().age) + '_sex' + '{:1d}'.format(parser.parse_args().sex) + '/'
+else:
+    res_fldr = parser.parse_args().res_fldr
+    res_fldr = res_fldr + '/' if res_fldr[-1] != '/' else res_fldr
+
 fldr_exist = os.path.exists(res_fldr)
 if fldr_exist and parser.parse_args().forced!=True:
     print('result folder already exists - script terminating')

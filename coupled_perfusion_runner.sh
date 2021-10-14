@@ -1,4 +1,5 @@
-# this shell script assumes that ../1d-blood-flow exists and the corresponding pythong modules have been insutalled. To this end execute 'sudo python3 setup.py install' in the ../1d-blood-flow folder.
+# this shell script assumes that ../bloodflow exists and the corresponding python modules have been installed. To this end execute 'sudo python3 setup.py install' in the ../bloodflow folder.
+# Python environment required with all modules for the bloodflow and perfusion models.
 
 if [ -d "./brain_meshes" ] 
 then
@@ -17,9 +18,13 @@ else
     mpirun -n 6 python3 permeability_initialiser.py
 fi
 
+cp -TR ../../bloodflow/DataFiles/DefaultPatient "./patient_0/"
+python3 ../../bloodflow/Blood_Flow_1D/GenerateBloodflowFiles.py "./patient_0/"
+python3 convert_msh2hdf5.py "./patient_0/bf_sim/clustered_mesh.msh"  "./patient_0/bf_sim/clustered_mesh"
 
-cp -r ../../1d-blood-flow/Generated_Patients/patient_0 ./patient_0
-cp ../brain_meshes/b0000/clustered* ./patient_0/bf_sim/
-
+rm -f "./patient_0/bf_sim/Coupled_resistance.csv"
 mpirun -n 6 python3 coupled_flow_solver.py
+cp -TR  ./patient_0/perfusion "./patient_0/perfusion_healthy"
 mpirun -n 6 python3 coupled_flow_solver.py
+cp -TR ./patient_0/perfusion "./patient_0/perfusion_stroke"
+python3 infarct_calculation_thresholds.py --baseline "./patient_0/perfusion_healthy/perfusion.xdmf" --occluded "./patient_0/perfusion_stroke/perfusion.xdmf"

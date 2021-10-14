@@ -32,8 +32,9 @@ import suppl_fcts
 import finite_element_fcts as fe_mod
 
 import sys
+
 sys.path.insert(0, "/app/bloodflow/")  # should not be necessary if installed already
-from Blood_Flow_1D import Patient, Results, GeneralFunctions
+from Blood_Flow_1D import Patient, Results, GeneralFunctions, Constants
 import contextlib
 import scipy.optimize
 
@@ -75,11 +76,11 @@ beta12gm, beta23gm, gmowm_beta_rat = \
     configs['physical']['beta12gm'], configs['physical']['beta23gm'], configs['physical']['gmowm_beta_rat']
 
 ## 1-D blood flow model
-patient_folder = "/".join(configs['input']['inlet_boundary_file'].split("/")[:-2]) + "/"  # assume boundary file is in bf_sim folder
+patient_folder = "/".join(
+    configs['input']['inlet_boundary_file'].split("/")[:-2]) + "/"  # assume boundary file is in bf_sim folder
 coupled_resistance_file = patient_folder + 'bf_sim/Coupled_resistance.csv'
 
 # run 1-D blood flow model and update boundary file
-coarseCollaterals = True
 clotactive = False
 
 if rank == 0:
@@ -94,6 +95,7 @@ if rank == 0:
     print(f"\033[91mFriction constant set to 8 currently.\033[m")
 
     # coarse collaterals
+    coarseCollaterals = True if Patient.ModelParameters["coarse_collaterals_number"] > 0.0 else False
     if coarseCollaterals:
         Patient.Topology.coarse_collaterals_number = Patient.ModelParameters["coarse_collaterals_number"]
         # load mapping
@@ -106,6 +108,10 @@ if rank == 0:
             cp.Node.connected_cp = [Patient.Perfusion.CouplingPoints[connected_region].Node for connected_region in NN]
 
     Patient.Initiate1DSteadyStateModel()  # run with original wk elements
+    # rigid walls
+    # for node in Patient.Topology.Nodes:
+    #     node.SetPressureAreaEquation_rigid()
+
     Patient.Run1DSteadyStateModel(model="Linear", tol=1e-12, clotactive=clotactive, PressureInlets=True,
                                   coarseCollaterals=coarseCollaterals, frictionconstant=frictionconstant,
                                   scale_resistance=False)
@@ -146,12 +152,13 @@ if rank == 0:
 
 # set coupling coefficients
 beta12, beta23 = suppl_fcts.scale_coupling_coefficients(subdomains, \
-                                beta12gm, beta23gm, gmowm_beta_rat, \
-                                K2_space, configs['output']['res_fldr'], model_type = compartmental_model)
+                                                        beta12gm, beta23gm, gmowm_beta_rat, \
+                                                        K2_space, configs['output']['res_fldr'],
+                                                        model_type=compartmental_model)
 
 K1, K2, K3 = suppl_fcts.scale_permeabilities(subdomains, K1, K2, K3, \
-                                  K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat, \
-                                  configs['output']['res_fldr'], model_type = compartmental_model)
+                                             K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat, \
+                                             configs['output']['res_fldr'], model_type=compartmental_model)
 end1 = time.time()
 
 # %% SET UP FINITE ELEMENT SOLVER AND SOLVE GOVERNING EQUATIONS
@@ -165,7 +172,8 @@ exit_program = False
 if not GeneralFunctions.is_non_zero_file(coupled_resistance_file):
     # set up finite element solver
     LHS, RHS, sigma1, sigma2, sigma3, BCs = \
-        fe_mod.set_up_fe_solver2(mesh, subdomains, boundaries, Vp, v_1, v_2, v_3, p, p1, p2, p3, K1, K2, K3, beta12, beta23,
+        fe_mod.set_up_fe_solver2(mesh, subdomains, boundaries, Vp, v_1, v_2, v_3, p, p1, p2, p3, K1, K2, K3, beta12,
+                                 beta23,
                                  p_arterial, p_venous, configs['input']['read_inlet_boundary'],
                                  configs['input']['inlet_boundary_file'],
                                  configs['input']['inlet_BC_type'], model_type=compartmental_model)
@@ -183,97 +191,23 @@ if not GeneralFunctions.is_non_zero_file(coupled_resistance_file):
     if rank == 0:
         print('Step 3: Computing velocity fields, saving results, and extracting some field variables')
     start3 = time.time()
-    
-    myResults={}
-    suppl_fcts.compute_my_variables(p,K1,K2,K3,beta12,beta23,p_venous,Vp,Vvel,K2_space,configs, \
-                                    myResults,compartmental_model,rank,save_data=False)
+
+    myResults = {}
+    suppl_fcts.compute_my_variables(p, K1, K2, K3, beta12, beta23, p_venous, Vp, Vvel, K2_space, configs, \
+                                    myResults, compartmental_model, rank)
     my_integr_vars = {}
     surf_int_values, surf_int_header, volu_int_values, volu_int_header = \
-        suppl_fcts.compute_integral_quantities(configs,myResults,my_integr_vars, \
-                                               mesh,subdomains,boundaries,rank,save_data=False)
-    
-    # if compartmental_model == 'acv':
-    #     p1, p2, p3 = p.split()
-    #     perfusion = project(beta12 * (p1 - p2) * 6000, K2_space, solver_type='bicgstab', preconditioner_type='amg')
-
-    #     # compute velocities
-    #     vel1 = project(-K1 * grad(p1), Vvel, solver_type='bicgstab', preconditioner_type='amg')
-    #     vel2 = project(-K2 * grad(p2), Vvel, solver_type='bicgstab', preconditioner_type='amg')
-    #     vel3 = project(-K3 * grad(p3), Vvel, solver_type='bicgstab', preconditioner_type='amg')
-
-    #     ps = [p1, p2, p3]
-    #     vels = [vel1, vel2, vel3]
-    #     Ks = [K1, K2, K3]
-
-    #     vars2save = [ps, vels, Ks]
-    #     fnames = ['press', 'vel', 'K']
-    #     for idx, fname in enumerate(fnames):
-    #         for i in range(3):
-    #             with XDMFFile(configs['output']['res_fldr'] + fname + str(i + 1) + '.xdmf') as myfile:
-    #                 myfile.write_checkpoint(vars2save[idx][i], fname + str(i + 1), 0, XDMFFile.Encoding.HDF5, False)
-
-    #     with XDMFFile(configs['output']['res_fldr'] + 'beta12.xdmf') as myfile:
-    #         myfile.write_checkpoint(beta12, "beta12", 0, XDMFFile.Encoding.HDF5, False)
-    #     with XDMFFile(configs['output']['res_fldr'] + 'beta23.xdmf') as myfile:
-    #         myfile.write_checkpoint(beta23, "beta23", 0, XDMFFile.Encoding.HDF5, False)
-    #     with XDMFFile(configs['output']['res_fldr'] + 'perfusion.xdmf') as myfile:
-    #         myfile.write_checkpoint(perfusion, 'perfusion', 0, XDMFFile.Encoding.HDF5, False)
-
-    #     fheader = 'FE degree, K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat, beta12gm, beta23gm, gmowm_beta_rat'
-    #     dom_props = numpy.array(
-    #         [configs['simulation']['fe_degr'], K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat, beta12gm, beta23gm,
-    #          gmowm_beta_rat])
-    #     numpy.savetxt(configs['output']['res_fldr'] + 'dom_props.csv', [dom_props], "%d,%e,%e,%e,%e,%e,%e,%e",
-    #                   header=fheader)
-    # elif compartmental_model == 'a':
-    #     perfusion = project(beta12 * (p - Constant(p_venous)) * 6000, K2_space, solver_type='bicgstab',
-    #                         preconditioner_type='amg')
-    #     vel1 = project(-K1 * grad(p), Vvel, solver_type='bicgstab', preconditioner_type='amg')
-    #     vars2save = [p, vel1, K1, beta12, perfusion]
-    #     fnames = ['press1', 'vel1', 'K1', 'beta12', 'perfusion']
-    #     for idx, fname in enumerate(fnames):
-    #         with XDMFFile(configs['output']['res_fldr'] + fname + '.xdmf') as myfile:
-    #             myfile.write_checkpoint(vars2save[idx], fname, 0, XDMFFile.Encoding.HDF5, False)
-    # else:
-    #     raise Exception("unknown model type: " + compartmental_model)
-
-    # # obtain fluxes (ID, surface area, flux1, flux2, flux3)
-    # fluxes, surf_p_values = suppl_fcts.surface_ave(mesh, boundaries, vels, ps)
-
-    # # obtain some characteristic values within the domain (ID, volume, average, min, max)
-    # vol_p_values, vol_vel_values = suppl_fcts.vol_ave(mesh, subdomains, ps, vels)
+        suppl_fcts.compute_integral_quantities(configs, myResults, my_integr_vars, \
+                                               mesh, subdomains, boundaries, rank)
 
     # Flow rate from the perfusion model (sign to match 1-d bf model, positive flow towards the brain)
     FlowRateAtBoundary = my_integr_vars['vel1_surfint'][2:] * -1
-    FlowRateAtBoundary = numpy.append(FlowRateAtBoundary,-numpy.sum(my_integr_vars['vel1_surfint'][:]))
+    FlowRateAtBoundary = numpy.append(FlowRateAtBoundary, -numpy.sum(my_integr_vars['vel1_surfint'][:]))
     # Pressure from the perfusion model
     PressureAtBoundary = my_integr_vars['press1_surfave'][2:]
     sys.stdout.flush()
 
-    # if configs['output']['comp_ave'] == True:
-    #     # obtain fluxes (ID, surface area, flux1, flux2, flux3)
-    #     fluxes, surf_p_values = suppl_fcts.surface_ave(mesh, boundaries, vels, ps)
-    #     # obtain some characteristic values within the domain (ID, volume, average, min, max)
-    #     vol_p_values, vol_vel_values = suppl_fcts.vol_ave(mesh, subdomains, ps, vels)
-
-    #     if rank == 0:
-    #         fheader = 'surface ID, Area [mm^2], Qa [mm^3/s], Qc [mm^3/s], Qv [mm^3/s]'
-    #         numpy.savetxt(configs['output']['res_fldr'] + 'fluxes.csv', fluxes, "%d,%e,%e,%e,%e", header=fheader)
-
-    #         fheader = 'surface ID, Area [mm^2], pa [Pa], pc [Pa], pv [Pa]'
-    #         numpy.savetxt(configs['output']['res_fldr'] + 'surf_p_values.csv', surf_p_values, "%d,%e,%e,%e,%e",
-    #                       header=fheader)
-
-    #         fheader = 'volume ID, Volume [mm^3], pa [Pa], pc [Pa], pv [Pa]'
-    #         numpy.savetxt(configs['output']['res_fldr'] + 'vol_p_values.csv', vol_p_values, "%e,%e,%e,%e,%e",
-    #                       header=fheader)
-
-    #         fheader = 'volume ID, Volume [mm^3], ua [m/s], uc [m/s], uv [m/s]'
-    #         numpy.savetxt(configs['output']['res_fldr'] + 'vol_vel_values.csv', vol_vel_values, "%d,%e,%e,%e,%e",
-    #                       header=fheader)
-
     start_r = time.time()
-
     if rank == 0:
         perfusion_target = 600
         total_surface_flow = 600
@@ -290,7 +224,8 @@ if not GeneralFunctions.is_non_zero_file(coupled_resistance_file):
             Patient.Topology.InletNodes[0][0].InletFlowRate = total_surface_flow * 1e-6 / 60  # m^3
             perfusion_target = total_surface_flow  # 600
 
-        print(f"\tTotal cerebral flow:{sum([cp.Node.WKNode.AccumulatedFlowRate for cp in Patient.Perfusion.CouplingPoints]) * 60} mL/min")
+        print(
+            f"\tTotal cerebral flow:{sum([cp.Node.WKNode.AccumulatedFlowRate for cp in Patient.Perfusion.CouplingPoints]) * 60} mL/min")
         print(f"\tInlet pressure:{Patient.Topology.InletNodes[0][0].Pressure} Pa")
         print(f"\tInlet flow:{Patient.Topology.InletNodes[0][0].FlowRate} mL/s")
         for index, node in enumerate(Patient.Topology.OutletNodes):
@@ -304,7 +239,7 @@ if not GeneralFunctions.is_non_zero_file(coupled_resistance_file):
         # update boundary condition
         for index, cp in enumerate(Patient.Perfusion.CouplingPoints):
             cp.Node.TargetFlow = FlowRateAtBoundary[
-                                      index] * 1e-3  # * correction  # todo scaling to compensate for low bc resolution
+                                     index] * 1e-3  # * correction  # todo scaling to compensate for low bc resolution
 
 
         def estimate_resistance(patient):
@@ -320,11 +255,12 @@ if not GeneralFunctions.is_non_zero_file(coupled_resistance_file):
                     cp.Node.R1 = 0
                 with contextlib.redirect_stdout(None):
                     patient.Run1DSteadyStateModel(model="Linear", tol=1e-12, clotactive=clotactive, PressureInlets=True,
-                                                  coarseCollaterals=coarseCollaterals, frictionconstant=frictionconstant,
+                                                  coarseCollaterals=coarseCollaterals,
+                                                  frictionconstant=frictionconstant,
                                                   scale_resistance=False)
                 relative_residual = max(
                     [abs(node.Node.R1 + node.Node.R2 - oldR[index]) / (node.Node.R1 + node.Node.R2) for index, node in
-                      enumerate(patient.Perfusion.CouplingPoints)])
+                     enumerate(patient.Perfusion.CouplingPoints)])
                 print(f'\tMax relative residual1: {relative_residual}')
                 sys.stdout.flush()
 
@@ -347,7 +283,8 @@ if not GeneralFunctions.is_non_zero_file(coupled_resistance_file):
                 Patient.Topology.InletNodes[0][0].InletPressure += difference_surface_pressure
                 with contextlib.redirect_stdout(None):
                     Patient.Run1DSteadyStateModel(model="Linear", tol=1e-12, clotactive=clotactive, PressureInlets=True,
-                                                  coarseCollaterals=coarseCollaterals, frictionconstant=frictionconstant,
+                                                  coarseCollaterals=coarseCollaterals,
+                                                  frictionconstant=frictionconstant,
                                                   scale_resistance=True)
                 pressure_minimal = min([cp.Node.Pressure for cp in Patient.Perfusion.CouplingPoints])
             estimate_resistance(Patient)
@@ -363,7 +300,8 @@ if not GeneralFunctions.is_non_zero_file(coupled_resistance_file):
         estimate_resistance(Patient)
 
         pressure_diff = Patient.Topology.InletNodes[0][0].Pressure / Patient.Topology.InletNodes[0][0].InletPressure
-        flow_rate_diff = 1e-6 * Patient.Topology.InletNodes[0][0].FlowRate / Patient.Topology.InletNodes[0][0].InletFlowRate
+        flow_rate_diff = 1e-6 * Patient.Topology.InletNodes[0][0].FlowRate / Patient.Topology.InletNodes[0][
+            0].InletFlowRate
         while abs(pressure_diff - 1) > 1e-6 or abs(flow_rate_diff - 1) > 1e-6:
             # update total resistance to maintain inlet boundary conditions.
             with contextlib.redirect_stdout(None):
@@ -394,7 +332,7 @@ if not GeneralFunctions.is_non_zero_file(coupled_resistance_file):
             for index, cp in enumerate(Patient.Perfusion.CouplingPoints):
                 f.write("%d,%.12g,%.12g,%.12g,%.12g,%.12g,%.12g,%.12g\n" % (
                     # fluxes[:, 0][2:][index],
-                    surf_int_values[:,0][2:][index],
+                    surf_int_values[:, 0][2:][index],
                     cp.Node.R1 + cp.Node.R2,
                     cp.Node.Pressure,
                     cp.Node.WKNode.Pressure,
@@ -464,6 +402,7 @@ exit_program = comm.bcast(exit_program, root=0)
 if exit_program:
     sys.exit()
 
+
 # %% RUN COUPLED MODEL
 def coupledmodel(P, stopp):
     stopp[0] = comm.bcast(stopp[0], root=0)
@@ -482,33 +421,24 @@ def coupledmodel(P, stopp):
 
         LHS, RHS, sigma1, sigma2, sigma3, BCs = \
             fe_mod.set_up_fe_solver2(mesh, subdomains, boundaries, Vp, v_1, v_2, v_3,
-                                      p, p1, p2, p3, K1, K2, K3, beta12, beta23,
-                                      p_arterial, p_venous,
-                                      configs['input']['read_inlet_boundary'], configs['input']['inlet_boundary_file'],
-                                      configs['input']['inlet_BC_type'], model_type=compartmental_model)
+                                     p, p1, p2, p3, K1, K2, K3, beta12, beta23,
+                                     p_arterial, p_venous,
+                                     configs['input']['read_inlet_boundary'], configs['input']['inlet_boundary_file'],
+                                     configs['input']['inlet_BC_type'], model_type=compartmental_model)
 
         p = fe_mod.solve_lin_sys(Vp, LHS, RHS, BCs, lin_solver, precond, rtol, mon_conv, init_sol,
-                                  model_type=compartmental_model)
-        myResults={}
-        suppl_fcts.compute_my_variables(p,K1,K2,K3,beta12,beta23,p_venous,Vp,Vvel,K2_space,configs, \
-                                        myResults,compartmental_model,rank,save_data=False)
+                                 model_type=compartmental_model)
+        myResults = {}
+        suppl_fcts.compute_my_variables(p, K1, K2, K3, beta12, beta23, p_venous, Vp, Vvel, K2_space, configs, \
+                                        myResults, compartmental_model, rank, save_data=False)
         my_integr_vars = {}
         surf_int_values, surf_int_header, volu_int_values, volu_int_header = \
-            suppl_fcts.compute_integral_quantities(configs,myResults,my_integr_vars, \
-                                                   mesh,subdomains,boundaries,rank,save_data=False)
-        # p1, p2, p3 = p.split()
-        # # compute velocities
-        # vel1 = project(-K1 * grad(p1), Vvel, solver_type='bicgstab', preconditioner_type='amg')
-        # vel2 = project(-K2 * grad(p2), Vvel, solver_type='bicgstab', preconditioner_type='amg')
-        # vel3 = project(-K3 * grad(p3), Vvel, solver_type='bicgstab', preconditioner_type='amg')
-        # ps = [p1, p2, p3]
-        # vels = [vel1, vel2, vel3]
-        # # get surface values
-        # fluxes, surf_p_values = suppl_fcts.surface_ave(mesh, boundaries, vels, ps)
+            suppl_fcts.compute_integral_quantities(configs, myResults, my_integr_vars, \
+                                                   mesh, subdomains, boundaries, rank, save_data=False)
 
         # Flow rate from the perfusion model (sign to match 1-d bf model, positive flow towards the brain)
         FlowRateAtBoundary = my_integr_vars['vel1_surfint'][2:] * -1
-        FlowRateAtBoundary = numpy.append(FlowRateAtBoundary,-numpy.sum(my_integr_vars['vel1_surfint'][:]))
+        FlowRateAtBoundary = numpy.append(FlowRateAtBoundary, -numpy.sum(my_integr_vars['vel1_surfint'][:]))
         # Pressure from the perfusion model
         # PressureAtBoundary = my_integr_vars['press1_surfave'][2:]
 
@@ -529,8 +459,8 @@ def coupledmodel(P, stopp):
 
 clotactive = True
 # Find the pressure at coupling points (identical to the surface regions) such that flowrate of the models are equal.
-coupled_model = True
-number_coupling_points = suppl_fcts.region_label_assembler(boundaries)[1]-3
+coupled_model = configs['simulation']['coupled_model'] if 'coupled_model' in configs['simulation'] else True
+number_coupling_points = suppl_fcts.region_label_assembler(boundaries)[1] - 3
 if coupled_model:
     if rank == 0:
         print("\033[96mRunning two-way coupling\033[m")
@@ -538,39 +468,71 @@ if coupled_model:
         guessPressure = numpy.array([node.Node.WKNode.Pressure for node in Patient.Perfusion.CouplingPoints])
         stop = [0]
         sol = scipy.optimize.root(coupledmodel, guessPressure, args=(stop,), method='krylov',
-                                  options={'disp': True, 'maxiter': 5, 'ftol': configs['simulation']['cpld_conv_crit']})
-        # coupledmodel(guessPressure, stop)
+                                  options={'disp': True, 'maxiter': 5,
+                                           'fatol': configs['simulation']['cpld_conv_crit']})
         stop = [1]
         coupledmodel(sol.x, stop)
-        print(sol)
         sys.stdout.flush()
     else:
         stop = [0]
         guessPressure = numpy.zeros(number_coupling_points)
         while stop[0] == 0:
             coupledmodel(guessPressure, stop)
-else:# uncoupled
+else:  # decoupled
     if rank == 0:
-        print("Updating model to be uncoupled.")
+        print("\033[96mRunning decoupled model\033[m")
         sys.stdout.flush()
-        clotactive = False  # update resistances.
-        Patient.UpdatePressureCouplingPoints(Patient.ModelParameters["OUT_PRESSURE"])
-        estimate_resistance(Patient)
-        Patient.Run1DSteadyStateModel(model="Linear", tol=1e-10, clotactive=clotactive, PressureInlets=True,
-                                      FlowRateOutlets=False, coarseCollaterals=coarseCollaterals,
-                                      frictionconstant=frictionconstant, scale_resistance=False)
-        for outlet in Patient.Topology.OutletNodes:
-            if abs(outlet.FlowRate < 1e-6):
-                outlet.Pressure = Patient.ModelParameters["OUT_PRESSURE"]
-            else:
-                outlet.Pressure = p_arterial
-        Patient.Perfusion.UpdateMappedRegionsFlowdata(configs['input']['inlet_boundary_file'])
+        # decoupled, based on previous calibration, outlet resistance is dp/Q where Q is based on the surface flow and dp is the surface pressure - venous pressure
+        # Update outlet pressure based on current flow rate
+        clotactive = False
+        with contextlib.redirect_stdout(None):
+            Patient.Run1DSteadyStateModel(model="Linear", tol=1e-10, clotactive=clotactive, PressureInlets=True,
+                                          FlowRateOutlets=False, coarseCollaterals=coarseCollaterals,
+                                          frictionconstant=frictionconstant, scale_resistance=False)
 
-        Patient.Run1DSteadyStateModel(model="Linear", tol=1e-10, clotactive=clotactive, PressureInlets=True,
-                                      FlowRateOutlets=False, coarseCollaterals=coarseCollaterals,
-                                      frictionconstant=frictionconstant, scale_resistance=False)
-        configs['input']['read_inlet_boundary'] = "True"
-        configs['input']['inlet_BC_type'] = "NBC"
+        brain_resistances = [(p_arterial - p_venous) / (Node.Node.WKNode.AccumulatedFlowRate * 1e-6) for index, Node in
+                             enumerate(Patient.Perfusion.CouplingPoints)]
+        clotactive = True
+
+
+        def optim(pressure):
+            Patient.UpdatePressureCouplingPoints(pressure)
+            with contextlib.redirect_stdout(None):
+                Patient.Run1DSteadyStateModel(model="Linear", tol=1e-10, clotactive=clotactive, PressureInlets=True,
+                                              FlowRateOutlets=False, coarseCollaterals=coarseCollaterals,
+                                              frictionconstant=frictionconstant, scale_resistance=False)
+
+            estimated_pressure = [brain_resistances[index] * Node.Node.WKNode.AccumulatedFlowRate * 1e-6 + p_venous for
+                                  index, Node in
+                                  enumerate(Patient.Perfusion.CouplingPoints)]
+            diff = [Node.Node.WKNode.Pressure - estimated_pressure[index] for index, Node in
+                    enumerate(Patient.Perfusion.CouplingPoints)]
+            return diff
+
+
+        guessPressure = numpy.array([node.Node.WKNode.Pressure for node in Patient.Perfusion.CouplingPoints])
+        sol = scipy.optimize.root(optim, guessPressure, method='krylov',
+                                  options={'disp': True, 'maxiter': 50,
+                                           'fatol': configs['simulation']['cpld_conv_crit'],
+                                           'jac_options': {'rdiff': 1e-6}})
+
+        with open(configs['input']['inlet_boundary_file'], 'w') as f:
+            f.write("# region I,Q [ml/s],p [Pa],feeding artery ID,BC: p->0 or Q->1\n")
+            for index, i in enumerate(Patient.Perfusion.CouplingPoints):
+                flow_rate = i.Node.WKNode.AccumulatedFlowRate
+                pressure = i.Node.WKNode.Pressure
+                boundary_type = 1 if flow_rate < 1e-6 else 0
+                f.write("%d,%.16g,%.16g,%d,%d\n" % (
+                    Constants.StartClusteringIndex + index, flow_rate, pressure,
+                    Constants.MajorIDdict[i.Node.MajorVesselID], boundary_type))
+    configs['input']['inlet_BC_type'] = "mixed"
+
+if rank == 0:
+    print(sol)
+    sys.stdout.flush()
+    with open(patient_folder + "OptimizeResult.txt", 'w') as f:
+        for key, value in sol.items():
+            f.write('%s:%s\n' % (key, value))
 
 comm.Barrier()
 
@@ -586,33 +548,23 @@ with contextlib.redirect_stdout(None):
 
     LHS, RHS, sigma1, sigma2, sigma3, BCs = \
         fe_mod.set_up_fe_solver2(mesh, subdomains, boundaries, Vp, v_1, v_2, v_3, p, p1, p2, p3, K1, K2, K3, beta12,
-                                  beta23, p_arterial, p_venous,
-                                  configs['input']['read_inlet_boundary'], configs['input']['inlet_boundary_file'],
-                                  configs['input']['inlet_BC_type'], model_type=compartmental_model)
+                                 beta23, p_arterial, p_venous,
+                                 configs['input']['read_inlet_boundary'], configs['input']['inlet_boundary_file'],
+                                 configs['input']['inlet_BC_type'], model_type=compartmental_model)
 
     p = fe_mod.solve_lin_sys(Vp, LHS, RHS, BCs, lin_solver, precond, rtol, mon_conv, init_sol,
-                              model_type=compartmental_model)
-    myResults={}
-    suppl_fcts.compute_my_variables(p,K1,K2,K3,beta12,beta23,p_venous,Vp,Vvel,K2_space,configs, \
-                                    myResults,compartmental_model,rank)
+                             model_type=compartmental_model)
+    myResults = {}
+    suppl_fcts.compute_my_variables(p, K1, K2, K3, beta12, beta23, p_venous, Vp, Vvel, K2_space, configs, \
+                                    myResults, compartmental_model, rank)
     my_integr_vars = {}
     surf_int_values, surf_int_header, volu_int_values, volu_int_header = \
-        suppl_fcts.compute_integral_quantities(configs,myResults,my_integr_vars, \
-                                                mesh,subdomains,boundaries,rank)
-    
-    # p1, p2, p3 = p.split()
-    # # compute velocities
-    # vel1 = project(-K1 * grad(p1), Vvel, solver_type='bicgstab', preconditioner_type='amg')
-    # vel2 = project(-K2 * grad(p2), Vvel, solver_type='bicgstab', preconditioner_type='amg')
-    # vel3 = project(-K3 * grad(p3), Vvel, solver_type='bicgstab', preconditioner_type='amg')
-    # ps = [p1, p2, p3]
-    # vels = [vel1, vel2, vel3]
-    # # get surface values
-    # fluxes, surf_p_values = suppl_fcts.surface_ave(mesh, boundaries, vels, ps)
-    
+        suppl_fcts.compute_integral_quantities(configs, myResults, my_integr_vars, \
+                                               mesh, subdomains, boundaries, rank)
+
     # Flow rate from the perfusion model (sign to match 1-d bf model, positive flow towards the brain)
     FlowRateAtBoundary = my_integr_vars['vel1_surfint'][2:] * -1
-    FlowRateAtBoundary = numpy.append(FlowRateAtBoundary,-numpy.sum(my_integr_vars['vel1_surfint'][:]))
+    FlowRateAtBoundary = numpy.append(FlowRateAtBoundary, -numpy.sum(my_integr_vars['vel1_surfint'][:]))
     # Pressure from the perfusion model
     PressureAtBoundary = my_integr_vars['press1_surfave'][2:]
 
@@ -648,7 +600,7 @@ if rank == 0:
         for index, cp in enumerate(Patient.Perfusion.CouplingPoints):
             f.write("%d,%.12g,%.12g,%.12g,%.12g,%.12g,%.12g,%.12g\n" % (
                 # fluxes[:, 0][2:][index],
-                surf_int_values[:,0][2:][index],
+                surf_int_values[:, 0][2:][index],
                 cp.Node.R1 + cp.Node.R2,
                 cp.Node.Pressure,
                 cp.Node.WKNode.Pressure,
@@ -656,58 +608,6 @@ if rank == 0:
                 cp.Node.OldFlow,
                 cp.Node.WKNode.AccumulatedFlowRate,
                 FlowRateAtBoundary[index] * 1e-3))
-
-myResults={}
-suppl_fcts.compute_my_variables(p,K1,K2,K3,beta12,beta23,p_venous,Vp,Vvel,K2_space,configs, \
-                                myResults,compartmental_model,rank)
-my_integr_vars = {}
-surf_int_values, surf_int_header, volu_int_values, volu_int_header = \
-    suppl_fcts.compute_integral_quantities(configs,myResults,my_integr_vars, \
-                                           mesh,subdomains,boundaries,rank)
-# if compartmental_model == 'acv':
-#     vars2save = [ps, vels]
-#     fnames = ['press', 'vel']
-#     for idx, fname in enumerate(fnames):
-#         for i in range(3):
-#             with XDMFFile(configs['output']['res_fldr'] + fname + str(i + 1) + '_stroke.xdmf') as myfile:
-#                 myfile.write_checkpoint(vars2save[idx][i], fname + str(i + 1), 0, XDMFFile.Encoding.HDF5, False)
-
-#     with XDMFFile(configs['output']['res_fldr']+'perfusion_stroke.xdmf') as myfile:
-#         myfile.write_checkpoint(perfusion_stroke, 'perfusion', 0, XDMFFile.Encoding.HDF5, False)
-
-# elif compartmental_model == 'a':
-#     perfusion = project(beta12 * (p - Constant(p_venous)) * 6000, K2_space, solver_type='bicgstab',
-#                         preconditioner_type='amg')
-#     vel1 = project(-K1 * grad(p), Vvel, solver_type='bicgstab', preconditioner_type='amg')
-#     vars2save = [p, vel1, perfusion]
-#     fnames = ['press1', 'vel1', 'perfusion']
-#     for idx, fname in enumerate(fnames):
-#         with XDMFFile(configs['output']['res_fldr'] + fname + '_stroke.xdmf') as myfile:
-#             myfile.write_checkpoint(vars2save[idx], fname, 0, XDMFFile.Encoding.HDF5, False)
-# else:
-#     raise Exception("unknown model type: " + compartmental_model)
-
-# if configs['output']['comp_ave'] == True:
-#     # obtain fluxes (ID, surface area, flux1, flux2, flux3)
-#     fluxes, surf_p_values = suppl_fcts.surface_ave(mesh, boundaries, vels, ps)
-#     # obtain some characteristic values within the domain (ID, volume, average, min, max)
-#     vol_p_values, vol_vel_values = suppl_fcts.vol_ave(mesh, subdomains, ps, vels)
-
-#     if rank == 0:
-#         fheader = 'surface ID, Area [mm^2], Qa [mm^3/s], Qc [mm^3/s], Qv [mm^3/s]'
-#         numpy.savetxt(configs['output']['res_fldr'] + 'fluxes_stroke.csv', fluxes, "%d,%e,%e,%e,%e", header=fheader)
-
-#         fheader = 'surface ID, Area [mm^2], pa [Pa], pc [Pa], pv [Pa]'
-#         numpy.savetxt(configs['output']['res_fldr'] + 'surf_p_values_stroke.csv', surf_p_values, "%d,%e,%e,%e,%e",
-#                       header=fheader)
-
-#         fheader = 'volume ID, Volume [mm^3], pa [Pa], pc [Pa], pv [Pa]'
-#         numpy.savetxt(configs['output']['res_fldr'] + 'vol_p_values_stroke.csv', vol_p_values, "%e,%e,%e,%e,%e",
-#                       header=fheader)
-
-#         fheader = 'volume ID, Volume [mm^3], ua [m/s], uc [m/s], uv [m/s]'
-#         numpy.savetxt(configs['output']['res_fldr'] + 'vol_vel_values_stroke.csv', vol_vel_values, "%d,%e,%e,%e,%e",
-#                       header=fheader)
 
 end3 = time.time()
 end0 = time.time()

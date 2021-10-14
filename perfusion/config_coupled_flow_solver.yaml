@@ -1,73 +1,42 @@
 input:
-  # inlet boundary condition, Dirichlet (DBC) or Neumann (NBC) or mixed
-  # for mixed option inlet_boundary_file is needed and read_inlet_boundary=true
-  # considered only when read_inlet_boundary = false
-  # otherwise determined based on the inlet boundary file
   inlet_BC_type: DBC
-  # file specifying inlet boundary conditions
   inlet_boundary_file: patient_0/bf_sim/boundary_condition_file.csv
-  # mesh file path
-  mesh_file: patient_0/bf_sim/clustered.xdmf
-  # path of folder containing pre-computed permeability tensor form 
+  mesh_file: patient_0/bf_sim/clustered_mesh.xdmf
   permeability_folder: ../brain_meshes/b0000/permeability/
-  # read inlet boundary file (no-false or yes-true)
-  read_inlet_boundary: True
+  read_inlet_boundary: true
+optimisation:
+  FGtarget: 64.48896831397346
+  FWtarget: 23.88480307924943
+  Fmaxtarget: 80.0
+  Fmintarget: 10.0
+  init_param_range:
+  - - 1
+    - 10
+  - - 0.0001
+    - 0.01
+  method: Nelder-Mead
+  parameters:
+  - gmowm_beta_rat
+  - K1gm_ref
+  random_init: true
 output:
-  # compute pre-determined averages (no-false or yes-true, old implementations)
   comp_ave: True
-  # path of the folder storing results
   res_fldr: patient_0/perfusion/
-  # list of saved variables including any of the following
-  # {'beta12','beta23','K1','K2','K3','perfusion','press1','press2','press3','vel1','vel2','vel3'}
   res_vars: {'press1','vel1','perfusion'}
-  # list of integral variables based on the list of saved variables, examples:
-  # press1_surfint --> surface integral of the arteriole pressure
-  # perfusion_voluave --> volume-averaged perfusion = total flow
-  # vel1_surfint --> surface integral of the arteriole velocity = inlet volumetric flow rate
-  # vel1_magn_voluint --> volume integral of the arteriole velocity magnitude
   integral_vars: {'vel1_surfint','press1_surfave','perfusion_voluave'}
 physical:
-  # arteriole permeability magnitude [mm^3 s g^-1]
-  K1gm_ref: 0.001986975
-  # capillary permeability magnitude [mm^3 s g^-1]
+  K1gm_ref: 0.0021057479999999997
   K2gm_ref: 4.28e-07
-  # venule permeability magnitude [mm^3 s g^-1]
-  K3gm_ref: 0.00397395
-  # arteriole-capillary coupling coefficient [Pa^-1 s^-1]
-  beta12gm: 1.624e-06
-  # capillary-venule coupling coefficient [Pa^-1 s^-1]
-  beta23gm: 5.683e-06
-  # GM/WM coupling coefficient ratio 
-  gmowm_beta_rat: 2.582052
-  # GM/WM permeability ratio 
+  K3gm_ref: 0.0042114959999999995
+  beta12gm: 1.8809282424908927e-06
+  beta23gm: 6.583248848718124e-06
+  gmowm_beta_rat: 2.5648020000000002
   gmowm_perm_rat: 1.0
-  # arteriole pressure, applied only when read_inlet_boundary = false [Pa]
-  p_arterial: 8000.0
-  # fixed venous pressure [Pa]
+  p_arterial: 8000
   p_venous: 0.0
 simulation:
-  # finite element approximation order used for the pressure field
   fe_degr: 2
-  # model type --> 1 arteriole compartment ('a'); arteriole-capillary-venule compartments ('acv')
-  model_type: a
-  # finite element approximation order used for the velocity field
+  model_type: acv
   vel_order: 1
-  # convergence criteria of the coupled model
   cpld_conv_crit: 1.0e-4
-optimisation:
-  # parameters to be optimised to match pre-defined perfusion values
-  parameters: ['gmowm_beta_rat','K1gm_ref']
-  # random initialisation for optimisation
-  random_init: true
-  # range for initial parameters, applied only when random_init = true
-  init_param_range: [[0.1,10],[0.0001,0.01]]
-  # minimum perfusion target [ml/min/100ml]
-  Fmintarget: 0.0
-  # maximum perfusion target [ml/min/100ml]
-  Fmaxtarget: 100.0
-  # GM perfusion target [ml/min/100ml]
-  FGtarget: 55.67
-  # WM perfusion target [ml/min/100ml]
-  FWtarget: 20.62
-  # optimisation method, options available based on scipy.optimize
-  method: 'Nelder-Mead'
+  coupled_model: false

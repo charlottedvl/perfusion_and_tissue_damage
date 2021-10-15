@@ -51,23 +51,36 @@ parser.add_argument("--res_fldr", help="path to results folder (string ended wit
                     type=str, default=None)
 config_file = parser.parse_args().config_file
 
-configs = IO_fcts.basic_flow_config_reader2(config_file, parser)
+configs = IO_fcts.basic_flow_config_reader_yml(config_file, parser)
+
 # physical parameters
-p_arterial, p_venous = configs.physical.p_arterial, configs.physical.p_venous
+p_arterial, p_venous = configs['physical']['p_arterial'], configs['physical']['p_venous']
 K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat = \
-    configs.physical.K1gm_ref, configs.physical.K2gm_ref, configs.physical.K3gm_ref, configs.physical.gmowm_perm_rat
+    configs['physical']['K1gm_ref'], configs['physical']['K2gm_ref'], configs['physical']['K3gm_ref'], \
+    configs['physical']['gmowm_perm_rat']
 beta12gm, beta23gm, gmowm_beta_rat = \
-    configs.physical.beta12gm, configs.physical.beta23gm, configs.physical.gmowm_beta_rat
+    configs['physical']['beta12gm'], configs['physical']['beta23gm'], configs['physical']['gmowm_beta_rat']
+
+try:
+    compartmental_model = configs['simulation']['model_type'].lower().strip()
+except KeyError:
+    compartmental_model = 'acv'
+
+try:
+    velocity_order = configs['simulation']['vel_order']
+except KeyError:
+    velocity_order = configs['simulation']['fe_degr'] - 1
 
 # read mesh
-mesh, subdomains, boundaries = IO_fcts.mesh_reader(configs.input.mesh_file)
+mesh, subdomains, boundaries = IO_fcts.mesh_reader(configs['input']['mesh_file'])
 
 # determine fct spaces
 Vp, Vvel, v_1, v_2, v_3, p, p1, p2, p3, K1_space, K2_space = \
-    fe_mod.alloc_fct_spaces(mesh, configs.simulation.fe_degr)
+    fe_mod.alloc_fct_spaces(mesh, configs['simulation']['fe_degr'], model_type=compartmental_model,
+                            vel_order=velocity_order)
 
-healthyfile = configs.output.res_fldr + 'perfusion.xdmf'
-strokefile = configs.output.res_fldr + 'perfusion_stroke.xdmf'
+healthyfile = configs['output']['res_fldr'] + 'perfusion.xdmf'
+strokefile = configs['output']['res_fldr'] + 'perfusion_stroke.xdmf'
 
 if rank == 0:
     print('Step 2: Reading perfusion files')
@@ -90,17 +103,17 @@ perfusion_change = project(((perfusion - perfusion_stroke) / perfusion) * -100, 
 infarct = project(conditional(gt(perfusion_change, Constant(-70)), Constant(0.0), Constant(1.0)), K2_space,
                   solver_type='bicgstab', preconditioner_type='amg')
 
-with XDMFFile(configs.output.res_fldr + 'perfusion_change.xdmf') as myfile:
+with XDMFFile(configs['output']['res_fldr'] + 'perfusion_change.xdmf') as myfile:
     myfile.write_checkpoint(perfusion_change, 'perfusion_change', 0, XDMFFile.Encoding.HDF5, False)
-with XDMFFile(configs.output.res_fldr + 'infarct.xdmf') as myfile:
+with XDMFFile(configs['output']['res_fldr'] + 'infarct.xdmf') as myfile:
     myfile.write_checkpoint(infarct, 'infarct', 0, XDMFFile.Encoding.HDF5, False)
 
 
-if configs.output.comp_ave == True:
+if configs['output']['comp_ave'] == True:
     vol_infarct_values = suppl_fcts.infarct_vol(mesh, subdomains, infarct)
 
     fheader = 'volume ID,Volume [mm^3],infarct volume [mL]'
-    np.savetxt(configs.output.res_fldr + 'vol_infarct_values.csv', vol_infarct_values, "%d,%e,%e",
+    np.savetxt(configs['output']['res_fldr'] + 'vol_infarct_values.csv', vol_infarct_values, "%d,%e,%e",
                       header=fheader)
 
 perfusion_change = project(((perfusion - perfusion_stroke) / perfusion) * -100, K2_space, solver_type='bicgstab',
@@ -128,5 +141,5 @@ for threshold in thresholds:
 
 if rank == 0:
     fheader = 'threshold [%],volume ID,Volume [mm^3],infarct volume [mL]'
-    np.savetxt(configs.output.res_fldr + 'vol_infarct_values_thresholds.csv', vol_infarct_values_thresholds, "%e,%d,%e,%e", header=fheader)
+    np.savetxt(configs['output']['res_fldr'] + 'vol_infarct_values_thresholds.csv', vol_infarct_values_thresholds, "%e,%d,%e,%e", header=fheader)
 

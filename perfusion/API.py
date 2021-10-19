@@ -110,6 +110,8 @@ class API(API):
         config['input']['permeability_folder'] = f"{perm_file}/"
         model_type = self.current_model.get('model_type', 'a')
         config['simulation']['model_type'] = model_type
+        coupled_model = self.current_model.get('coupled_model', True)
+        config['simulation']['coupled_model'] = coupled_model
         config['output']['res_fldr'] = str(res_folder)
 
         # FIXME: this is only for testing purposes

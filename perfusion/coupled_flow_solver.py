@@ -85,8 +85,6 @@ coupled_resistance_file = patient_folder + 'bf_sim/Coupled_resistance.csv'
 # run 1-D blood flow model and update boundary file
 clotactive = False
 
-# FIXME: should this always run with `clotactive=False`?
-clotactive = False
 if rank == 0:
     Patient = Patient.Patient(patient_folder)
     Patient.LoadBFSimFiles()
@@ -177,6 +175,7 @@ lin_solver, precond, rtol, mon_conv, init_sol = 'bicgstab', 'amg', False, False,
 healthy_scenario = parser.parse_args().healthy_scenario
 print("Consider healthy scenario: '{}'".format(healthy_scenario))
 
+exit_program = False
 if not GeneralFunctions.is_non_zero_file(coupled_resistance_file):
     # set up finite element solver
     LHS, RHS, sigma1, sigma2, sigma3, BCs = \
@@ -394,6 +393,8 @@ if not GeneralFunctions.is_non_zero_file(coupled_resistance_file):
         print('Step 1: \t\t', end1 - start1, '[s]')
         print('Step 2: \t\t', end2 - start2, '[s]')
         print('Step 3: \t\t', end3 - start3, '[s]')
+
+        exit_program = True
 else:
     if rank == 0:
         # read  file
@@ -404,7 +405,7 @@ else:
             node.R1 = 0
 
 comm.Barrier()
-if healthy_scenario:
+if healthy_scenario or exit_program:
     sys.exit()
 
 

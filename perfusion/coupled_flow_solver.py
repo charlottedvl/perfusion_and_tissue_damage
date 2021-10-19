@@ -134,6 +134,8 @@ try:
 except KeyError:
     compartmental_model = 'acv'
 
+print(f'Running with compartmental model type: {compartmental_model}', flush=True)
+
 try:
     velocity_order = configs['simulation']['vel_order']
 except KeyError:

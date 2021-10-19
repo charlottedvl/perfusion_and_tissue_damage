@@ -108,6 +108,9 @@ class API(API):
         config['input']['mesh_file'] = str(mesh_file)
         perm_file = self.patient_dir.joinpath('brain_meshes/permeability')
         config['input']['permeability_folder'] = f"{perm_file}/"
+        model_type = self.current_model.get('model_type', 'a')
+        config['simulation']['model_type'] = model_type
+        config['output']['res_fldr'] = str(res_folder)
 
         # FIXME: this is only for testing purposes
         fe_degr = int(self.current_model.get('finite_element_degree', 2))

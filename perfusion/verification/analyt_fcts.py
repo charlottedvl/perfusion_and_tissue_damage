@@ -80,10 +80,10 @@ def set_up_continuum(configs):
             beta_sub[ (x > np.sum(l_subdom[:i])) * (x <= np.sum(l_subdom[:i+1]))] = beta[i]
     
     # define boundary type
-    BC_type_con = ['CBC','CBC']
+    BC_type_con = configs['continuum']['BC_type_con']
     
     # define bondary values
-    BC_val_con = [2,3]
+    BC_val_con = configs['continuum']['BC_val_con']
     
     return beta, Nc, l_subdom, x, beta_sub, subdom_id, BC_type_con, BC_val_con
 

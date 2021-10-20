@@ -1,13 +1,22 @@
 import numpy as np
 import yaml
 import os
+import argparse
 
 import analyt_fcts
 
 
 #%% load settings
-with open('config_coupled_analyt.yaml', "r") as configfile:
-        configs = yaml.load(configfile, yaml.SafeLoader)
+
+parser = argparse.ArgumentParser(description="coupled 1D perfusion and network simulator based on analytical solutions")
+parser.add_argument("--config_file", help="path to configuration file",
+                    type=str, default='./config_coupled_analyt.yaml')
+parser.add_argument("--res_fldr", help="path to results folder (string ended with /)",
+                type=str, default=None)
+config_file = parser.parse_args().config_file
+
+with open(config_file, "r") as myconfigfile:
+        configs = yaml.load(myconfigfile, yaml.SafeLoader)
 
 
 #%% specify 1D network and continuum problems
@@ -31,6 +40,8 @@ con_data[:,0] = x
 con_data[:,1] = p
 con_data[:,2] = vel
 
+if parser.parse_args().res_fldr != None:
+    configs['res_path'] = parser.parse_args().res_fldr
 if not os.path.exists(configs['res_path']):
     os.makedirs(configs['res_path'])
 

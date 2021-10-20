@@ -5,40 +5,40 @@ input:
   # otherwise determined based on the inlet boundary file
   inlet_BC_type: mixed
   # file specifying inlet boundary conditions
-  inlet_boundary_file: ./config_examples/verification_BCs.csv
+  inlet_boundary_file: ./verification/verification_BCs.csv
   # mesh file path
-  mesh_file: ./verification_mesh/labelled_box_mesh.xdmf
+  mesh_file: ./verification/verification_mesh/labelled_box_mesh.xdmf
   # path of folder containing pre-computed permeability tensor form 
-  permeability_folder: ./verification_mesh/
+  permeability_folder: ./verification/verification_mesh/
   # read inlet boundary file (no-false or yes-true)
   read_inlet_boundary: true
 output:
   # compute pre-determined averages (no-false or yes-true, old implementations)
   comp_ave: false
   # path of the folder storing results
-  res_fldr: ./verification_mesh/results/
+  res_fldr: ./verification/verification_mesh/results/
   # list of saved variables including any of the following
   # {'beta12','beta23','K1','K2','K3','perfusion','press1','press2','press3','vel1','vel2','vel3'}
-  res_vars: {'press1','press2','press3','vel1','vel2','perfusion','beta12','beta23'}
+  res_vars: {'press1','vel1','perfusion','beta12','beta23'}
   # list of integral variables based on the list of saved variables, examples:
   # press1_surfint --> surface integral of the arteriole pressure
   # perfusion_voluave --> volume-averaged perfusion = total flow
   # vel1_surfint --> surface integral of the arteriole velocity = inlet volumetric flow rate
   # vel1_magn_voluint --> volume integral of the arteriole velocity magnitude
-  integral_vars: {'vel1_surfint','perfusion_voluave'}
+  integral_vars: {'vel1_surfint','press1_surfave','perfusion_voluave'}
 physical:
   # arteriole permeability magnitude [mm^3 s g^-1]
-  K1gm_ref: 0.000833
+  K1gm_ref: 1.234e-6
   # capillary permeability magnitude [mm^3 s g^-1]
-  K2gm_ref: 4.28e-07
+  K2gm_ref: 1.0
   # venule permeability magnitude [mm^3 s g^-1]
-  K3gm_ref: 0.002468
+  K3gm_ref: 1.0
   # arteriole-capillary coupling coefficient [Pa^-1 s^-1]
-  beta12gm: 1.326e-06
+  beta12gm: 0.000002
   # capillary-venule coupling coefficient [Pa^-1 s^-1]
-  beta23gm: 4.641e-06
+  beta23gm: 0.000002
   # GM/WM coupling coefficient ratio 
-  gmowm_beta_rat: 2.507
+  gmowm_beta_rat: 2.50
   # GM/WM permeability ratio 
   gmowm_perm_rat: 1.0
   # arteriole pressure, applied only when read_inlet_boundary = false [Pa]
@@ -47,7 +47,7 @@ physical:
   p_venous: 0.0
 simulation:
   # finite element approximation order used for the pressure field
-  fe_degr: 1
+  fe_degr: 2
   # model type --> 1 arteriole compartment ('a'); arteriole-capillary-venule compartments ('acv')
   model_type: 'a'
   # finite element approximation order used for the velocity field

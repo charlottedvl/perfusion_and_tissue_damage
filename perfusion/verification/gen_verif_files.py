@@ -164,14 +164,24 @@ import os
 import numpy as np
 import dolfin
 import meshio
+
+import yaml
+import analyt_fcts
+import sys
+sys.path.append('../')
 import convert_msh2hdf5
 import IO_fcts
 
-Lx = 100
-nx = 50
+with open('config_coupled_analyt.yaml', "r") as configfile:
+        configs = yaml.load(configfile, yaml.SafeLoader)
+D, D_ave, G, Nn, L, block_loc, BC_ID_ntw, BC_type_ntw, BC_val_ntw = analyt_fcts.set_up_network(configs)
+beta, Nc, l_subdom, x, beta_sub, subdom_id, BC_type_con, BC_val_con = analyt_fcts.set_up_continuum(configs)
 
-Ly = Lx/nx
-Lz = Lx/nx
+Lx = np.sum(l_subdom)*1000
+nx = configs['numerical']['nx']
+
+Ly = np.sqrt(configs['continuum']['area'])*1000
+Lz = np.sqrt(configs['continuum']['area'])*1000
 
 p1 = dolfin.Point(0,0,0)
 p2 = dolfin.Point(Lx,Ly,Lz)
@@ -183,18 +193,21 @@ elements = mesh.cells()
 
 
 #%% label elements
-# GM everywhere
-#element_label = 12*np.ones(elements.shape[0],dtype=np.int64)
+subdomain_limits = []
+for i in range(len(l_subdom)):
+    if i==0:
+        subdomain_limits.append( [0,l_subdom[0]*1000] )
+    else:
+        subdomain_limits.append( [subdomain_limits[i-1][1], subdomain_limits[i-1][1]+1000*l_subdom[i]] )
 
 # half GM and half WM
 element_centr_coord = np.zeros([elements.shape[0],3])
 element_label = np.zeros(elements.shape[0],dtype=np.int64)
 for i in range(elements.shape[0]):
     element_centr_coord[i,:] = np.mean(vertices[elements[i],:],axis=0)
-    if element_centr_coord[i,0]>Lx/2:
-        element_label[i] = 11
-    else:
-        element_label[i] = 12
+    for j in range(len(l_subdom)):
+        if element_centr_coord[i,0]>subdomain_limits[j][0] and element_centr_coord[i,0]<=subdomain_limits[j][1]:
+            element_label[i] = configs['numerical']['layers'][j]
 
 #%% obtain boundary surface
 facets = np.concatenate((elements[:,[0,1,2]],elements[:,[0,1,3]],elements[:,[0,2,3]],elements[:,[1,2,3]]),axis=0)

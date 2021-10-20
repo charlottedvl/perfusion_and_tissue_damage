@@ -1,5 +1,6 @@
 import numpy as np
 import yaml
+import argparse
 
 import analyt_fcts
 
@@ -20,8 +21,13 @@ matplotlib.rcParams['lines.dashdot_pattern'] = [6.5, 2.5, 1.0, 2.5]
 close('all')
 
 #%% obtain settings and resuls
-with open('config_coupled_analyt.yaml', "r") as configfile:
-        configs = yaml.load(configfile, yaml.SafeLoader)
+parser = argparse.ArgumentParser(description="coupled 1D perfusion and network simulator based on analytical solutions")
+parser.add_argument("--config_file", help="path to configuration file",
+                    type=str, default='./config_coupled_analyt.yaml')
+config_file = parser.parse_args().config_file
+
+with open(config_file, "r") as myconfigfile:
+        configs = yaml.load(myconfigfile, yaml.SafeLoader)
 
 # specify 1D network and continuum problems
 D, D_ave, G, Nn, L, block_loc, BC_ID_ntw, BC_type_ntw, BC_val_ntw = analyt_fcts.set_up_network(configs)
@@ -157,4 +163,4 @@ ax1.legend()
 
 ax1.text(0.2,1.01,'Porous medium between nodes 2 and 3', transform=ax1.transAxes)
 
-# fig0.savefig('3blocked_low_perm.png',dpi=450)
+fig0.savefig(configs['res_path'] + 'res.png',dpi=450)

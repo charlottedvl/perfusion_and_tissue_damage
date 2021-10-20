@@ -21,7 +21,7 @@ network:
 continuum:
   # venous pressure [Pa]
   pv: 0
-  # permeability [m^3 kg s^-1]
+  # permeability [m^3 s kg^-1]
   K: 1.234e-12
   # domain cross sectional area [m^2]
   area: 0.1005
@@ -29,12 +29,12 @@ continuum:
   beta: [0.000001, 0.0000004, 0.000001]
   l_subdom: [0.0015,0.01,0.0015]
   # DBC-given pressure [Pa]; NBC-given volumetric flow rate [m^3/s]; CBC-coupled boundary condition )
-  BC_type_con: ['CBC','CBC']
+  BC_type_con: ['DBC','DBC']
   # efine bondary values, in the case of CBC the coupled node number
-  BC_val_con: [2,3]
+  BC_val_con: [10000.0,8000.0]
 numerical:
   # number of nodes along the x direction
   nx: 50
   # tissue layers along the x direction (11-WM, 12-GM)
   layers: [12,11,12]
-res_path: './results/'
+res_path: './results_decoupled/'

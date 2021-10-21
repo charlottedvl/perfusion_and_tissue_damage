@@ -70,5 +70,14 @@ for i in range(len(points)):
     try: p_num[i] = p_numeric(points[i])
     except: p_num[i] = np.NAN
 
-plot(x,p)
-plot(x,p_num,'--r')
+Pa2mmHg = 0.00750062
+nx = len(x)
+skp = int(nx/30)
+plot(x*1000,p*Pa2mmHg,label='analytical')
+plot(x[::skp]*1000,p_num[::skp]*Pa2mmHg,'rx',label='numerical')
+xlim([0,12])
+ylim([0,80])
+xlabel('x [mm]')
+ylabel('p [mmHg]')
+legend()
+savefig('pressure_comparison.png',dpi=450)

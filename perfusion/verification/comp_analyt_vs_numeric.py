@@ -73,6 +73,7 @@ for i in range(len(points)):
 Pa2mmHg = 0.00750062
 nx = len(x)
 skp = int(nx/30)
+fig0 = figure(0)
 plot(x*1000,p*Pa2mmHg,label='analytical')
 plot(x[::skp]*1000,p_num[::skp]*Pa2mmHg,'rx',label='numerical')
 xlim([0,12])
@@ -80,4 +81,4 @@ ylim([0,80])
 xlabel('x [mm]')
 ylabel('p [mmHg]')
 legend()
-savefig('pressure_comparison.png',dpi=450)
+fig0.savefig('./verification/pressure_comparison.png',dpi=450)

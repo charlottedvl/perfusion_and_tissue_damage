@@ -445,7 +445,7 @@ def coupledmodel(P, stopp):
         # Run 1-D bf model
         residualFlowrate = 0
         if rank == 0:
-            Patient.Run1DSteadyStateModel(model="Linear", tol=1e-10, clotactive=clotactive, PressureInlets=True,
+            Patient.Run1DSteadyStateModel(model="Linear", tol=1e-7, clotactive=clotactive, PressureInlets=True,
                                           FlowRateOutlets=False, coarseCollaterals=coarseCollaterals,
                                           frictionconstant=frictionconstant, scale_resistance=False)
 

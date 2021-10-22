@@ -227,9 +227,9 @@ facet_label = np.zeros(facets.shape[0],dtype=np.int64)
 for i in range(facets.shape[0]):
     facet_centr_coord[i,:] = np.mean(vertices[facets[i],:],axis=0)
     if dolfin.near(facet_centr_coord[i,0],0):
-        facet_label[i] = 3
+        facet_label[i] = 20
     elif dolfin.near(facet_centr_coord[i,0],Lx):
-        facet_label[i] = 4
+        facet_label[i] = 21
     elif dolfin.near(facet_centr_coord[i,1],0) or dolfin.near(facet_centr_coord[i,1],Ly):
         facet_label[i] = 1
     elif dolfin.near(facet_centr_coord[i,2],0) or dolfin.near(facet_centr_coord[i,2],Lz):
@@ -279,7 +279,7 @@ for i in range(facets.shape[0]):
 for i in range(elements.shape[0]):
     msh_elements.append( list(elements[i,:]) )
 
-physical_names = [[2,1,'"yBC"'],[2,2,'"zBC"'],[2,3,'"xBC1"'],[2,4,'"xBC2"'],[3,11,'"white_matter"']]
+physical_names = [[2,1,'"yBC"'],[2,2,'"zBC"'],[2,20,'"xBC1"'],[2,21,'"xBC2"'],[3,11,'"white_matter"']]
 
 mymesh = MSHfile()
 mymesh.Elements = msh_elements

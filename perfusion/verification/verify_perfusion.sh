@@ -1,5 +1,3 @@
-cd perfusion/verification
-
 python3 gen_verif_files.py
 cd ../
 python3 basic_flow_solver.py --config_file ./verification/config_basic_flow_solver_verification.yaml

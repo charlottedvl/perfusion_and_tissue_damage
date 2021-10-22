@@ -31,7 +31,7 @@ continuum:
   # DBC-given pressure [Pa]; NBC-given volumetric flow rate [m^3/s]; CBC-coupled boundary condition )
   BC_type_con: ['DBC','DBC']
   # efine bondary values, in the case of CBC the coupled node number
-  BC_val_con: [10000.0,8000.0]
+  BC_val_con: [10000.0,0.0]
 numerical:
   # number of nodes along the x direction
   nx: 50

@@ -192,8 +192,9 @@ if not GeneralFunctions.is_non_zero_file(coupled_resistance_file):
         print('Step 3: Computing velocity fields, saving results, and extracting some field variables')
     start3 = time.time()
 
+    K22_space = FunctionSpace(mesh, "DG", configs['simulation']['fe_degr'])
     myResults = {}
-    suppl_fcts.compute_my_variables(p, K1, K2, K3, beta12, beta23, p_venous, Vp, Vvel, K2_space, configs, \
+    suppl_fcts.compute_my_variables(p, K1, K2, K3, beta12, beta23, p_venous, Vp, Vvel, K22_space, configs, \
                                     myResults, compartmental_model, rank)
     my_integr_vars = {}
     surf_int_values, surf_int_header, volu_int_values, volu_int_header = \
@@ -428,8 +429,9 @@ def coupledmodel(P, stopp):
 
         p = fe_mod.solve_lin_sys(Vp, LHS, RHS, BCs, lin_solver, precond, rtol, mon_conv, init_sol,
                                  model_type=compartmental_model)
+        K22_space = FunctionSpace(mesh, "DG", configs['simulation']['fe_degr'])
         myResults = {}
-        suppl_fcts.compute_my_variables(p, K1, K2, K3, beta12, beta23, p_venous, Vp, Vvel, K2_space, configs, \
+        suppl_fcts.compute_my_variables(p, K1, K2, K3, beta12, beta23, p_venous, Vp, Vvel, K22_space, configs, \
                                         myResults, compartmental_model, rank, save_data=False)
         my_integr_vars = {}
         surf_int_values, surf_int_header, volu_int_values, volu_int_header = \
@@ -554,8 +556,9 @@ with contextlib.redirect_stdout(None):
 
     p = fe_mod.solve_lin_sys(Vp, LHS, RHS, BCs, lin_solver, precond, rtol, mon_conv, init_sol,
                              model_type=compartmental_model)
+    K22_space = FunctionSpace(mesh, "DG", configs['simulation']['fe_degr'])
     myResults = {}
-    suppl_fcts.compute_my_variables(p, K1, K2, K3, beta12, beta23, p_venous, Vp, Vvel, K2_space, configs, \
+    suppl_fcts.compute_my_variables(p, K1, K2, K3, beta12, beta23, p_venous, Vp, Vvel, K22_space, configs, \
                                     myResults, compartmental_model, rank)
     my_integr_vars = {}
     surf_int_values, surf_int_header, volu_int_values, volu_int_header = \

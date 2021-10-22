@@ -719,4 +719,6 @@ def compute_integral_quantities(configs,myResults,my_integr_vars,mesh,subdomains
                               volu_int_values,volu_int_dat_struct,header=volu_int_header[:-1])
         return surf_int_values, surf_int_header, volu_int_values, volu_int_header
     else:
-        if rank==0: print('No variables have been defined for integration!')
+        if rank==0:
+            print('No variables have been defined for integration!')
+        return [], [], [], []

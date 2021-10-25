@@ -66,21 +66,25 @@ var_check = []
 for i in variable_list:
     var_check.append( my_variable == i )
 if not any(var_check):
-    import sys
     sys.exit("variable specified by '--variable' is not available")
 
 if my_variable[:3] == 'per':
     myvar = dolfin.Function(K2_space)
+    vartype = 'scalar'
 elif my_variable[:3] == 'pre':
     Vp = dolfin.FunctionSpace(mesh, "Lagrange", configs['simulation']['fe_degr'])
     myvar = dolfin.Function(Vp)
+    vartype = 'scalar'
 elif my_variable[:3] == 'vel':
     myvar = dolfin.Function(Vvel)
+    vartype = 'vector'
 elif my_variable[0] == 'k':
     my_variable = my_variable.upper()
     myvar = dolfin.Function(K1_space)
+    vartype = 'tensor'
 elif my_variable[:3] == 'bet':
     myvar = dolfin.Function(K2_space)
+    vartype = 'scalar'
 
 try:
     f_in = dolfin.XDMFFile(configs['output']['res_fldr'] + my_variable + '.xdmf')
@@ -95,8 +99,42 @@ except ValueError:
 
 
 #%% CONVERT FE DATA TO IMAGE
-affine_matrix = numpy.eye(4)
-img_data = numpy.random.rand(14,15,16)
 
+img_coord_min = numpy.int32(numpy.floor(numpy.min(mesh.coordinates(),axis=0)))-1
+img_coord_max = numpy.int32(numpy.ceil( numpy.max(mesh.coordinates(),axis=0)))+1
+
+x = numpy.arange(img_coord_min[0], img_coord_max[0])
+y = numpy.arange(img_coord_min[1], img_coord_max[1])
+z = numpy.arange(img_coord_min[2], img_coord_max[2])
+nx,ny,nz = len(x), len(y), len(z)
+
+# TODO: speed up image recovery
+if vartype == 'scalar':
+    img_data = numpy.zeros([nx,ny,nz])
+    for i in range(nx):
+        for j in range(ny):
+            for k in range(nz):
+                my_point = (x[i],y[j],z[k])
+                try: img_data[i,j,k] = myvar(my_point)
+                except: img_data[i,j,k] = 0
+elif vartype == 'vector':
+    img_data = numpy.zeros([nx,ny,nz,3])
+    for i in range(nx):
+        for j in range(ny):
+            for k in range(nz):
+                my_point = (x[i],y[j],z[k])
+                try: img_data[i,j,k,:] = myvar(my_point)
+                except: img_data[i,j,k,:] = numpy.zeros(3)
+elif vartype == 'tensor':
+    img_data = numpy.zeros([nx,ny,nz,9])
+    for i in range(nx):
+        for j in range(ny):
+            for k in range(nz):
+                my_point = (x[i],y[j],z[k])
+                try: img_data[i,j,k,:] = myvar(my_point)
+                except: img_data[i,j,k,:] = numpy.zeros(9)
+
+affine_matrix = numpy.eye(4)
+affine_matrix[:3,-1] = img_coord_min+1
 img = nib.Nifti1Image(img_data, affine_matrix)
-nib.save(img, './test_image.nii.gz')
+nib.save(img, configs['output']['res_fldr'] + my_variable +'.nii.gz')

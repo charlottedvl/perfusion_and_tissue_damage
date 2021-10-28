@@ -163,7 +163,7 @@ class API(API):
         baseline = baseline.joinpath(pf_outfile)
 
         # occluded scenario assumed to be the current result
-        occluded = self.patient_dir.joinpath(labels[1])
+        occluded = self.patient_dir.joinpath(labels[self.event_id])
         occluded = occluded.joinpath(perfusion_dir)
         occluded = occluded.joinpath(pf_outfile)
 

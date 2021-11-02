@@ -276,7 +276,7 @@ def set_up_fe_solver2(mesh, subdomains, boundaries, V, v_1, v_2, v_3, \
                 # computed from the volumentric flow rate [mm^3/s] and the surface area [mm^2]
                 for i in range(n_labels):
                     if b1[i]>0:
-                        integrals_N.append(b1[i]*V*dS( int(boundary_labels[i]) ))
+                        integrals_N.append(b1[i]*v_1*dS( int(boundary_labels[i]) ))
             elif inlet_BC_type == 'mixed':
                 # Neumann boundary conditions
                 dS = ds(subdomain_data=boundaries)
@@ -298,7 +298,7 @@ def set_up_fe_solver2(mesh, subdomains, boundaries, V, v_1, v_2, v_3, \
                 for i in range(n_labels):
                     if BC_data[i,4] == 1: # Neumann (pressure gradient ~ flux) boundary condition
                         if b1[i]>0:
-                            integrals_N.append(b1[i]*V*dS( int(boundary_labels[i]) ))
+                            integrals_N.append(b1[i]*v_1*dS( int(boundary_labels[i]) ))
             else:
                 raise Exception("inlet_BC_type must be Neumann or Dirichlet ('NBC' or 'DBC')")
             

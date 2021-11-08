@@ -1,5 +1,6 @@
 import os
 import pathlib
+import pandas as pd
 import subprocess
 
 from desist.eventhandler.api import API
@@ -75,6 +76,37 @@ def initialise_permeability(patient_dir, result_dir, cwd):
     assert permeability_dir.exists(), error_msg
 
 
+def optimise_permeability(config_path, res_folder, cwd):
+
+    config = read_yaml(config_path)
+    config['input']['read_inlet_boundary'] = False
+    write_yaml(config_path, config)
+
+    permeability_cmd = [
+        "python3",
+        "parameter_optimiser.py",
+        "--config_file",
+        str(config_path)
+    ]
+
+    print(f"Evaluating: '{' '.join(permeability_cmd)}'", flush=True)
+    subprocess.run(permeability_cmd, check=True, cwd=str(cwd))
+
+    # Update the optimised values in the configuration file.
+    config = read_yaml(config_path)
+    data = pd.read_csv(res_folder.joinpath('opt_res_Nelder-Mead.csv'))
+
+    beta_rat = float(data['# gmowm_beta_rat'].iloc[-1])
+    k1 = float(data[' K1gm_ref'].iloc[-1])
+    k3 = 2 * k1
+
+    config['physical']['gmowm_beta_rat'] = beta_rat
+    config['physical']['K1gm_ref'] = k1
+    config['physical']['K3gm_ref'] = k3
+
+    write_yaml(config_path, config)
+
+
 class API(API):
     def __init__(self, patient, model_id, coupled=False, **kwargs):
         super().__init__(patient, model_id)
@@ -129,6 +161,9 @@ class API(API):
         config_path = self.result_dir.joinpath(
             f'{perfusion_dir}/perfusion_config.yaml')
         write_yaml(config_path, config)
+
+        # optimise perfusion parameters
+        optimise_permeability(config_path, res_folder, cwd)
 
         # form command to evaluate perfusion
         solve_cmd = [
@@ -189,6 +224,19 @@ class API(API):
         ]
         print(f"Evaluating: '{' '.join(infarct_cmd)}'", flush=True)
         subprocess.run(infarct_cmd, check=True, cwd=cwd)
+
+        # convert results to images
+        image_cmd = [
+            "python3",
+            "convert_res2img.py",
+            "--res_fldr",
+            f"{str(baseline)}",
+            "--variable",
+            "perfusion"
+        ]
+        print(f"Evaluating: '{' '.join(image_cmd)}'", flush=True)
+        subprocess.run(image_cmd, check=True, cwd=cwd)
+
 
     def example(self):
         # when running the example, we need to generate some dummy input

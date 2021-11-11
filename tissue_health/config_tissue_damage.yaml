@@ -14,3 +14,4 @@ parameter:
   ks1: 0.175
   ks2: -3.304
   perfusion_gm_wm: 2.6998
+  core_threshold: 0.8

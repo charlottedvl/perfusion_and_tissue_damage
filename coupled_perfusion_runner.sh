@@ -18,7 +18,6 @@ else
     mpirun -n 6 python3 permeability_initialiser.py
 fi
 
-cd ..
 cp -TR ../../bloodflow/DataFiles/DefaultPatient "./patient_0/"
 python3 ../../bloodflow/Blood_Flow_1D/GenerateBloodflowFiles.py "./patient_0/"
 python3 convert_msh2hdf5.py "./patient_0/bf_sim/clustered_mesh.msh"  "./patient_0/bf_sim/clustered_mesh"

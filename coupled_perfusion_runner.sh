@@ -1,5 +1,10 @@
 # this shell script assumes that ../bloodflow exists and the corresponding python modules have been installed. To this end execute 'sudo python3 setup.py install' in the ../bloodflow folder.
 # Python environment required with all modules for the bloodflow and perfusion models.
+#
+# the ../bloodflow folder can be obtained by the following commands
+# cd ../
+# git clone https://gitlab.computationalscience.nl/insist/1d-blood-flow.git
+# mv 1d-blood-flow bloodflow
 
 if [ -d "./brain_meshes" ] 
 then

@@ -468,8 +468,9 @@ if coupled_model:
         guessPressure = numpy.array([node.Node.WKNode.Pressure for node in Patient.Perfusion.CouplingPoints])
         stop = [0]
         sol = scipy.optimize.root(coupledmodel, guessPressure, args=(stop,), method='krylov',
-                                  options={'disp': True, 'maxiter': 5,
-                                           'fatol': configs['simulation']['cpld_conv_crit']})
+                                  options={'disp': True, 'maxiter': 10,
+                                           'fatol': configs['simulation']['cpld_conv_crit'],
+                                           'jac_options': {'rdiff': 1e-6}})
         stop = [1]
         coupledmodel(sol.x, stop)
         sys.stdout.flush()

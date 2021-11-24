@@ -246,7 +246,7 @@ if not GeneralFunctions.is_non_zero_file(coupled_resistance_file):
             patient.Run1DSteadyStateModel(model="Linear", tol=1e-12, clotactive=clotactive, PressureInlets=True,
                                           coarseCollaterals=coarseCollaterals, frictionconstant=frictionconstant,
                                           scale_resistance=False)
-            rel_tol = 1e-9
+            rel_tol = 1e-5
             relative_residual = 1
             while relative_residual > rel_tol:
                 oldR = numpy.array([node.Node.R1 + node.Node.R2 for node in patient.Perfusion.CouplingPoints])
@@ -324,6 +324,18 @@ if not GeneralFunctions.is_non_zero_file(coupled_resistance_file):
         end_r = time.time()
         print("Optimization complete.")
         # print('Execution time: \t', end_r - start_r, '[s]')
+        # export data in same format as the 1-D pulsatile model
+        TimePoint = Results.TimePoint(0)
+        TimePoint.Flow = [node.FlowRate for node in Patient.Topology.Nodes]
+        TimePoint.Pressure = [node.Pressure for node in Patient.Topology.Nodes]
+        TimePoint.Radius = [node.Radius for node in Patient.Topology.Nodes]
+        # end point, t=duration of a single heart beat
+        TimePoint2 = Results.TimePoint(Patient.ModelParameters['Beat_Duration'])
+        TimePoint2.Flow = TimePoint.Flow
+        TimePoint2.Pressure = TimePoint.Pressure
+        TimePoint2.Radius = TimePoint.Radius
+        Patient.Results.TimePoints = [TimePoint, TimePoint2]
+        Patient.Results.ExportResults(Patient.Folders.ModellingFolder + "Results_healthy.dyn")
 
         # save optimization results and model parameters
         with open(Patient.Folders.ModellingFolder + 'Model_values_Healthy.csv', "w") as f:

@@ -52,7 +52,7 @@ class API(API):
         # (see issue #11 in `insist-trials` repository).
         num_recovery_days = self.patient.get('tissue_health_follow_up_days', 1)
         solver_config['input']['recovery_time'] = num_recovery_days * 24
-        brain_mesh = self.patient_dir.joinpath('brain_meshes/clustered.xdmf')
+        brain_mesh = self.patient_dir.joinpath('brain_meshes/b0000/clustered.xdmf')
         solver_config['input']['mesh_file'] = str(brain_mesh)
 
         # write the updated yaml to the patient directory

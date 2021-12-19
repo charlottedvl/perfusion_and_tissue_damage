@@ -25,7 +25,14 @@ parser.add_argument("--res_fldr", help="path to results folder (string ended wit
                 type=str, default='../VP_results/p0000/perfusion_healthy/')
 parser.add_argument("--variable", help="e.g. press1, vel1, perfusion, K1, etc.",
                 type=str, default='perfusion')
+parser.add_argument("--voxel_size", help="voxel edge size in [mm]",
+                type=int, default=2)
+parser.add_argument('--save_figure', default=True, action='store_true',
+                    help="save figure showing image along midline slices? ('y' or 'n')")
+
+
 config_file = parser.parse_args().res_fldr + 'settings.yaml'
+vxl_size =  parser.parse_args().voxel_size
 
 configs = IO_fcts.basic_flow_config_reader_yml(config_file,parser)
 # physical parameters
@@ -101,11 +108,12 @@ except ValueError:
 #%% CONVERT FE DATA TO IMAGE
 
 img_coord_min = numpy.int32(numpy.floor(numpy.min(mesh.coordinates(),axis=0)))-1
-img_coord_max = numpy.int32(numpy.ceil( numpy.max(mesh.coordinates(),axis=0)))+1
+img_coord_max = numpy.int32(numpy.ceil( numpy.max(mesh.coordinates(),axis=0)))+vxl_size
 
-x = numpy.arange(img_coord_min[0], img_coord_max[0])
-y = numpy.arange(img_coord_min[1], img_coord_max[1])
-z = numpy.arange(img_coord_min[2], img_coord_max[2])
+x = numpy.arange(img_coord_min[0], img_coord_max[0], vxl_size)
+y = numpy.arange(img_coord_min[1], img_coord_max[1], vxl_size)
+z = numpy.arange(img_coord_min[2], img_coord_max[2], vxl_size)
+img_coord_max = numpy.array([x.max(),y.max(),z.max()],dtype=int)
 nx,ny,nz = len(x), len(y), len(z)
 
 # TODO: speed up image recovery
@@ -135,6 +143,40 @@ elif vartype == 'tensor':
                 except: img_data[i,j,k,:] = numpy.zeros(9)
 
 affine_matrix = numpy.eye(4)
+affine_matrix[:3,:3] = vxl_size*affine_matrix[:3,:3] 
 affine_matrix[:3,-1] = img_coord_min+1
 img = nib.Nifti1Image(img_data, affine_matrix)
 nib.save(img, configs['output']['res_fldr'] + my_variable +'.nii.gz')
+
+if parser.parse_args().save_figure:
+    dims = len(list(img_data.shape))
+    if dims == 3:
+        slices = [img_data[int(nx/2),:,:],
+                  img_data[:,int(ny/2),:],
+                  img_data[:,:,int(nz/2)]]
+        passer = 1 
+    elif dims ==4:
+        img_data = numpy.linalg.norm(img_data,axis=3)
+        slices = [img_data[int(nx/2),:,:],
+                  img_data[:,int(ny/2),:],
+                  img_data[:,:,int(nz/2)]]
+        passer = 1
+    else:
+        print('Saving figure is not available for tensor spaces!')
+        passer = 0 
+        
+    if passer != 0:
+        import matplotlib.pyplot as plt
+        fsx = 17
+        fsy = 8
+        
+        fig1 = plt.figure(num=1, figsize=(fsx/2.54, fsy/2.54))
+        gs1 = plt.GridSpec(1, 2)
+        gs1.update(left=0.05, right=0.99, bottom=0.01, top=0.99, wspace=0.2)
+        
+        for i in [1,2]:
+            ax=plt.subplot(gs1[0,i-1])
+            ax.imshow(numpy.flip(numpy.rot90(slices[i]),axis=1),cmap='gist_gray')
+        fig1.savefig(configs['output']['res_fldr'] +
+                     parser.parse_args().variable.strip().lower()+'.png',
+                     transparent=True, dpi=450)

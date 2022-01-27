@@ -27,12 +27,16 @@ parser.add_argument("--variable", help="e.g. press1, vel1, perfusion, K1, etc.",
                 type=str, default='perfusion')
 parser.add_argument("--voxel_size", help="voxel edge size in [mm]",
                 type=int, default=2)
-parser.add_argument('--save_figure', default=True, action='store_true',
-                    help="save figure showing image along midline slices? ('y' or 'n')")
+parser.add_argument("--background_value", help="value used for background voxels",
+                type=int, default=-1024)
+parser.add_argument('--save_figure', action='store_true',
+                    help="save figure showing image along midline slices")
+parser.set_defaults(save_figure=False)
 
 
 config_file = parser.parse_args().res_fldr + 'settings.yaml'
 vxl_size =  parser.parse_args().voxel_size
+bckg_val = parser.parse_args().background_value
 
 configs = IO_fcts.basic_flow_config_reader_yml(config_file,parser)
 # physical parameters
@@ -118,29 +122,29 @@ nx,ny,nz = len(x), len(y), len(z)
 
 # TODO: speed up image recovery
 if vartype == 'scalar':
-    img_data = numpy.zeros([nx,ny,nz])
+    img_data = numpy.ones([nx,ny,nz])*bckg_val
     for i in range(nx):
         for j in range(ny):
             for k in range(nz):
                 my_point = (x[i],y[j],z[k])
                 try: img_data[i,j,k] = myvar(my_point)
-                except: img_data[i,j,k] = 0
+                except: img_data[i,j,k] = bckg_val
 elif vartype == 'vector':
-    img_data = numpy.zeros([nx,ny,nz,3])
+    img_data = numpy.ones([nx,ny,nz,3])*bckg_val
     for i in range(nx):
         for j in range(ny):
             for k in range(nz):
                 my_point = (x[i],y[j],z[k])
                 try: img_data[i,j,k,:] = myvar(my_point)
-                except: img_data[i,j,k,:] = numpy.zeros(3)
+                except: img_data[i,j,k,:] = numpy.ones(3)*bckg_val
 elif vartype == 'tensor':
-    img_data = numpy.zeros([nx,ny,nz,9])
+    img_data = numpy.ones([nx,ny,nz,9])*bckg_val
     for i in range(nx):
         for j in range(ny):
             for k in range(nz):
                 my_point = (x[i],y[j],z[k])
                 try: img_data[i,j,k,:] = myvar(my_point)
-                except: img_data[i,j,k,:] = numpy.zeros(9)
+                except: img_data[i,j,k,:] = numpy.ones(9)*bckg_val
 
 affine_matrix = numpy.eye(4)
 affine_matrix[:3,:3] = vxl_size*affine_matrix[:3,:3] 
@@ -176,7 +180,7 @@ if parser.parse_args().save_figure:
         
         for i in [1,2]:
             ax=plt.subplot(gs1[0,i-1])
-            ax.imshow(numpy.flip(numpy.rot90(slices[i]),axis=1),cmap='gist_gray')
+            ax.imshow(numpy.flip(numpy.rot90(slices[i]),axis=1),cmap='gist_gray',vmin=0, vmax=img_data.max())
         fig1.savefig(configs['output']['res_fldr'] +
                      parser.parse_args().variable.strip().lower()+'.png',
                      transparent=True, dpi=450)

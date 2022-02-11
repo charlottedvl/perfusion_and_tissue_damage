@@ -4,8 +4,9 @@ from desist.eventhandler.api import API
 from desist.isct.utilities import read_yaml, write_yaml
 
 # Default path (inside container) for configuration files
-tissue_health_config_file = '/app/tissue_health/config_tissue_damage.yaml'
 perfusion_dir = 'pf_sim'
+# TISSUE_ROOT = "./tissue_health/"
+TISSUE_ROOT = "/app/tissue_health/"
 
 
 class API(API):
@@ -15,6 +16,8 @@ class API(API):
         res_folder = self.result_dir.joinpath(f"{perfusion_dir}")
 
         # read configuration for oxygen
+        tissue_health_config_file = str(self.result_dir.joinpath("config_tissue_damage.yaml"))
+        print(tissue_health_config_file)
         solver_config = read_yaml(tissue_health_config_file)
 
         # baseline, stroke, treatment directories
@@ -48,13 +51,10 @@ class API(API):
         # (see issue #11 in `insist-trials` repository).
         num_recovery_days = self.patient.get('tissue_health_follow_up_days', 1)
         solver_config['input']['recovery_time'] = num_recovery_days * 24
-        brain_mesh = self.patient_dir.joinpath('brain_meshes/clustered.xdmf')
-        solver_config['input']['mesh_file'] = str(brain_mesh)
+        solver_config['input']['mesh_file'] = str(self.result_dir.joinpath("bf_sim/clustered_mesh.xdmf"))
 
         # write the updated yaml to the patient directory
-        config_path = self.result_dir.joinpath(
-                f'{perfusion_dir}/tissue_health_config.yaml')
-        write_yaml(config_path, solver_config)
+        write_yaml(tissue_health_config_file, solver_config)
 
         # the path where we are going to write the infarct volumes
         outcome_path = self.patient_dir.joinpath('tissue_health_outcome.yml')
@@ -63,10 +63,10 @@ class API(API):
         tissue_health_cmd = [
             "python3",
             "infarct_estimate_treatment.py",
-            str(config_path),
+            str(tissue_health_config_file),
             str(outcome_path),
         ]
-        subprocess.run(tissue_health_cmd, check=True, cwd="/app/tissue_health")
+        subprocess.run(tissue_health_cmd, check=True, cwd=TISSUE_ROOT)
 
     def example(self):
         pass

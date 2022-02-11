@@ -6,24 +6,27 @@ from desist.isct.utilities import read_yaml, write_yaml
 
 # Default path (inside the container) pointing to the YAML configuration for
 # the `basic_flow_solver` routine.
-permeability_config_file = '/app/perfusion/config_permeability_initialiser.yaml'
-perfusion_config_file = '/app/perfusion/config_basic_flow_solver.yaml'
+permeability_config_name = 'config_permeability_initialiser.yaml'
+perfusion_config_name = 'config_coupled_flow_solver.yaml'
 blood_flow_dir = 'bf_sim'
 perfusion_dir = 'pf_sim'
 # filename used for boundary conditions in CSV format
-bc_fn = 'boundary_condition_file.csv'
+bc_fn = 'boundary_conditions_file.csv'
 # filename used for perfusion output required for simplified infarct values
 pf_outfile = 'perfusion.xdmf'
 # directory for where to generate and store patient brain meshes
-brain_mesh_dir = 'brain_meshes'
+PERFUSION_ROOT = "/app/perfusion/"
+# PERFUSION_ROOT = "./perfusion/"
+MAIN_ROOT = "/app/"
+# MAIN_ROOT = "./"
 
 
 class API(API):
     def event(self):
 
         # patient's brain meshes and permeability information
-        brain_meshes = self.patient_dir.joinpath(brain_mesh_dir)
-        permeability_dir = brain_meshes.joinpath('permeability')
+        brain_meshes = self.result_dir.joinpath(f'{blood_flow_dir}')
+        permeability_dir = self.result_dir.joinpath('permeability')
 
         if not brain_meshes.exists():
             error_msg = f"""Brain meshes and permeability files are not present
@@ -43,27 +46,42 @@ class API(API):
                     str(clustering_result_dir)
             ]
             print(f"Evaluating: '{' '.join(brain_mesh_cmd)}'", flush=True)
-            subprocess.run(brain_mesh_cmd, check=True, cwd="/app/perfusion")
+            subprocess.run(brain_mesh_cmd, check=True, cwd=PERFUSION_ROOT)
+
+            VP_mesh_cmd = [
+                "python3",
+                "VP_mesh_prep.py",
+                "--bsl_msh_fldr",
+                str(clustering_result_dir),
+                "--age",
+                str(self.patient['age']),
+                "--sex",
+                str(self.patient['sex']),
+                "--forced"
+            ]
+            print(f"Evaluating: '{' '.join(VP_mesh_cmd)}'", flush=True)
+            subprocess.run(VP_mesh_cmd, check=True, cwd=MAIN_ROOT)
 
         if not permeability_dir.exists():
             # generate permeability meshes after clustering
-            clustered_mesh = brain_meshes.joinpath('clustered.xdmf')
+            clustered_mesh = brain_meshes.joinpath('clustered_mesh.xdmf')
 
+            permeability_config_file = str(self.result_dir.joinpath(permeability_config_name))
             perm_config = read_yaml(permeability_config_file)
             perm_config['input']['mesh_file'] = str(clustered_mesh)
             perm_config['output']['res_fldr'] = f'{permeability_dir}/'
 
-            config_path = self.result_dir.joinpath(f'{perfusion_dir}/perm_config.yaml')
-            write_yaml(config_path, perm_config)
+            # config_path = str(self.result_dir.joinpath('config_permeability_initialiser.yaml'))
+            write_yaml(permeability_config_file, perm_config)
 
             permeability_cmd = [
                 "python3",
                 "permeability_initialiser.py",
                 "--config_file",
-                str(config_path)
+                str(permeability_config_file)
             ]
             print(f"Evaluating: '{' '.join(permeability_cmd)}'", flush=True)
-            subprocess.run(permeability_cmd, check=True, cwd="/app/perfusion")
+            subprocess.run(permeability_cmd, check=True, cwd=PERFUSION_ROOT)
 
         assert brain_meshes.exists(), f"Brain meshes not at: '{brain_meshes}'."
 
@@ -72,32 +90,33 @@ class API(API):
         os.makedirs(res_folder, exist_ok=True)
 
         # update configuration for perfusion
+        perfusion_config_file = str(self.result_dir.joinpath(perfusion_config_name))
         solver_config = read_yaml(perfusion_config_file)
 
         # ensure boundary conditions are being read from input files
         solver_config['input']['read_inlet_boundary'] = True
         bc_file = self.result_dir.joinpath(f'{blood_flow_dir}/{bc_fn}')
         solver_config['input']['inlet_boundary_file'] = str(bc_file.resolve())
-        solver_config['input']['mesh_file'] = str(self.patient_dir.joinpath('brain_meshes/clustered.xdmf'))
-        solver_config['input']['permeability_folder'] = f"{self.patient_dir.joinpath('brain_meshes/permeability')}/"
+        solver_config['input']['mesh_file'] = str(self.result_dir.joinpath('bf_sim/clustered_mesh.xdmf'))
+        solver_config['input']['permeability_folder'] = f"{self.result_dir.joinpath('permeability')}/"
 
         # cannot proceed without boundary conditions
         msg = f"Boundary conditions `1d-blood-flow` not present: `{bc_file}`"
         assert os.path.isfile(bc_file), msg
 
         # update output settings
-        config_path = self.result_dir.joinpath(
-            f'{perfusion_dir}/perfusion_config.yaml')
-        write_yaml(config_path, solver_config)
+        # config_path = self.result_dir.joinpath(
+        #     f'{perfusion_dir}/perfusion_config.yaml')
+        write_yaml(perfusion_config_file, solver_config)
 
         # form command to evaluate perfusion
         solve_cmd = [
             "python3", "basic_flow_solver.py", "--res_fldr", f"{res_folder}/",
-            "--config_file", f"{str(config_path)}"
+            "--config_file", f"{str(perfusion_config_file)}"
         ]
 
         print(f"Evaluating: '{' '.join(solve_cmd)}'", flush=True)
-        subprocess.run(solve_cmd, check=True, cwd="/app/perfusion")
+        subprocess.run(solve_cmd, check=True, cwd=PERFUSION_ROOT)
 
         # terminate baseline scenario
         if self.event_id == 0:
@@ -127,7 +146,7 @@ class API(API):
             "python3",
             "infarct_calculation_thresholds.py",
             "--config_file",
-            f"{str(config_path)}",
+            f"{str(perfusion_config_file)}",
             "--baseline",
             f"{str(baseline)}",
             "--occluded",
@@ -140,7 +159,7 @@ class API(API):
             str(self.patient_dir.joinpath('brain_meshes/clustered.xdmf'))
         ]
         print(f"Evaluating: '{' '.join(infarct_cmd)}'", flush=True)
-        subprocess.run(infarct_cmd, check=True, cwd="/app/perfusion")
+        subprocess.run(infarct_cmd, check=True, cwd=PERFUSION_ROOT)
 
     def example(self):
         # when running the example, we need to generate some dummy input
@@ -160,7 +179,7 @@ class API(API):
         # move the contents to the expected brain mesh location
         import shutil
         shutil.move("/patient/tmp/brain_meshes/b0000", "/patient/brain_meshes")
-
+        perfusion_config_file = '/app/perfusion/config_basic_flow_solver.yaml'
         bc_cmd = [
             "python3",
             "BC_creator.py",
@@ -176,7 +195,7 @@ class API(API):
         ]
 
         print(f"Evaluating: '{' '.join(bc_cmd)}'", flush=True)
-        subprocess.run(bc_cmd, check=True, cwd="/app/perfusion")
+        subprocess.run(bc_cmd, check=True, cwd=PERFUSION_ROOT)
 
         # rename the boundary conditions file to match the trial scenario
         src = res_folder.joinpath('BCs.csv')

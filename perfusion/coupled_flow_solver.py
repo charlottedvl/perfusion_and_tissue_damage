@@ -75,7 +75,7 @@ K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat = \
 beta12gm, beta23gm, gmowm_beta_rat = \
     configs['physical']['beta12gm'], configs['physical']['beta23gm'], configs['physical']['gmowm_beta_rat']
 
-## 1-D blood flow model
+# 1-D blood flow model
 patient_folder = "/".join(
     configs['input']['inlet_boundary_file'].split("/")[:-2]) + "/"  # assume boundary file is in bf_sim folder
 coupled_resistance_file = patient_folder + 'bf_sim/Coupled_resistance.csv'
@@ -138,6 +138,7 @@ except KeyError:
 # read mesh
 mesh, subdomains, boundaries = IO_fcts.mesh_reader(configs['input']['mesh_file'])
 
+
 # determine fct spaces
 Vp, Vvel, v_1, v_2, v_3, p, p1, p2, p3, K1_space, K2_space = \
     fe_mod.alloc_fct_spaces(mesh, configs['simulation']['fe_degr'], model_type=compartmental_model,
@@ -151,13 +152,12 @@ if rank == 0:
     print('\t Scaling coupling coefficients and permeability tensors')
 
 # set coupling coefficients
-beta12, beta23 = suppl_fcts.scale_coupling_coefficients(subdomains, \
-                                                        beta12gm, beta23gm, gmowm_beta_rat, \
+beta12, beta23 = suppl_fcts.scale_coupling_coefficients(subdomains, beta12gm, beta23gm, gmowm_beta_rat,
                                                         K2_space, configs['output']['res_fldr'],
                                                         model_type=compartmental_model)
 
-K1, K2, K3 = suppl_fcts.scale_permeabilities(subdomains, K1, K2, K3, \
-                                             K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat, \
+K1, K2, K3 = suppl_fcts.scale_permeabilities(subdomains, K1, K2, K3,
+                                             K1gm_ref, K2gm_ref, K3gm_ref, gmowm_perm_rat,
                                              configs['output']['res_fldr'], model_type=compartmental_model)
 end1 = time.time()
 
@@ -193,18 +193,21 @@ if not GeneralFunctions.is_non_zero_file(coupled_resistance_file):
     start3 = time.time()
 
     myResults = {}
-    suppl_fcts.compute_my_variables(p, K1, K2, K3, beta12, beta23, p_venous, Vp, Vvel, K2_space, configs, \
+    suppl_fcts.compute_my_variables(p, K1, K2, K3, beta12, beta23, p_venous, Vp, Vvel, K2_space, configs,
                                     myResults, compartmental_model, rank)
     my_integr_vars = {}
     surf_int_values, surf_int_header, volu_int_values, volu_int_header = \
-        suppl_fcts.compute_integral_quantities(configs, myResults, my_integr_vars, \
+        suppl_fcts.compute_integral_quantities(configs, myResults, my_integr_vars,
                                                mesh, subdomains, boundaries, rank)
 
     # Flow rate from the perfusion model (sign to match 1-d bf model, positive flow towards the brain)
-    FlowRateAtBoundary = my_integr_vars['vel1_surfint'][2:] * -1
+    # The new mesh does not contain the stem_cut region so the length is now off.
+    coupled_surface_index_start = 2 if 1 in surf_int_values[:, 0] else 1
+
+    FlowRateAtBoundary = my_integr_vars['vel1_surfint'][coupled_surface_index_start:] * -1
     FlowRateAtBoundary = numpy.append(FlowRateAtBoundary, -numpy.sum(my_integr_vars['vel1_surfint'][:]))
     # Pressure from the perfusion model
-    PressureAtBoundary = my_integr_vars['press1_surfave'][2:]
+    PressureAtBoundary = my_integr_vars['press1_surfave'][coupled_surface_index_start:]
     sys.stdout.flush()
 
     start_r = time.time()
@@ -240,7 +243,6 @@ if not GeneralFunctions.is_non_zero_file(coupled_resistance_file):
         for index, cp in enumerate(Patient.Perfusion.CouplingPoints):
             cp.Node.TargetFlow = FlowRateAtBoundary[
                                      index] * 1e-3  # * correction  # todo scaling to compensate for low bc resolution
-
 
         def estimate_resistance(patient):
             patient.Run1DSteadyStateModel(model="Linear", tol=1e-12, clotactive=clotactive, PressureInlets=True,
@@ -343,8 +345,8 @@ if not GeneralFunctions.is_non_zero_file(coupled_resistance_file):
                 "Region,Resistance,Outlet Pressure(pa),WK Pressure, Perfusion Surface Pressure(pa),Old Flow Rate,Flow Rate(mL/s),Perfusion Flow Rate(mL/s)\n")
             for index, cp in enumerate(Patient.Perfusion.CouplingPoints):
                 f.write("%d,%.12g,%.12g,%.12g,%.12g,%.12g,%.12g,%.12g\n" % (
-                    # fluxes[:, 0][2:][index],
-                    surf_int_values[:, 0][2:][index],
+                    # fluxes[:, 0][coupled_surface_index_start:][index],
+                    surf_int_values[:, 0][coupled_surface_index_start:][index],
                     cp.Node.R1 + cp.Node.R2,
                     cp.Node.Pressure,
                     cp.Node.WKNode.Pressure,
@@ -414,6 +416,22 @@ exit_program = comm.bcast(exit_program, root=0)
 if exit_program:
     sys.exit()
 
+# tissue_health_file = configs['output']['res_fldr'] + '../Tissue_damage/infarct_0_120.xdmf'
+# dead_tissue = Function(K2_space)
+# f_in = XDMFFile(tissue_health_file)
+# f_in.read_checkpoint(dead_tissue,'dead', 0)
+# f_in.close()
+#
+# K2.vector()[:] *= ((1-dead_tissue.vector())/2+1/2)
+# beta12.vector()[:] *= ((1-dead_tissue.vector())/2+1/2)
+# beta23.vector()[:] *= ((1-dead_tissue.vector())/2+1/2)
+# with XDMFFile(configs['output']['res_fldr'] + 'K2_scaled.xdmf') as myfile:
+#     myfile.write_checkpoint(K2, "K2_scaled", 0, XDMFFile.Encoding.HDF5, False)
+# with XDMFFile(configs['output']['res_fldr'] + 'beta12_scaled.xdmf') as myfile:
+#     myfile.write_checkpoint(beta12, "K2_scaled", 0, XDMFFile.Encoding.HDF5, False)
+# with XDMFFile(configs['output']['res_fldr'] + 'beta23_scaled.xdmf') as myfile:
+#     myfile.write_checkpoint(beta23, "K2_scaled", 0, XDMFFile.Encoding.HDF5, False)
+
 
 # %% RUN COUPLED MODEL
 def coupledmodel(P, stopp):
@@ -441,18 +459,19 @@ def coupledmodel(P, stopp):
         p = fe_mod.solve_lin_sys(Vp, LHS, RHS, BCs, lin_solver, precond, rtol, mon_conv, init_sol,
                                  model_type=compartmental_model)
         myResults = {}
-        suppl_fcts.compute_my_variables(p, K1, K2, K3, beta12, beta23, p_venous, Vp, Vvel, K2_space, configs, \
+        suppl_fcts.compute_my_variables(p, K1, K2, K3, beta12, beta23, p_venous, Vp, Vvel, K2_space, configs,
                                         myResults, compartmental_model, rank, save_data=False)
         my_integr_vars = {}
         surf_int_values, surf_int_header, volu_int_values, volu_int_header = \
-            suppl_fcts.compute_integral_quantities(configs, myResults, my_integr_vars, \
+            suppl_fcts.compute_integral_quantities(configs, myResults, my_integr_vars,
                                                    mesh, subdomains, boundaries, rank, save_data=False)
 
         # Flow rate from the perfusion model (sign to match 1-d bf model, positive flow towards the brain)
-        FlowRateAtBoundary = my_integr_vars['vel1_surfint'][2:] * -1
+        coupled_surface_index_start = 2 if 1 in surf_int_values[:, 0] else 1
+        FlowRateAtBoundary = my_integr_vars['vel1_surfint'][coupled_surface_index_start:] * -1
         FlowRateAtBoundary = numpy.append(FlowRateAtBoundary, -numpy.sum(my_integr_vars['vel1_surfint'][:]))
         # Pressure from the perfusion model
-        # PressureAtBoundary = my_integr_vars['press1_surfave'][2:]
+        # PressureAtBoundary = my_integr_vars['press1_surfave'][coupled_surface_index_start:]
 
         # Run 1-D bf model
         residualFlowrate = 0
@@ -568,18 +587,19 @@ with contextlib.redirect_stdout(None):
     p = fe_mod.solve_lin_sys(Vp, LHS, RHS, BCs, lin_solver, precond, rtol, mon_conv, init_sol,
                              model_type=compartmental_model)
     myResults = {}
-    suppl_fcts.compute_my_variables(p, K1, K2, K3, beta12, beta23, p_venous, Vp, Vvel, K2_space, configs, \
+    suppl_fcts.compute_my_variables(p, K1, K2, K3, beta12, beta23, p_venous, Vp, Vvel, K2_space, configs,
                                     myResults, compartmental_model, rank)
     my_integr_vars = {}
     surf_int_values, surf_int_header, volu_int_values, volu_int_header = \
-        suppl_fcts.compute_integral_quantities(configs, myResults, my_integr_vars, \
+        suppl_fcts.compute_integral_quantities(configs, myResults, my_integr_vars,
                                                mesh, subdomains, boundaries, rank)
 
     # Flow rate from the perfusion model (sign to match 1-d bf model, positive flow towards the brain)
-    FlowRateAtBoundary = my_integr_vars['vel1_surfint'][2:] * -1
+    coupled_surface_index_start = 2 if 1 in surf_int_values[:, 0] else 1
+    FlowRateAtBoundary = my_integr_vars['vel1_surfint'][coupled_surface_index_start:] * -1
     FlowRateAtBoundary = numpy.append(FlowRateAtBoundary, -numpy.sum(my_integr_vars['vel1_surfint'][:]))
     # Pressure from the perfusion model
-    PressureAtBoundary = my_integr_vars['press1_surfave'][2:]
+    PressureAtBoundary = my_integr_vars['press1_surfave'][coupled_surface_index_start:]
 
     # perfusion_stroke = project(abs(beta12 * (p1 - p2) * 6000), K2_space, solver_type='bicgstab', preconditioner_type='amg')
 comm.Barrier()
@@ -612,8 +632,8 @@ if rank == 0:
             "Region,Resistance,Outlet Pressure(pa),WK Pressure, Perfusion Surface Pressure(pa),Old Flow Rate,Flow Rate(mL/s),Perfusion Flow Rate(mL/s)\n")
         for index, cp in enumerate(Patient.Perfusion.CouplingPoints):
             f.write("%d,%.12g,%.12g,%.12g,%.12g,%.12g,%.12g,%.12g\n" % (
-                # fluxes[:, 0][2:][index],
-                surf_int_values[:, 0][2:][index],
+                # fluxes[:, 0][coupled_surface_index_start:][index],
+                surf_int_values[:, 0][coupled_surface_index_start:][index],
                 cp.Node.R1 + cp.Node.R2,
                 cp.Node.Pressure,
                 cp.Node.WKNode.Pressure,

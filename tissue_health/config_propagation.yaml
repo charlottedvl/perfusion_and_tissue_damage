@@ -1,11 +1,11 @@
 input:
-  healthyfile: ../VP_results/040EPAD00047/healthy/perfusion.nii.gz
-  strokefile: ../VP_results/040EPAD00047/LMCA_occl/perfusion.nii.gz
-  treatmentfile: ../VP_results/040EPAD00047/healthy/perfusion.nii.gz
+  healthyfile: ../VP_results/p0000/perfusion_healthy/perfusion.nii.gz
+  strokefile: ../VP_results/p0000/perfusion_RMCAo/perfusion.nii.gz
+  treatmentfile: ../VP_results/p0000/perfusion_healthy/perfusion.nii.gz
   arrival_time: 3
   recovery_time: 120
 output:
-  res_fldr: ../VP_results/040EPAD00047/tissue_damage/
+  res_fldr: ../VP_results/p0000/tissue_damage/
 parameter:
   kf: 0.00060644
   kt: 0.00429805

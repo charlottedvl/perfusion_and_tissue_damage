@@ -60,7 +60,7 @@ def cell_death(x,t):
 		dDdt = kf*A*T
 	else:
 		dDdt = 0
-	dTdt = kt*V**2*(1-T)-kc*(1-V)*A*T
+	dTdt = kt*V*(1-T)-kc*(1-V)*A*T
 
 	dxdt = [dDdt, dTdt, 0]
 	return dxdt

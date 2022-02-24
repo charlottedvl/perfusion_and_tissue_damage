@@ -1,0 +1,15 @@
+input:
+  healthyfile: ../VP_results/040EPAD00047/healthy/perfusion.nii.gz
+  strokefile: ../VP_results/040EPAD00047/LMCA_occl/perfusion.nii.gz
+  treatmentfile: ../VP_results/040EPAD00047/healthy/perfusion.nii.gz
+  arrival_time: 3
+  recovery_time: 120
+output:
+  res_fldr: ../VP_results/040EPAD00047/tissue_damage/
+parameter:
+  kf: 0.00060644
+  kt: 0.00429805
+  kc: 0.0999227
+  kd: 0.9792043795692843
+  Td: 0.09163922
+  Tp: 0.5

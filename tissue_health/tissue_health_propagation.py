@@ -48,7 +48,7 @@ recovery_time = configs['input']['recovery_time']
 
 res_fldr = configs['output']['res_fldr']
 
-kf,kt,kc,kp = configs['parameter']['kf'],configs['parameter']['kt'],configs['parameter']['kc'],configs['parameter']['kp']
+kf,kt,kc,kd = configs['parameter']['kf'],configs['parameter']['kt'],configs['parameter']['kc'],configs['parameter']['kd']
 Td,Tp = configs['parameter']['Td'],configs['parameter']['Tp']
 
 # define the ODE for cell death, h[0] - dead, h[1] - toxic, h[2] - vulnerable index

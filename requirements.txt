@@ -4,3 +4,4 @@ argparse
 PyYAML
 tables
 tqdm
+nibabel

@@ -27,6 +27,7 @@ build_docker:
         cache:
                 <<: *global_cache
                 policy: push
+                key: docker
         stage: containerise
         script:
                 - docker build -t ${IMAGE} ./
@@ -38,6 +39,7 @@ verify_docker:
         cache:
                 <<: *global_cache
                 policy: pull
+                key: docker
         stage: verify
         script:
                 - docker load -i ${CONTAINER}/docker.tar
@@ -51,6 +53,7 @@ build_singularity:
         cache:
                 <<: *global_cache
                 policy: push
+                key: singularity
         stage: containerise
         script:
                 - sed -i 's/\.\/ \/app/\/app \/app/' singularity.def
@@ -66,6 +69,7 @@ verify_singularity:
         cache:
                 <<: *global_cache
                 policy: pull
+                key: singularity
         stage: verify
         script:
                 - mkdir -p ${MOUNT_POINT}/singularity

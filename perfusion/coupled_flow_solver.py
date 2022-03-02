@@ -1,4 +1,3 @@
-# TODO: clear code after testing
 """
 Multi-compartment Darcy flow model with mixed Dirichlet and Neumann
 boundary conditions
@@ -33,7 +32,6 @@ import finite_element_fcts as fe_mod
 
 import sys
 
-sys.path.insert(0, "/app/bloodflow/")  # should not be necessary if installed already
 from Blood_Flow_1D import Patient, Results, GeneralFunctions, Constants
 import contextlib
 import scipy.optimize

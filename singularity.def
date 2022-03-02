@@ -1,30 +1,21 @@
 Bootstrap: docker
-From: quay.io/fenicsproject/stable:latest
+From: continuumio/miniconda3
 
 %files
-        ./ /app
+    . /app
 
 %post
-        apt-get update && apt-get install -y \
-                software-properties-common
+    apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    libgl1-mesa-glx
 
-        add-apt-repository ppa:deadsnakes/ppa
-
-        apt-get update && apt-get install -y \
-                python3 \
-                python3-pip \
-                python3.9 \
-                python3.9-distutils
-
-        # ensure the installation is working and pip is available
-        python3.9 -m pip install pip --user
-        python3.9 -m pip install --upgrade pip distlib wheel setuptools
-
-        # install the in-silico-trial package in 3.9
-        cd /app/ && python3.9 -m pip install --no-cache-dir ./in-silico-trial
-
-        # and all the rest in the other one
-        cd /app/ && python3.9 -m pip install --no-cache-dir -r requirements.txt
+    cd /app/ && conda env create -f environment.yml
+    . /opt/conda/etc/profile.d/conda.sh
+    conda activate perfusion
+    cd /app/ && pip install --no-cache-dir ./in-silico-trial
+    cd /app/ && pip install --no-cache-dir .
 
 %runscript
-        cd /app/ && exec python3.9 API.py "$@"
+    export DIJITSO_CACHE_DIR=/patient/.cache
+    . /opt/conda/etc/profile.d/conda.sh
+    conda activate perfusion
+    cd /app/ && exec python3 API.py "$@"

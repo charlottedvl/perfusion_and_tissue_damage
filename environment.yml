@@ -1,0 +1,6 @@
+name: perfusion
+channels:
+  - conda-forge
+dependencies:
+  - fenics
+  - python=3.9

@@ -25,7 +25,7 @@ RUN python3.9 -m pip install pip --user
 RUN python3.9 -m pip install --upgrade pip distlib wheel setuptools cython
 
 RUN cd /app/ && python3.9 -m pip install --no-cache-dir ./in-silico-trial
-RUN cd /app/ && python3.9 -m pip install --no-cache-dir .
+RUN cd /app/ && python3.9 -m pip install --no-cache-dir -r requirements.txt
 RUN export DIJITSO_CACHE_DIR=/patient/.cache
 
 ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "perfusion", "python3.9", "API.py"]

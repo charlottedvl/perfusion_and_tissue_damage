@@ -12,7 +12,7 @@ From: continuumio/miniconda3
     . /opt/conda/etc/profile.d/conda.sh
     conda activate perfusion
     cd /app/ && pip install --no-cache-dir ./in-silico-trial
-    cd /app/ && pip install --no-cache-dir .
+    cd /app/ && pip install --no-cache-dir -r requirements.txt
 
 %runscript
     export DIJITSO_CACHE_DIR=/patient/.cache

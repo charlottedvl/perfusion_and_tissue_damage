@@ -20,7 +20,7 @@ RUN python3.9 -m pip install --upgrade pip distlib wheel setuptools
 RUN cd /app/ && python3.9 -m pip install --no-cache-dir ./in-silico-trial
 
 # the other requirements to run
-RUN python3 -m pip install --no-cache-dir -r requirements.txt
+RUN cd /app/ && python3.9 -m pip install --no-cache-dir -r requirements.txt
 
 # copy all local contents
 COPY . .

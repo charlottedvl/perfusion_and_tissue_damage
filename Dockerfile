@@ -11,11 +11,11 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     g++ \
     libgl1-mesa-glx
 
+# Initialize conda in bash config files:
+RUN conda init bash
+
 # Create the environment:
 RUN conda env create -f environment.yml
-
-# Initialize conda in bash config fiiles:
-RUN conda init bash
 
 # Activate the environment, and make sure it's activated:
 RUN echo "conda activate perfusion" > ~/.bashrc

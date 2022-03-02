@@ -8,8 +8,8 @@ From: continuumio/miniconda3
     apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     libgl1-mesa-glx
 
-    cd /app/ && conda env create -f environment.yml
     . /opt/conda/etc/profile.d/conda.sh
+    cd /app/ && conda env create -f environment.yml
     conda activate perfusion
     cd /app/ && pip install --no-cache-dir ./in-silico-trial
     cd /app/ && pip install --no-cache-dir -r requirements.txt

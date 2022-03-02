@@ -24,7 +24,7 @@ From: quay.io/fenicsproject/stable:latest
         cd /app/ && python3.9 -m pip install --no-cache-dir ./in-silico-trial
 
         # and all the rest in the other one
-        cd /app/ && python3 -m pip install --no-cache-dir -r requirements.txt
+        cd /app/ && python3.9 -m pip install --no-cache-dir -r requirements.txt
 
 %runscript
         cd /app/ && exec python3.9 API.py "$@"

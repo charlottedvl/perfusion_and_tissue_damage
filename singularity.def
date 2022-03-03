@@ -2,7 +2,7 @@ Bootstrap: docker
 From: continuumio/miniconda3
 
 %files
-    . /app
+    ./ /app
 
 %post
     apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \

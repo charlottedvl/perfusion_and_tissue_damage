@@ -1,5 +1,6 @@
 import os
 import subprocess
+import shutil
 
 from desist.eventhandler.api import API
 from desist.isct.utilities import read_yaml, write_yaml
@@ -67,6 +68,9 @@ class API(API):
             clustered_mesh = brain_meshes.joinpath('clustered_mesh.xdmf')
 
             permeability_config_file = str(self.result_dir.joinpath(permeability_config_name))
+            if not self.result_dir.joinpath(permeability_config_name).exists():
+                shutil.copy(PERFUSION_ROOT + "/config_permeability_initialiser.yaml", str(self.result_dir))
+
             perm_config = read_yaml(permeability_config_file)
             perm_config['input']['mesh_file'] = str(clustered_mesh)
             perm_config['output']['res_fldr'] = f'{permeability_dir}/'

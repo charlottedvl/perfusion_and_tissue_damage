@@ -21,6 +21,7 @@ From: continuumio/miniconda3
     test -f /opt/conda/envs/perfusion/etc/conda/activate.d/activate-gxx_linux-64.sh && sed -i 's/function //' /opt/conda/envs/perfusion/etc/conda/activate.d/activate-gxx_linux-64.sh
 
     conda activate perfusion
+    conda install pip
     cd /app/ && pip install --no-cache-dir ./in-silico-trial
     cd /app/ && pip install --no-cache-dir -r requirements.txt
 

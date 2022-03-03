@@ -60,7 +60,7 @@ build_singularity:
                 - mkdir -p ${MOUNT_POINT}
                 - cp $(ls -p | grep -v /) ${MOUNT_POINT}/
                 - cp -R in-silico-trial oxygen perfusion tissue_health ${MOUNT_POINT}/
-                - docker run --privileged -v ${MOUNT_POINT}:/app quay.io/singularity/singularity:v3.9.5 build /app/${IMAGE}.sif /app/singularity.def
+                - docker run --privileged -v ${MOUNT_POINT}:/app quay.io/singularity/singularity:v3.9.4 build /app/${IMAGE}.sif /app/singularity.def
                 - mkdir -p ${CONTAINER}
                 - cp ${MOUNT_POINT}/${IMAGE}.sif ${CONTAINER}/singularity.sif
 
@@ -75,5 +75,5 @@ verify_singularity:
                 - mkdir -p ${MOUNT_POINT}/singularity
                 - cp ./test_patient.yml ${MOUNT_POINT}/singularity/patient.yml
                 - cp ${CONTAINER}/singularity.sif ${MOUNT_POINT}/${IMAGE}.sif
-                - docker run --privileged -v ${MOUNT_POINT}:/patient quay.io/singularity/singularity:v3.9.5 run -B /patient/singularity:/patient /patient/${IMAGE}.sif /patient/patient.yml 1 test
-                - docker run --privileged -v ${MOUNT_POINT}:/patient quay.io/singularity/singularity:v3.9.5 run -B /patient/singularity:/patient /patient/${IMAGE}.sif /patient/patient.yml 2 test
+                - docker run --privileged -v ${MOUNT_POINT}:/patient quay.io/singularity/singularity:v3.9.4 run -B /patient/singularity:/patient /patient/${IMAGE}.sif /patient/patient.yml 1 test
+                - docker run --privileged -v ${MOUNT_POINT}:/patient quay.io/singularity/singularity:v3.9.4 run -B /patient/singularity:/patient /patient/${IMAGE}.sif /patient/patient.yml 2 test

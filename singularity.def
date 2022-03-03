@@ -21,9 +21,11 @@ From: continuumio/miniconda3
     test -f /opt/conda/envs/perfusion/etc/conda/activate.d/activate-gxx_linux-64.sh && sed -i 's/function //' /opt/conda/envs/perfusion/etc/conda/activate.d/activate-gxx_linux-64.sh
 
     conda activate perfusion
-    conda install pip
-    cd /app/ && pip install --no-cache-dir ./in-silico-trial
-    cd /app/ && pip install --no-cache-dir -r requirements.txt
+    python3.9 -m pip install pip --user
+    python3.9 -m pip install --upgrade pip distlib wheel setuptools cython
+
+    cd /app/ && python3.9 -m pip install --no-cache-dir ./in-silico-trial
+    cd /app/ && python3.9 -m pip install --no-cache-dir -r requirements.txt
 
 %runscript
     export DIJITSO_CACHE_DIR=/patient/.cache

@@ -8,8 +8,18 @@ From: continuumio/miniconda3
     apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     libgl1-mesa-glx
 
+    conda update -n base -c defaults conda -y
+    conda create -n perfusion -c conda-forge python=3.9 fenics Cython -y
     . /opt/conda/etc/profile.d/conda.sh
-    cd /app/ && conda env create -f environment.yml
+
+    # bug in conda https://github.com/conda/conda/issues/9959
+    sed -i 's/function //' /opt/conda/envs/coupled_model/etc/conda/deactivate.d/deactivate-binutils_linux-64.sh
+    sed -i 's/function //' /opt/conda/envs/coupled_model/etc/conda/deactivate.d/deactivate-gcc_linux-64.sh
+    sed -i 's/function //' /opt/conda/envs/coupled_model/etc/conda/deactivate.d/deactivate-gxx_linux-64.sh
+    sed -i 's/function //' /opt/conda/envs/coupled_model/etc/conda/activate.d/activate-binutils_linux-64.sh
+    sed -i 's/function //' /opt/conda/envs/coupled_model/etc/conda/activate.d/activate-gcc_linux-64.sh
+    sed -i 's/function //' /opt/conda/envs/coupled_model/etc/conda/activate.d/activate-gxx_linux-64.sh
+
     conda activate perfusion
     cd /app/ && pip install --no-cache-dir ./in-silico-trial
     cd /app/ && pip install --no-cache-dir -r requirements.txt

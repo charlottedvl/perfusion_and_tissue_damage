@@ -13,9 +13,10 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
 
 # Initialize conda in bash config files:
 RUN conda init bash
+RUN conda update -n base -c defaults conda -y
 
 # Create the environment:
-RUN conda env create -f environment.yml
+RUN conda create -n perfusion -c conda-forge fenics python=3.9 -y
 
 # Activate the environment, and make sure it's activated:
 RUN echo "conda activate perfusion" > ~/.bashrc

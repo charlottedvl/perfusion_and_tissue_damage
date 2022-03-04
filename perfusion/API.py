@@ -8,7 +8,7 @@ from desist.isct.utilities import read_yaml, write_yaml
 # Default path (inside the container) pointing to the YAML configuration for
 # the `basic_flow_solver` routine.
 permeability_config_name = 'config_permeability_initialiser.yaml'
-perfusion_config_name = 'config_coupled_flow_solver.yaml'
+perfusion_config_name = 'config_basic_flow_solver.yaml'
 blood_flow_dir = 'bf_sim'
 perfusion_dir = 'pf_sim'
 # filename used for boundary conditions in CSV format
@@ -212,7 +212,9 @@ class API(API):
         os.rename(str(res_bf_folder.joinpath("clustered_physical_region.xdmf")),
                   str(res_bf_folder.joinpath("clustered_mesh_physical_region.xdmf")))
 
-        perfusion_config_file = '/app/perfusion/config_basic_flow_solver.yaml'
+        shutil.copy(os.path.join(PERFUSION_ROOT, perfusion_config_name), str(self.result_dir))
+        perfusion_config_file = os.path.join(str(self.result_dir), perfusion_config_name)
+
         bc_cmd = [
             "python3",
             "BC_creator.py",

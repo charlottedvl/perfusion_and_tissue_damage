@@ -160,10 +160,26 @@ class API(API):
             "--thresholds",
             f"{self.current_model.get('infarct_levels', 21)}",
             "--mesh_file",
-            str(self.patient_dir.joinpath('brain_meshes/clustered.xdmf'))
+            str(self.result_dir.joinpath(f"{perfusion_dir}", "clustered_mesh.xdmf"))
         ]
         print(f"Evaluating: '{' '.join(infarct_cmd)}'", flush=True)
         subprocess.run(infarct_cmd, check=True, cwd=PERFUSION_ROOT)
+
+        # convert perfusion FEM result to NIFTI
+        res2img_cmd = [
+            "python3",
+            "convert_res2img.py",
+            "--config_file",
+            f"{str(perfusion_config_file)}",
+            "--res_fldr",
+            f"{res_folder}/",
+            "--variable",
+            "perfusion",
+            "--save_figure",
+        ]
+        print(f"Evaluating: '{' '.join(res2img_cmd)}'", flush=True)
+        subprocess.run(res2img_cmd, check=True, cwd=PERFUSION_ROOT)
+
 
     def example(self):
         # when running the example, we need to generate some dummy input
@@ -182,7 +198,20 @@ class API(API):
 
         # move the contents to the expected brain mesh location
         import shutil
-        shutil.move("/patient/tmp/brain_meshes/b0000", "/patient/brain_meshes")
+        res_bf_folder = self.result_dir.joinpath(f"{blood_flow_dir}")
+        os.makedirs(res_bf_folder, exist_ok=True)
+        files = os.listdir("/patient/tmp/brain_meshes/b0000")
+        for f in files:
+            shutil.move(os.path.join("/patient/tmp/brain_meshes/b0000", f), str(res_bf_folder))
+
+        # Renaming the files
+        os.rename(str(res_bf_folder.joinpath("clustered.xdmf")),
+                  str(res_bf_folder.joinpath("clustered_mesh.xdmf")))
+        os.rename(str(res_bf_folder.joinpath("clustered_facet_region.xdmf")),
+                  str(res_bf_folder.joinpath("clustered_mesh_facet_region.xdmf")))
+        os.rename(str(res_bf_folder.joinpath("clustered_physical_region.xdmf")),
+                  str(res_bf_folder.joinpath("clustered_mesh_physical_region.xdmf")))
+
         perfusion_config_file = '/app/perfusion/config_basic_flow_solver.yaml'
         bc_cmd = [
             "python3",
@@ -195,7 +224,7 @@ class API(API):
             "--folder",
             f"{res_folder}/",
             "--mesh_file",
-            "/patient/brain_meshes/clustered.xdmf",
+            str(res_bf_folder.joinpath("clustered_mesh.xdmf"))
         ]
 
         print(f"Evaluating: '{' '.join(bc_cmd)}'", flush=True)

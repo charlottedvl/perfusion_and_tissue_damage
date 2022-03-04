@@ -1,0 +1,15 @@
+input:
+  healthyfile: ../VP_results/p0000/perfusion_healthy/perfusion.nii.gz
+  strokefile: ../VP_results/p0000/perfusion_RMCAo/perfusion.nii.gz
+  treatmentfile: ../VP_results/p0000/perfusion_healthy/perfusion.nii.gz
+  arrival_time: 3
+  recovery_time: 120
+output:
+  res_fldr: ../VP_results/p0000/tissue_damage/
+parameter:
+  kf: 0.00060644
+  kt: 0.00429805
+  kc: 0.0999227
+  kd: 0.97293
+  Td: 0.09163922
+  Tp: 0.5

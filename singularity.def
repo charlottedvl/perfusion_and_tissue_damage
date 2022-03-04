@@ -1,30 +1,34 @@
 Bootstrap: docker
-From: quay.io/fenicsproject/stable:latest
+From: continuumio/miniconda3
 
 %files
-        ./ /app
+    ./ /app
 
 %post
-        apt-get update && apt-get install -y \
-                software-properties-common
+    apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    libgl1-mesa-glx
 
-        add-apt-repository ppa:deadsnakes/ppa
+    conda update -n base -c defaults conda -y
+    conda create -n perfusion -c conda-forge python=3.9 fenics Cython -y
+    . /opt/conda/etc/profile.d/conda.sh
 
-        apt-get update && apt-get install -y \
-                python3 \
-                python3-pip \
-                python3.9 \
-                python3.9-distutils
+    # bug in conda https://github.com/conda/conda/issues/9959
+    test -f /opt/conda/envs/perfusion/etc/conda/deactivate.d/deactivate-binutils_linux-64.sh && sed -i 's/function //' /opt/conda/envs/perfusion/etc/conda/deactivate.d/deactivate-binutils_linux-64.sh
+    test -f /opt/conda/envs/perfusion/etc/conda/deactivate.d/deactivate-gcc_linux-64.sh && sed -i 's/function //' /opt/conda/envs/perfusion/etc/conda/deactivate.d/deactivate-gcc_linux-64.sh
+    test -f /opt/conda/envs/perfusion/etc/conda/deactivate.d/deactivate-gxx_linux-64.sh && sed -i 's/function //' /opt/conda/envs/perfusion/etc/conda/deactivate.d/deactivate-gxx_linux-64.sh
+    test -f /opt/conda/envs/perfusion/etc/conda/activate.d/activate-binutils_linux-64.sh && sed -i 's/function //' /opt/conda/envs/perfusion/etc/conda/activate.d/activate-binutils_linux-64.sh
+    test -f /opt/conda/envs/perfusion/etc/conda/activate.d/activate-gcc_linux-64.sh && sed -i 's/function //' /opt/conda/envs/perfusion/etc/conda/activate.d/activate-gcc_linux-64.sh
+    test -f /opt/conda/envs/perfusion/etc/conda/activate.d/activate-gxx_linux-64.sh && sed -i 's/function //' /opt/conda/envs/perfusion/etc/conda/activate.d/activate-gxx_linux-64.sh
 
-        # ensure the installation is working and pip is available
-        python3.9 -m pip install pip --user
-        python3.9 -m pip install --upgrade pip distlib wheel setuptools
+    conda activate perfusion
+    python3.9 -m pip install pip --user
+    python3.9 -m pip install --upgrade pip distlib wheel setuptools cython
 
-        # install the in-silico-trial package in 3.9
-        cd /app/ && python3.9 -m pip install --no-cache-dir ./in-silico-trial
-
-        # and all the rest in the other one
-        cd /app/ && python3 -m pip install --no-cache-dir -r requirements.txt
+    cd /app/ && python3.9 -m pip install --no-cache-dir ./in-silico-trial
+    cd /app/ && python3.9 -m pip install --no-cache-dir -r requirements.txt
 
 %runscript
-        cd /app/ && exec python3.9 API.py "$@"
+    export DIJITSO_CACHE_DIR=/patient/.cache
+    . /opt/conda/etc/profile.d/conda.sh
+    conda activate perfusion
+    cd /app/ && exec python3 API.py "$@"

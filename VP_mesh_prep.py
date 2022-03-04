@@ -58,17 +58,18 @@ interpolator = NearestNDInterpolator(list(zip(age, sex)), Maffs)
 Maff = interpolator(parser.parse_args().age,parser.parse_args().sex)
 
 #%% copy and modify files
-res_fldr = bsl_msh_fldr[:-1] + '_age' + '{:04.2f}'.format(parser.parse_args().age) + '_sex' + '{:1d}'.format(parser.parse_args().sex) + '/'
+# res_fldr = bsl_msh_fldr[:-1] + '_age' + '{:04.2f}'.format(parser.parse_args().age) + '_sex' + '{:1d}'.format(parser.parse_args().sex) + '/'
+res_fldr = bsl_msh_fldr
 fldr_exist = os.path.exists(res_fldr)
 if fldr_exist and parser.parse_args().forced!=True:
     print('result folder already exists - script terminating')
 else:
-    if fldr_exist:
-        shutil.rmtree(res_fldr)
-    shutil.copytree(bsl_msh_fldr, res_fldr)
+    # if fldr_exist:
+    #     shutil.rmtree(res_fldr)
+    # shutil.copytree(bsl_msh_fldr, res_fldr)
 
     # carry out affine transformation
-    grid_data = tables.open_file(res_fldr+'clustered.h5',mode='r+')
+    grid_data = tables.open_file(res_fldr+'clustered_mesh.h5',mode='r+')
     vertices_orig = grid_data.root.Mesh.mesh.geometry[:,:]
     vertices_modi = vertices_orig.copy()
     npoint = np.shape(vertices_orig)[0]
@@ -77,10 +78,10 @@ else:
     grid_data.root.Mesh.mesh.geometry[:,:] = vertices_modi[:,:]
     grid_data.close()
     
-    grid_data = tables.open_file(res_fldr+'clustered_facet_region.h5',mode='r+')
+    grid_data = tables.open_file(res_fldr+'clustered_mesh_facet_region.h5',mode='r+')
     grid_data.root.MeshFunction.__getattr__('0').mesh.geometry[:,:] = vertices_modi[:,:]
     grid_data.close()
     
-    grid_data = tables.open_file(res_fldr+'clustered_physical_region.h5',mode='r+')
+    grid_data = tables.open_file(res_fldr+'clustered_mesh_physical_region.h5',mode='r+')
     grid_data.root.MeshFunction.__getattr__('0').mesh.geometry[:,:] = vertices_modi[:,:]
     grid_data.close()

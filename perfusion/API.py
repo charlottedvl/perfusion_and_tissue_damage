@@ -17,9 +17,7 @@ bc_fn = 'boundary_conditions_file.csv'
 pf_outfile = 'perfusion.xdmf'
 # directory for where to generate and store patient brain meshes
 PERFUSION_ROOT = "/app/perfusion/"
-# PERFUSION_ROOT = "./perfusion/"
 MAIN_ROOT = "/app/"
-# MAIN_ROOT = "./"
 
 
 class API(API):
@@ -49,7 +47,7 @@ class API(API):
             print(f"Evaluating: '{' '.join(brain_mesh_cmd)}'", flush=True)
             subprocess.run(brain_mesh_cmd, check=True, cwd=PERFUSION_ROOT)
 
-            VP_mesh_cmd = [
+            vp_mesh_cmd = [
                 "python3",
                 "VP_mesh_prep.py",
                 "--bsl_msh_fldr",
@@ -60,8 +58,8 @@ class API(API):
                 str(self.patient['sex']),
                 "--forced"
             ]
-            print(f"Evaluating: '{' '.join(VP_mesh_cmd)}'", flush=True)
-            subprocess.run(VP_mesh_cmd, check=True, cwd=MAIN_ROOT)
+            print(f"Evaluating: '{' '.join(vp_mesh_cmd)}'", flush=True)
+            subprocess.run(vp_mesh_cmd, check=True, cwd=MAIN_ROOT)
 
         if not permeability_dir.exists():
             # generate permeability meshes after clustering
@@ -180,7 +178,6 @@ class API(API):
         print(f"Evaluating: '{' '.join(res2img_cmd)}'", flush=True)
         subprocess.run(res2img_cmd, check=True, cwd=PERFUSION_ROOT)
 
-
     def example(self):
         # when running the example, we need to generate some dummy input
         # for the boundary conditions, for this, use the `BC_creator.py`
@@ -192,17 +189,17 @@ class API(API):
         # meshes by default. So, when running in CI/CD we extract the
         # compressed archive manually before running the event.
         import tarfile
-        tar = tarfile.open("/app/brain_meshes.tar.xz", "r:xz")
-        tar.extractall("/patient/tmp")
+        tar = tarfile.open(os.path.join(MAIN_ROOT, "brain_meshes.tar.xz"), "r:xz")
+        tar.extractall(os.path.join(self.patient_dir, "tmp"))
         tar.close()
 
         # move the contents to the expected brain mesh location
         import shutil
         res_bf_folder = self.result_dir.joinpath(f"{blood_flow_dir}")
         os.makedirs(res_bf_folder, exist_ok=True)
-        files = os.listdir("/patient/tmp/brain_meshes/b0000")
+        files = os.listdir(os.path.join(self.patient_dir, "tmp/brain_meshes/b0000"))
         for f in files:
-            shutil.move(os.path.join("/patient/tmp/brain_meshes/b0000", f), str(res_bf_folder))
+            shutil.move(os.path.join(self.patient_dir, "tmp/brain_meshes/b0000", f), str(res_bf_folder))
 
         # Renaming the files
         os.rename(str(res_bf_folder.joinpath("clustered.xdmf")),

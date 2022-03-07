@@ -1,12 +1,14 @@
 import subprocess
+import shutil
+import os
 
 from desist.eventhandler.api import API
 from desist.isct.utilities import read_yaml, write_yaml
 
 # Default path (inside container) for configuration files
 perfusion_dir = 'pf_sim'
-# TISSUE_ROOT = "./tissue_health/"
 TISSUE_ROOT = "/app/tissue_health/"
+CONFIG_TISSUE = "config_tissue_damage.yaml"
 
 
 class API(API):
@@ -16,7 +18,7 @@ class API(API):
         res_folder = self.result_dir.joinpath(f"{perfusion_dir}")
 
         # read configuration for oxygen
-        tissue_health_config_file = str(self.result_dir.joinpath("config_tissue_damage.yaml"))
+        tissue_health_config_file = str(self.result_dir.joinpath(CONFIG_TISSUE))
         print(tissue_health_config_file)
         solver_config = read_yaml(tissue_health_config_file)
 
@@ -69,7 +71,8 @@ class API(API):
         subprocess.run(tissue_health_cmd, check=True, cwd=TISSUE_ROOT)
 
     def example(self):
-        pass
+        self.event()
 
     def test(self):
-        pass
+        shutil.copy(os.path.join(TISSUE_ROOT, CONFIG_TISSUE), str(self.result_dir))
+        self.example()

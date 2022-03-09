@@ -13,24 +13,21 @@ sigma_i - source term in the ith compartment [1 / s]
 @author: Tamas Istvan Jozsa
 """
 
-# %% IMPORT MODULES
-# installed python3 modules
-from dolfin import *
-import time
-import sys
 import argparse
+import time
+
 import numpy as np
+import yaml
+from dolfin import *
+
+import IO_fcts
+import finite_element_fcts as fe_mod
+import suppl_fcts
 
 np.set_printoptions(linewidth=200)
 
 # ghost mode options: 'none', 'shared_facet', 'shared_vertex'
 parameters['ghost_mode'] = 'none'
-
-# added module
-import IO_fcts
-import suppl_fcts
-import finite_element_fcts as fe_mod
-
 # solver runs is "silent" mode
 set_log_level(50)
 
@@ -42,7 +39,8 @@ size = comm.Get_size()
 start0 = time.time()
 
 # %% READ INPUT
-if rank == 0: print('Step 1: Reading input files, initialising functions and parameters')
+if rank == 0:
+    print('Step 1: Reading input files, initialising functions and parameters')
 start1 = time.time()
 
 parser = argparse.ArgumentParser(description="perfusion computation based on multi-compartment Darcy flow model")
@@ -55,11 +53,11 @@ parser.add_argument("--mesh_file", help="path to mesh_file",
 parser.add_argument("--inlet_boundary_file", help="path to inlet_boundary_file",
                     type=str, default=None)
 parser.add_argument("--baseline", help="path to perfusion output of baseline scenario",
-        type=str, default=None)
+                    type=str, default=None)
 parser.add_argument("--occluded", help="path to perfusion output of stroke scenario",
-        type=str, default=None)
+                    type=str, default=None)
 parser.add_argument("--thresholds", help="number of thresholds to evaluate",
-        type=int, default=21)
+                    type=int, default=21)
 
 args = parser.parse_args()
 config_file = args.config_file
@@ -103,7 +101,8 @@ if args.occluded is None:
 else:
     strokefile = args.occluded
 
-if rank == 0: print('Step 2: Reading perfusion files')
+if rank == 0:
+    print('Step 2: Reading perfusion files')
 # Load previous results
 perfusion = Function(K2_space)
 f_in = XDMFFile(healthyfile)
@@ -115,7 +114,8 @@ f_in = XDMFFile(strokefile)
 f_in.read_checkpoint(perfusion_stroke, 'perfusion', 0)
 f_in.close()
 
-if rank == 0: print('Step 3: Calculating change in perfusion and infarct volume')
+if rank == 0:
+    print('Step 3: Calculating change in perfusion and infarct volume')
 # calculate change in perfusion and infarct
 perfusion_change = project(((perfusion - perfusion_stroke) / perfusion) * -100, K2_space, solver_type='bicgstab',
                            preconditioner_type='amg')
@@ -137,10 +137,20 @@ for threshold in thresholds:
     infarct = project(conditional(gt(perfusion_change, Constant(threshold)), Constant(0.0), Constant(1.0)), K2_space,
                       solver_type='bicgstab', preconditioner_type='amg')
     infarctvolume = suppl_fcts.infarct_vol(mesh, subdomains, infarct)
-    vol_infarct_values = np.concatenate((np.array([threshold,threshold,threshold])[:, np.newaxis], infarctvolume), axis=1)
+    vol_infarct_values = np.concatenate((np.array([threshold, threshold, threshold])[:, np.newaxis], infarctvolume), axis=1)
     vol_infarct_values_thresholds = np.append(vol_infarct_values_thresholds, vol_infarct_values, axis=0)
 
 if rank == 0:
     fheader = 'threshold [%],volume ID,Volume [mm^3],infarct volume [mL]'
-    np.savetxt(configs['output']['res_fldr'] + 'vol_infarct_values_thresholds.csv', vol_infarct_values_thresholds, "%e,%d,%e,%e", header=fheader)
+    np.savetxt(configs['output']['res_fldr'] + 'vol_infarct_values_thresholds.csv',
+               vol_infarct_values_thresholds, "%e,%d,%e,%e", header=fheader)
 
+    with open(configs['output']['res_fldr'] + "perfusion_outcome.yml", 'a') as outfile:
+        # select the row where the perfusion drop is -70%, and the total volume (GM+WM, labelled 23)
+        selected_row = np.where((vol_infarct_values_thresholds[:, 0] == -70) &
+                                (vol_infarct_values_thresholds[:, 1] == 23))
+        volume = vol_infarct_values_thresholds[selected_row, 3]
+        yaml.safe_dump(
+            {'core-volume_30%_rCBF_mL': float(volume)},
+            outfile
+        )

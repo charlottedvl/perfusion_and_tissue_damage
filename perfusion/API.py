@@ -163,6 +163,8 @@ class API(API):
         print(f"Evaluating: '{' '.join(infarct_cmd)}'", flush=True)
         subprocess.run(infarct_cmd, check=True, cwd=PERFUSION_ROOT)
 
+        shutil.copy(res_folder + "/perfusion_outcome.yml", self.patient_dir)
+
         # convert perfusion FEM result to NIFTI
         res2img_cmd = [
             "python3",

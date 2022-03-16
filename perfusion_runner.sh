@@ -28,3 +28,9 @@ mpirun -n 6 python3 basic_flow_solver.py --config_file ./config_basic_flow_solve
 python3 convert_res2img.py --config_file ../VP_results/p0000/perfusion_RMCAo/settings.yaml
 python3 lesion_comp_from_img.py --healthy_file ../VP_results/p0000/perfusion_healthy/perfusion.nii.gz --occluded_file ../VP_results/p0000/perfusion_RMCAo/perfusion.nii.gz
 mpirun -n 6 python3 infarct_calculation_thresholds.py --config_file ./config_basic_flow_solver_RMCAo.yaml --baseline ../VP_results/p0000/perfusion_healthy/perfusion.xdmf --occluded ../VP_results/p0000/perfusion_RMCAo/perfusion.xdmf
+
+# run tissue health model
+cd ../tissue_health/
+python3 tissue_health_propagation.py --res_yaml ../VP_results/p0000/tissue_damage_RMCAo/infarct.yaml
+python3 tissue_health_propagation.py --res_yaml ../VP_results/p0000/tissue_damage_LMCAo/infarct.yaml --config_file ./config_propagation_LMCAo.yaml
+

@@ -15,6 +15,7 @@ perfusion_dir = 'pf_sim'
 bc_fn = 'boundary_conditions_file.csv'
 # filename used for perfusion output required for simplified infarct values
 pf_outfile = 'perfusion.xdmf'
+nifti_pf_outfile = "perfusion.nii.gz"
 # directory for where to generate and store patient brain meshes
 PERFUSION_ROOT = "/app/perfusion/"
 MAIN_ROOT = "/app/"
@@ -136,7 +137,8 @@ class API(API):
         baseline = baseline.joinpath(pf_outfile)
 
         # occluded scenario assumed to be the current result
-        occluded = self.patient_dir.joinpath(labels[1])
+        event_labels = [event.get('event') for event in self.events]
+        occluded = self.patient_dir.joinpath(event_labels[self.event_id])
         occluded = occluded.joinpath(perfusion_dir)
         occluded = occluded.joinpath(pf_outfile)
 
@@ -179,6 +181,32 @@ class API(API):
         ]
         print(f"Evaluating: '{' '.join(res2img_cmd)}'", flush=True)
         subprocess.run(res2img_cmd, check=True, cwd=PERFUSION_ROOT)
+
+        # baseline scenario result directories
+        baseline = self.patient_dir.joinpath(labels[0])
+        baseline = baseline.joinpath(perfusion_dir)
+        healthy_file = baseline.joinpath(nifti_pf_outfile)
+
+        # occluded scenario assumed to be the current result
+        event_labels = [event.get('event') for event in self.events]
+        occluded = self.patient_dir.joinpath(event_labels[self.event_id])
+        occluded = occluded.joinpath(perfusion_dir)
+        occluded_file = occluded.joinpath(nifti_pf_outfile)
+
+        lesion_comp_from_img_cmd = [
+            "python3",
+            "lesion_comp_from_img.py",
+            "--healthy_file",
+            f"{healthy_file}",
+            "--occluded_file",
+            f"{occluded_file}",
+            "--res_fldr",
+            f"{res_folder}/",
+            "--save_figure",
+        ]
+        print(f"Evaluating: '{' '.join(lesion_comp_from_img_cmd)}'", flush=True)
+        subprocess.run(lesion_comp_from_img_cmd, check=True, cwd=PERFUSION_ROOT)
+
 
     def example(self):
         # when running the example, we need to generate some dummy input

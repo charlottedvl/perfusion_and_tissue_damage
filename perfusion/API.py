@@ -121,14 +121,6 @@ class API(API):
         print(f"Evaluating: '{' '.join(solve_cmd)}'", flush=True)
         subprocess.run(solve_cmd, check=True, cwd=PERFUSION_ROOT)
 
-        # terminate baseline scenario
-        if self.event_id == 0:
-            return
-
-        # extract settings
-        if not self.current_model.get('evaluate_infarct_estimates', False):
-            return
-
         labels = [event.get('event') for event in self.events]
 
         # baseline scenario result directories
@@ -144,6 +136,29 @@ class API(API):
 
         for path in [baseline, occluded]:
             assert os.path.exists(path), f"File not found: '{path}'."
+
+        # convert perfusion FEM result to NIFTI
+        res2img_cmd = [
+            "python3",
+            "convert_res2img.py",
+            "--config_file",
+            f"{str(perfusion_config_file)}",
+            "--res_fldr",
+            f"{res_folder}/",
+            "--variable",
+            "perfusion",
+            "--save_figure",
+        ]
+        print(f"Evaluating: '{' '.join(res2img_cmd)}'", flush=True)
+        subprocess.run(res2img_cmd, check=True, cwd=PERFUSION_ROOT)
+
+        # terminate baseline scenario
+        if self.event_id == 0:
+            return
+
+        # extract settings
+        if not self.current_model.get('evaluate_infarct_estimates', False):
+            return
 
         # evaluate preliminary infarct volumes at multiple thresholds
         infarct_cmd = [
@@ -166,21 +181,6 @@ class API(API):
         subprocess.run(infarct_cmd, check=True, cwd=PERFUSION_ROOT)
 
         shutil.copy(res_folder + "/perfusion_outcome.yml", self.patient_dir)
-
-        # convert perfusion FEM result to NIFTI
-        res2img_cmd = [
-            "python3",
-            "convert_res2img.py",
-            "--config_file",
-            f"{str(perfusion_config_file)}",
-            "--res_fldr",
-            f"{res_folder}/",
-            "--variable",
-            "perfusion",
-            "--save_figure",
-        ]
-        print(f"Evaluating: '{' '.join(res2img_cmd)}'", flush=True)
-        subprocess.run(res2img_cmd, check=True, cwd=PERFUSION_ROOT)
 
         # baseline scenario result directories
         baseline = self.patient_dir.joinpath(labels[0])
@@ -206,7 +206,6 @@ class API(API):
         ]
         print(f"Evaluating: '{' '.join(lesion_comp_from_img_cmd)}'", flush=True)
         subprocess.run(lesion_comp_from_img_cmd, check=True, cwd=PERFUSION_ROOT)
-
 
     def example(self):
         # when running the example, we need to generate some dummy input

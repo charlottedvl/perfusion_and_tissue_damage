@@ -102,4 +102,5 @@ class API(API):
 
     def test(self):
         shutil.copy(os.path.join(TISSUE_ROOT, CONFIG_TISSUE), str(self.result_dir))
+        shutil.copy(os.path.join(TISSUE_ROOT, CONFIG_TISSUE_PROPAGATION), str(self.result_dir))
         self.example()

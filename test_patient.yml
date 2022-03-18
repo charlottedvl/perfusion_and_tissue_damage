@@ -24,9 +24,9 @@ events:
 - event: stroke
   models:
   - label: perfusion
-    type: OXYGEN
-  - label: perfusion
     type: PERFUSION
+  - label: perfusion
+    type: OXYGEN
 - event: treatment
   models:
   - label: perfusion

@@ -49,6 +49,8 @@ verify_docker:
                 - docker run -v ${MOUNT_POINT}/docker:/patient ${IMAGE} /patient/patient.yml 1 test
                 - docker run -v ${MOUNT_POINT}/docker:/patient ${IMAGE} /patient/patient.yml 2 test
                 - docker run -v ${MOUNT_POINT}/docker:/patient ${IMAGE} /patient/patient.yml 3 test
+                - docker run -v ${MOUNT_POINT}/docker:/patient ${IMAGE} /patient/patient.yml 4 test
+                - docker run -v ${MOUNT_POINT}/docker:/patient ${IMAGE} /patient/patient.yml 5 test                
 
 build_singularity:
         <<: *docker_definition
@@ -81,3 +83,5 @@ verify_singularity:
                 - docker run --privileged -v ${MOUNT_POINT}:/patient quay.io/singularity/singularity:v3.9.4 run -B /patient/singularity:/patient /patient/${IMAGE}.sif /patient/patient.yml 1 test
                 - docker run --privileged -v ${MOUNT_POINT}:/patient quay.io/singularity/singularity:v3.9.4 run -B /patient/singularity:/patient /patient/${IMAGE}.sif /patient/patient.yml 2 test
                 - docker run --privileged -v ${MOUNT_POINT}:/patient quay.io/singularity/singularity:v3.9.4 run -B /patient/singularity:/patient /patient/${IMAGE}.sif /patient/patient.yml 3 test
+                - docker run --privileged -v ${MOUNT_POINT}:/patient quay.io/singularity/singularity:v3.9.4 run -B /patient/singularity:/patient /patient/${IMAGE}.sif /patient/patient.yml 4 test
+                - docker run --privileged -v ${MOUNT_POINT}:/patient quay.io/singularity/singularity:v3.9.4 run -B /patient/singularity:/patient /patient/${IMAGE}.sif /patient/patient.yml 5 test

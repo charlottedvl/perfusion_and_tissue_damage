@@ -28,6 +28,10 @@ class Dispatch(API):
             api = event_handler(TissueHealth_API)
             return api
 
+        if self.current_model.get('type') == 'TISSUE-HEALTH-PROPAGATION':
+            api = event_handler(TissueHealth_API)
+            return api
+
         print(f"No API has been evaluated for model: `{self.current_model}`.")
         sys.exit(1)
 

@@ -29,6 +29,8 @@ events:
   models:
   - label: perfusion
     type: TISSUE-HEALTH
+  - label: perfusion
+    type: TISSUE-HEALTH-PROPAGATION
 fibriperc: 86.832
 ica_length_mm: 47.895
 ica_rad_mm: 2.484

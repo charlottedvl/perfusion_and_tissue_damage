@@ -21,12 +21,16 @@ events:
   models:
   - label: perfusion
     type: PERFUSION
-- event: baseline
+- event: stroke
   models:
   - label: perfusion
     type: OXYGEN
-- event: baseline
+  - label: perfusion
+    type: PERFUSION
+- event: treatment
   models:
+  - label: perfusion
+    type: PERFUSION
   - label: perfusion
     type: TISSUE-HEALTH
   - label: perfusion

@@ -494,7 +494,10 @@ if coupled_model:
     if rank == 0:
         print("\033[96mRunning two-way coupling\033[m")
         sys.stdout.flush()
-        guessPressure = numpy.array([node.Node.WKNode.Pressure for node in Patient.Perfusion.CouplingPoints])
+        # guessPressure = numpy.array([node.Node.WKNode.Pressure for node in Patient.Perfusion.CouplingPoints])
+        guessPressure = numpy.array([p_arterial for node in Patient.Perfusion.CouplingPoints])
+        print(f"Initial guess: {guessPressure}")
+        sys.stdout.flush()
         stop = [0]
         sol = scipy.optimize.root(coupledmodel, guessPressure, args=(stop,), method='krylov',
                                   options={'disp': True, 'maxiter': 10,

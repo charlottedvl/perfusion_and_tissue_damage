@@ -56,7 +56,7 @@ simulation:
   fe_degr: 2
   feedback_limit: 0.1
   model_type: acv
-  perfusion_timestep_hours: 0.5
+  perfusion_timestep_hours: 0.25
   run_time_series_analysis: true
   save_time_series: true
   simulation_time_hours: 24

@@ -592,25 +592,25 @@ def compute_my_variables(p,K1,K2,K3,beta12,beta23,p_venous,Vp,Vvel,K2_space, \
         if compartmental_model == 'acv':
             p1, p2, p3 = p.split()
             if 'perfusion' in out_vars: myResults['perfusion'] = project(beta12 * (p1-p2),K2_space,\
-                                                                          solver_type='bicgstab', preconditioner_type='amg')
+                                                                          solver_type='bicgstab', preconditioner_type='petsc_amg')
         elif compartmental_model == 'a':
             p1, p3 = p.copy(deepcopy=False), p.copy(deepcopy=True)
             p3vec = p3.vector().get_local()
             p3vec[:] = p_venous
             p3.vector().set_local(p3vec)
-            p2 = project( (beta12*p1 + beta23*p3)/(beta12+beta23), Vp, solver_type='bicgstab', preconditioner_type='amg')
-            beta_total = project( 1 / (1/beta12+1/beta23), K2_space, solver_type='bicgstab', preconditioner_type='amg')
+            p2 = project( (beta12*p1 + beta23*p3)/(beta12+beta23), Vp, solver_type='bicgstab', preconditioner_type='petsc_amg')
+            beta_total = project( 1 / (1/beta12+1/beta23), K2_space, solver_type='bicgstab', preconditioner_type='petsc_amg')
             if 'perfusion' in out_vars: myResults['perfusion'] = project( beta_total * (p-Constant(p_venous)),K2_space,\
-                                                                          solver_type='bicgstab', preconditioner_type='amg')
+                                                                          solver_type='bicgstab', preconditioner_type='petsc_amg')
         else:
             raise Exception("unknown model type: " + compartmental_model)
         myResults['press1'], myResults['press2'], myResults['press3'] = p1, p2, p3
         myResults['K1'], myResults['K2'], myResults['K3'] = K1, K2, K3
         myResults['beta12'], myResults['beta23'] = beta12, beta23
         # compute velocities and perfusion
-        if 'vel1' in out_vars: myResults['vel1'] = project(-K1*grad(p1),Vvel, solver_type='bicgstab', preconditioner_type='amg')
-        if 'vel2' in out_vars: myResults['vel2'] = project(-K2*grad(p2),Vvel, solver_type='bicgstab', preconditioner_type='amg')
-        if 'vel3' in out_vars: myResults['vel3'] = project(-K3*grad(p3),Vvel, solver_type='bicgstab', preconditioner_type='amg')
+        if 'vel1' in out_vars: myResults['vel1'] = project(-K1*grad(p1),Vvel, solver_type='bicgstab', preconditioner_type='petsc_amg')
+        if 'vel2' in out_vars: myResults['vel2'] = project(-K2*grad(p2),Vvel, solver_type='bicgstab', preconditioner_type='petsc_amg')
+        if 'vel3' in out_vars: myResults['vel3'] = project(-K3*grad(p3),Vvel, solver_type='bicgstab', preconditioner_type='petsc_amg')
     else:
         if rank==0: print('No variables have been defined for saving!')
     

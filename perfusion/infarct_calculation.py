@@ -86,9 +86,9 @@ if rank == 0:
     print('Step 3: Calculating change in perfusion and infarct volume')
 # calculate change in perfusion and infarct
 perfusion_change = project(((perfusion - perfusion_stroke) / perfusion) * -100, K2_space, solver_type='bicgstab',
-                           preconditioner_type='amg')
+                           preconditioner_type='petsc_amg')
 infarct = project(conditional(gt(perfusion_change, Constant(-70)), Constant(0.0), Constant(1.0)), K2_space,
-                  solver_type='bicgstab', preconditioner_type='amg')
+                  solver_type='bicgstab', preconditioner_type='petsc_amg')
 
 with XDMFFile(configs.output.res_fldr + 'perfusion_change.xdmf') as myfile:
     myfile.write_checkpoint(perfusion_change, 'perfusion_change', 0, XDMFFile.Encoding.HDF5, False)
@@ -104,7 +104,7 @@ if configs.output.comp_ave == True:
                       header=fheader)
 
 perfusion_change = project(((perfusion - perfusion_stroke) / perfusion) * -100, K2_space, solver_type='bicgstab',
-                           preconditioner_type='amg')
+                           preconditioner_type='petsc_amg')
 
 # thresholds = [-10, -20, -30, -40, -50, -60, -70, -80, -90, -100]
 thresholds = np.linspace(0, -100, 21)
@@ -121,7 +121,7 @@ vol_infarct_values_thresholds = np.empty((0, 4), float)
 
 for threshold in thresholds:
     infarct = project(conditional(gt(perfusion_change, Constant(threshold)), Constant(0.0), Constant(1.0)), K2_space,
-                      solver_type='bicgstab', preconditioner_type='amg')
+                      solver_type='bicgstab', preconditioner_type='petsc_amg')
     infarctvolume = suppl_fcts.infarct_vol(mesh, subdomains, infarct)
     vol_infarct_values = np.concatenate((np.array([threshold,threshold,threshold])[:, np.newaxis], infarctvolume), axis=1)
     vol_infarct_values_thresholds = np.append(vol_infarct_values_thresholds, vol_infarct_values, axis=0)

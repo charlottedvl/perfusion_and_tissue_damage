@@ -1,0 +1,1 @@
+python3 infarct_estimate_treatment.py

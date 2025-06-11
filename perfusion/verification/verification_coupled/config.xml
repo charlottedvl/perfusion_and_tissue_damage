@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<virtualPatient>
+  <Patient>
+    <Age>71.4289896720792</Age>
+    <Sex>0</Sex>
+    <NIHSS_BL>6.4657261814154</NIHSS_BL>
+    <premrs>0</premrs>
+    <prev_str>0</prev_str>
+    <prev_dm>0</prev_dm>
+    <rr_syst>127.333372254451</rr_syst>
+    <occlsegment_c_short>3</occlsegment_c_short>
+    <ASPECTS_BL>9</ASPECTS_BL>
+    <collaterals>2</collaterals>
+    <togroin>298.374500634061</togroin>
+    <HeartRate>60</HeartRate>
+    <SystolePressure>17300</SystolePressure>
+    <DiastolePressure>10100</DiastolePressure>
+    <MeanRightAtrialPressure>0</MeanRightAtrialPressure>
+    <StrokeVolume>10</StrokeVolume>
+    <XML_file_location>/patients/patient_0/config.xml</XML_file_location>
+    <Patient_directory>/patient/</Patient_directory>
+    <Name>Thomas Escobar</Name>
+    <events>
+      <event name="1d-blood-flow" id="0"/>
+      <event name="darcy_multi-comp" healthy="true" id="1" depend="0"/>
+      <event name="cell_death_model" id="2" depend="1" state="0" read_init="0" time_start="-60" time_end="0"/>
+      <event name="place_clot" id="3" depend="2" time="0"/>
+      <event name="recalculate_blood_flow" id="4" depend="3"/>
+      <event name="recalculate_perfusion" id="5" depend="4"/>
+      <event name="cell_death_computation" id="6" depend="5" state="1" read_init="0" time_start="0" time_end="18622.47003804366"/>
+      <event name="thrombectomy" id="7" depend="6" time="18622.47003804366"/>
+      <event name="recalculate_blood_flow" id="8" depend="7"/>
+      <event name="recalculate_perfusion" id="9" depend="8"/>
+      <event name="cell_death_computation" id="10" depend="9" state="2" read_init="1" time_start="18622.47003804366" time_end="22222.47003804366"/>
+    </events>
+    <bf_sim_dir>/patient/bf_sim/</bf_sim_dir>
+    <perfusion_sim_dir>/patient/pf_sim/</perfusion_sim_dir>
+    <cell_death_sim_dir>/patient/cell_death_sim/</cell_death_sim_dir>
+  </Patient>
+  <insist_variables>
+    <patients_directory>/patients/</patients_directory>
+    <virtual_patient_prefix>patient</virtual_patient_prefix>
+  </insist_variables>
+  <random_seed>1</random_seed>
+</virtualPatient>

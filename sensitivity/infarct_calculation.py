@@ -83,9 +83,9 @@ f_in.close()
 if rank == 0: print('Step 3: Calculating change in perfusion and infarct volume')
 # calculate change in perfusion and infarct
 perfusion_change = project(((perfusion - perfusion_stroke) / perfusion) * -100, K2_space, solver_type='bicgstab',
-                           preconditioner_type='amg')
+                           preconditioner_type='petsc_amg')
 infarct = project(conditional(gt(perfusion_change, Constant(-70)), Constant(0.0), Constant(1.0)), K2_space,
-                  solver_type='bicgstab', preconditioner_type='amg')
+                  solver_type='bicgstab', preconditioner_type='petsc_amg')
 
 with XDMFFile(occluded_configs.output.res_fldr + 'perfusion_change.xdmf') as myfile:
     myfile.write_checkpoint(perfusion_change, 'perfusion_change', 0, XDMFFile.Encoding.HDF5, False)

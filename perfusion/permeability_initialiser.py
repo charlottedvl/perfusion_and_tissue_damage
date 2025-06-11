@@ -78,3 +78,21 @@ with XDMFFile(configs['output']['res_fldr']+'e_loc.xdmf') as myfile:
 # main_direction is non-essential output
 with XDMFFile(configs['output']['res_fldr']+'main_direction.xdmf') as myfile:
     myfile.write(main_direction)
+
+myResults={}
+out_vars = configs['output']['res_vars']
+if len(out_vars)>0:
+    myResults['K1_form'] = K1
+    myResults['e_loc'] = e_loc
+    myResults['main_direction'] = main_direction
+else:
+    if rank==0: print('No variables have been defined for saving!')
+
+# save variables
+res_keys = set(myResults.keys())
+for myvar in out_vars:
+    if myvar in res_keys:
+        with XDMFFile(configs['output']['res_fldr']+myvar+'.xdmf') as myfile:
+            myfile.write_checkpoint(myResults[myvar], myvar, 0, XDMFFile.Encoding.HDF5, False)
+    else:
+        if rank==0: print('warning: '+myvar+' variable cannot be saved - variable undefined!')

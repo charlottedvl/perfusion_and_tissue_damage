@@ -1,12 +1,61 @@
+ASPECTS_BL: 9.0
+DiastolePressure: 8513.295
+HeartRate: 60
+MeanRightAtrialPressure: 0
+NIHSS_BL: 16.913
+StrokeVolume: 70
+SystolePressure: 17236.154
+age: 70.354
+clot-location: MCA M2 sup
+collaterals: 2.0
+collaterals_string: '>50% but less <100%'
+completed: true
+container-path: /media/raymond/429D-D132/Containers
+ct_bl_has: true
+dur_erg: 47.203
+dur_oer: 45.912
+dur_onset_groin: 93.114
+eryperc: 13.168
 events:
 - event: baseline
   models:
-  - label: bloodflow
+  - label: perfusion
+    type: PERFUSION
+- event: stroke
+  models:
   - label: perfusion
     type: PERFUSION
   - label: perfusion
     type: OXYGEN
+- event: treatment
+  models:
+  - label: perfusion
+    type: PERFUSION
+  - label: perfusion
+    type: TISSUE-HEALTH
+  - label: perfusion
+    type: TISSUE-HEALTH-PROPAGATION
+fibriperc: 86.832
+ica_length_mm: 47.895
+ica_rad_mm: 2.484
+ica_tort: 1.828
+id: 0.0
 labels:
-  bloodflow: 1d-blood-flow
   perfusion: perfusion_and_tissue_damage
-status: false
+left-or-right: L
+m1_rad_mm: 1.644
+name: Kyle Hebert
+occlsegment_c_short: 5.0
+occlsegment_c_short_string: M2
+pipeline_length: 7
+prefix: patient
+premrs: 0.0
+prev_af: false
+prev_dm: false
+prev_str: false
+random_seed: 1
+rr_dias: 63.855
+rr_syst: 129.282
+sex: 2.0
+sex_string: Male
+thr_length: 14.771

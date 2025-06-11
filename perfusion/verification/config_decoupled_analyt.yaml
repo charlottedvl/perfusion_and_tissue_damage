@@ -1,0 +1,40 @@
+network:
+  # dynamic viscosity of blood [Pa s]
+  mu: 0.0035
+  # velocity profile shape factor (2-> parabolic, higher flattened polynomial)
+  xi: 9
+  # list of nodal diameter values [m]
+  D: [0.005,0.004,0.003,0.003]
+  # defining nodal connectivity based on length matrix [m], first node ID 0
+  # [star node ID, end node ID, length]
+  L_data : [[0,1,0.1],[1,2,0.1],[1,3,0.1]]
+  # list of boundary nodes
+  BC_ID_ntw: [0, 2, 3]
+  # define boundary type
+  # DBC-given pressure [Pa]; NBC-given volumetric flow rate [m^3/s]; CBC-coupled boundary condition )
+  BC_type_ntw: ['DBC', 'CBC', 'CBC']
+  # define bondary values, in the case of CBC: 0-beginning of domain, 1-end of domain
+  BC_val_ntw: [10000.0, 0, 1]
+  # blockage locations based on nodes, examples:
+  # []-no blockage; [[start1, end1],[start2, end2]] -  blocked segment list
+  block_loc: [[1,3]]
+continuum:
+  # venous pressure [Pa]
+  pv: 0
+  # permeability [m^3 s kg^-1]
+  K: 1.234e-12
+  # domain cross sectional area [m^2]
+  area: 0.1005
+  # list of coupling coefficients for each subdomain
+  beta: [0.000001, 0.0000004, 0.000001]
+  l_subdom: [0.0015,0.01,0.0015]
+  # DBC-given pressure [Pa]; NBC-given volumetric flow rate [m^3/s]; CBC-coupled boundary condition )
+  BC_type_con: ['DBC','DBC']
+  # efine bondary values, in the case of CBC the coupled node number
+  BC_val_con: [10000.0,0.0]
+numerical:
+  # number of nodes along the x direction
+  nx: 50
+  # tissue layers along the x direction (11-WM, 12-GM)
+  layers: [12,11,12]
+res_path: './results_decoupled/'

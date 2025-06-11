@@ -8,7 +8,7 @@ on their surface area
 
 from dolfin import *
 import numpy as np
-import IO_fcts 
+import IO_fcts
 import finite_element_fcts as fe_mod
 import argparse
 
@@ -28,6 +28,8 @@ parser.add_argument("--config_file", help="path to configuration file (string)",
                     type=str, default='./config_basic_flow_solver.yaml')
 parser.add_argument("--res_fldr", help="path to results folder (string ended with /)",
                 type=str, default=None)
+parser.add_argument("--mesh_file", help="path to mesh_file",
+                    type=str, default=None)
 
 args = parser.parse_args()
 
@@ -84,8 +86,8 @@ if configs['input']['mesh_file'].rsplit('/', 1)[-1] == 'clustered.xdmf':
     for i in list(boundary_values):
         boundary_map[cter] = int(boundary_mapper[np.argwhere(boundary_mapper[:,1]==int(i))[0],0])
         cter = cter + 1
-    
-    
+
+
 
 boundary_matrix = []
 for i in range(len(mask)):

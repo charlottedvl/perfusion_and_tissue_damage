@@ -19,7 +19,7 @@ with XDMFFile(comm,mesh_file[:-5]+'_facet_region.xdmf') as myfile: myfile.read(b
 IO_fcts.hdf5_reader( mesh,Perf1,case1_folder+'results/','perfusion.h5','P' )
 IO_fcts.hdf5_reader( mesh,Perf2,case2_folder+'results/','perfusion.h5','P' )
 
-perf_change = project(100*(Perf2-Perf1)/Perf1, V, solver_type='bicgstab', preconditioner_type='amg')
+perf_change = project(100*(Perf2-Perf1)/Perf1, V, solver_type='bicgstab', preconditioner_type='petsc_amg')
 
 mask = perf_change.vector()[:]<-70
 cell_indices = np.argwhere(mask==True)

@@ -2,6 +2,7 @@ from dolfin import *
 import numpy as np
 import untangle
 import yaml
+import os
 
 
 #%%
@@ -130,7 +131,12 @@ def basic_flow_config_reader2(input_file_path,parser):
     
     if parser.parse_args().res_fldr != None:
         configs.output.res_fldr = parser.parse_args().res_fldr
-    
+
+    if parser.parse_args().mesh_file != None:
+        configs.input.mesh_file = parser.parse_args().mesh_file
+
+    if parser.parse_args().inlet_boundary_file != None:
+        configs.input.inlet_boundary_file = parser.parse_args().inlet_boundary_file
     return configs
 
 
@@ -141,9 +147,26 @@ def basic_flow_config_reader_yml(input_file_path,parser):
             configs = yaml.load(configfile, yaml.SafeLoader)
     else:
         raise Exception("unknown input file format: " + config_format)
+
+    if hasattr(parser.parse_args(), 'res_fldr'):
+        if parser.parse_args().res_fldr is not None:
+            configs['output']['res_fldr'] = parser.parse_args().res_fldr
+
+    if hasattr(parser.parse_args(), 'mesh_file'):
+        if parser.parse_args().mesh_file is not None:
+            configs['input']['mesh_file'] = parser.parse_args().mesh_file
+
+    if hasattr(parser.parse_args(), 'inlet_boundary_file'):
+        if parser.parse_args().inlet_boundary_file is not None:
+            configs['input']['inlet_boundary_file'] = parser.parse_args().inlet_boundary_file
     
-    if parser.parse_args().res_fldr != None:
-        configs['output']['res_fldr'] = parser.parse_args().res_fldr
+    comm = MPI.comm_world
+    rank = comm.Get_rank()
+    if rank==0:
+        if not os.path.exists(configs['output']['res_fldr']):
+            os.makedirs(configs['output']['res_fldr'])
+        with open(configs['output']['res_fldr']+'settings.yaml', 'w') as outfile:
+            yaml.dump(configs, outfile, default_flow_style=False)
     
     return configs
 
@@ -181,16 +204,32 @@ def inlet_file_reader(inlet_boundary_file):
 
 
 #%%
-def initialise_permeabilities(K1_space,K2_space,mesh, permeability_folder):
+def initialise_permeabilities(K1_space,K2_space,mesh, permeability_folder,**kwarg):
+    if 'model_type' in kwarg:
+        model_type = kwarg.get('model_type')
+    else:
+        model_type = 'acv'
+    
     comm = MPI.comm_world
+    
+    if model_type == 'acv':
+        K1 = Function(K1_space)
+        K2 = Function(K2_space)
         
-    K1 = Function(K1_space)
-    K2 = Function(K2_space)
+        with XDMFFile(comm,permeability_folder+"K1_form.xdmf") as myfile:
+            myfile.read_checkpoint(K1, "K1_form")
+        K3 = K1.copy(deepcopy=True)
+    elif model_type == 'a':
+        K1 = Function(K1_space)
+        K2 = Function(K2_space)
+        
+        with XDMFFile(comm,permeability_folder+"K1_form.xdmf") as myfile:
+            myfile.read_checkpoint(K1, "K1_form")
+        K3 = K1.copy(deepcopy=True)
+    else:
+        raise Exception("unknown model type: " + model_type)
     
-    with XDMFFile(permeability_folder+"K1_form.xdmf") as myfile:
-        myfile.read_checkpoint(K1, "K1_form")
-    
-    return K1, K2, K1.copy(deepcopy=True)
+    return K1, K2, K3
 
 
 #%%

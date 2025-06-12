@@ -1,12 +1,16 @@
 import subprocess
+import shutil
+import os
+import sys
 
 from desist.eventhandler.api import API
 from desist.isct.utilities import read_yaml, write_yaml
 
 # Default path (inside container) for configuration files
-tissue_health_config_file = '/app/tissue_health/config_tissue_damage.yaml'
-perfusion_dir = 'pf_sim'
-
+perfusion_dir = 'pf_sim/'
+TISSUE_ROOT = "/app/tissue_health/"
+CONFIG_TISSUE = "config_tissue_damage.yaml"
+CONFIG_TISSUE_PROPAGATION = "config_propagation.yaml"
 
 class API(API):
     def event(self):
@@ -14,7 +18,18 @@ class API(API):
         # output paths
         res_folder = self.result_dir.joinpath(f"{perfusion_dir}")
 
-        # read configuration for oxygen
+        # read configuration
+        if self.current_model.get('type') == 'TISSUE-HEALTH-PROPAGATION':
+            tissue_health_config_file = str(self.result_dir.joinpath(CONFIG_TISSUE_PROPAGATION))
+            simulation_file_name = 'perfusion.nii.gz'
+        elif self.current_model.get('type') == 'TISSUE-HEALTH':
+            tissue_health_config_file = str(self.result_dir.joinpath(CONFIG_TISSUE))
+            simulation_file_name = 'perfusion.xdmf'
+        else:
+            print(f"No API has been evaluated for model: `{self.current_model}`.")
+            sys.exit(1)
+
+        print(tissue_health_config_file)
         solver_config = read_yaml(tissue_health_config_file)
 
         # baseline, stroke, treatment directories
@@ -22,11 +37,7 @@ class API(API):
         for event in self.events:
             path = self.patient_dir.joinpath(event.get('event'))
             path = path.joinpath(perfusion_dir)
-
-            if path.joinpath('perfusion_stroke.xdmf').exists():
-                path = path.joinpath('perfusion_stroke.xdmf')
-            else:
-                path = path.joinpath('perfusion.xdmf')
+            path = path.joinpath(simulation_file_name)
             paths.append(path)
 
         baseline_dir, stroke_dir, treatment_dir = paths
@@ -52,28 +63,44 @@ class API(API):
         # (see issue #11 in `insist-trials` repository).
         num_recovery_days = self.patient.get('tissue_health_follow_up_days', 1)
         solver_config['input']['recovery_time'] = num_recovery_days * 24
-        brain_mesh = self.patient_dir.joinpath('brain_meshes/b0000/clustered.xdmf')
-        solver_config['input']['mesh_file'] = str(brain_mesh)
+        solver_config['input']['mesh_file'] = str(self.result_dir.joinpath("bf_sim/clustered_mesh.xdmf"))
 
         # write the updated yaml to the patient directory
-        config_path = self.result_dir.joinpath(
-                f'{perfusion_dir}/tissue_health_config.yaml')
-        write_yaml(config_path, solver_config)
+        write_yaml(tissue_health_config_file, solver_config)
 
         # the path where we are going to write the infarct volumes
         outcome_path = self.patient_dir.joinpath('tissue_health_outcome.yml')
 
         # initialise the simulation with the updated configuration files
-        tissue_health_cmd = [
-            "python3",
-            "infarct_estimate_treatment.py",
-            str(config_path),
-            str(outcome_path),
-        ]
-        subprocess.run(tissue_health_cmd, check=True, cwd="/app/tissue_health")
+        if self.current_model.get('type') == 'TISSUE-HEALTH-PROPAGATION':
+            tissue_health_cmd = [
+                "python3",
+                "tissue_health_propagation.py",
+                "--config_file",
+                str(tissue_health_config_file),
+                "--res_fldr",
+                str(self.result_dir.joinpath(f"{perfusion_dir}")),
+                "--res_yaml",
+                str(outcome_path),
+
+            ]
+        elif self.current_model.get('type') == 'TISSUE-HEALTH':
+            tissue_health_cmd = [
+                "python3",
+                "infarct_estimate_treatment.py",
+                str(tissue_health_config_file),
+                str(outcome_path),
+            ]
+        else:
+            print(f"No API has been evaluated for model: `{self.current_model}`.")
+            sys.exit(1)
+
+        subprocess.run(tissue_health_cmd, check=True, cwd=TISSUE_ROOT)
 
     def example(self):
-        pass
+        self.event()
 
     def test(self):
-        pass
+        shutil.copy(os.path.join(TISSUE_ROOT, CONFIG_TISSUE), str(self.result_dir))
+        shutil.copy(os.path.join(TISSUE_ROOT, CONFIG_TISSUE_PROPAGATION), str(self.result_dir))
+        self.example()

@@ -1,8 +1,8 @@
 input:
   inlet_BC_type: DBC
-  inlet_boundary_file: patient_0/bf_sim/boundary_condition_file.csv
-  mesh_file: patient_0/bf_sim/clustered_mesh.xdmf
-  permeability_folder: ../brain_meshes/b0000/permeability/
+  inlet_boundary_file: /bf_sim/boundary_condition_file.csv
+  mesh_file: /bf_sim/clustered_mesh.xdmf
+  permeability_folder: permeability/
   read_inlet_boundary: true
 optimisation:
   FGtarget: 64.48896831397346
@@ -20,23 +20,38 @@ optimisation:
   - K1gm_ref
   random_init: true
 output:
-  comp_ave: True
-  res_fldr: patient_0/perfusion/
-  res_vars: {'press1','vel1','perfusion'}
-  integral_vars: {'vel1_surfint','press1_surfave','perfusion_voluave'}
+  comp_ave: true
+  integral_vars:
+    perfusion_voluave: null
+    press1_surfave: null
+    vel1_surfint: null
+  res_fldr: /perfusion/
+  res_vars:
+    K1: null
+    perfusion: null
+    press1: null
+    vel1: null
+  save_tissue_files: false
 physical:
-  K1gm_ref: 0.0021057479999999997
+  K1gm_ref: 0.0021059
   K2gm_ref: 4.28e-07
-  K3gm_ref: 0.0042114959999999995
+  K3gm_ref: 0.0042118
   beta12gm: 1.8809282424908927e-06
   beta23gm: 6.583248848718124e-06
-  gmowm_beta_rat: 2.5648020000000002
+  gmowm_beta_rat: 2.56494
   gmowm_perm_rat: 1.0
   p_arterial: 8000
   p_venous: 0.0
 simulation:
+  coupled_model: true
+  cpld_conv_crit: 0.0001
   fe_degr: 2
+  feedback_limit: 0.1
   model_type: acv
+  perfusion_timestep_hours: 0.25
+  run_time_series_analysis: true
+  save_time_series: true
+  simulation_time_hours: 24
+  tissue_timestep_seconds: 60
+  treatment_time_hours: 25
   vel_order: 1
-  cpld_conv_crit: 1.0e-4
-  coupled_model: false

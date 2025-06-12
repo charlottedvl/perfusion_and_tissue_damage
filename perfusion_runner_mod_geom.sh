@@ -27,10 +27,14 @@ fi
 
 # patient 1 - simulations
 mpirun -n 6 python3 basic_flow_solver.py --config_file ./config_examples/config_basic_flow_solver_mod_geom.yaml
+python3 convert_res2img.py --res_fldr ../VP_results/p0001/perfusion_healthy/
 mpirun -n 6 python3 basic_flow_solver.py --config_file ./config_examples/config_basic_flow_solver_RMCAo_mod_geom.yaml
+python3 convert_res2img.py --res_fldr ../VP_results/p0001/perfusion_RMCAo/
 mpirun -n 6 python3 infarct_calculation_thresholds.py --config_file ./config_examples/config_basic_flow_solver_RMCAo_mod_geom.yaml --baseline ../VP_results/p0001/perfusion_healthy/perfusion.xdmf --occluded ../VP_results/p0001/perfusion_RMCAo/perfusion.xdmf
 
 # patient 2 - simulations
 mpirun -n 6 python3 basic_flow_solver.py --config_file ./config_examples/config_basic_flow_solver_mod_geom2.yaml
+python3 convert_res2img.py --res_fldr ../VP_results/p0002/perfusion_healthy/
 mpirun -n 6 python3 basic_flow_solver.py --config_file ./config_examples/config_basic_flow_solver_RMCAo_mod_geom2.yaml
+python3 convert_res2img.py --res_fldr ../VP_results/p0002/perfusion_RMCAo/
 mpirun -n 6 python3 infarct_calculation_thresholds.py --config_file ./config_examples/config_basic_flow_solver_RMCAo_mod_geom2.yaml --baseline ../VP_results/p0002/perfusion_healthy/perfusion.xdmf --occluded ../VP_results/p0002/perfusion_RMCAo/perfusion.xdmf

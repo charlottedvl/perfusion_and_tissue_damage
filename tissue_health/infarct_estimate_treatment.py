@@ -86,7 +86,7 @@ core_threshold = configs['parameter']['core_threshold']
 
 # define the relationship between hypoxic fraction and perfusion - based on Green's function simulations
 def hypoxia_estimate(perfusion):
-    return 1-1/(1+np.exp(-(ks1*perfusion+ks2)))
+    return 1-1/(1+np.power(np.exp(-(ks1*perfusion+ks2)),2)) #if perfusion < 0.5*64.48 else 0
 
 # define the ODE for cell death, h[0] - dead, h[1] - toxic, h[2] - hypoxic fraction
 def cell_death(h, t):
@@ -191,6 +191,12 @@ if len(sys.argv) >= 2:
     with open(sys.argv[2], 'w') as outfile:
         yaml.safe_dump(
             {'core-volume': core},
+            outfile
+        )
+
+    with open(configs['output']['res_fldr']+"tissue_health_outcome.yml", 'a') as outfile:
+        yaml.safe_dump(
+            {'core-volume'+' infarct_'+str(arrival_time)+'_'+str(recovery_time): core},
             outfile
         )
 

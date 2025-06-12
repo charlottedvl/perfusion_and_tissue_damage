@@ -1,3 +1,4 @@
+from eventmodule import eventhandler
 import os
 import subprocess
 import shutil
@@ -97,6 +98,7 @@ class API(API):
         solver_config = read_yaml(perfusion_config_file)
 
         # ensure boundary conditions are being read from input files
+        solver_config['input']['inlet_BC_type'] = 'NBC'
         solver_config['input']['read_inlet_boundary'] = True
         bc_file = self.result_dir.joinpath(f'{blood_flow_dir}/{bc_fn}')
         solver_config['input']['inlet_boundary_file'] = str(bc_file.resolve())

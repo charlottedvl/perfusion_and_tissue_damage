@@ -1,28 +1,33 @@
-FROM quay.io/fenicsproject/stable:latest
+FROM continuumio/miniconda3
 
 WORKDIR /app
 
-# install python requirements
-COPY in-silico-trial ./in-silico-trial
-COPY requirements.txt ./
+COPY . ./
+# Make RUN commands use `bash --login`:
+SHELL ["/bin/bash", "--login", "-c"]
 
-RUN apt-get update && apt-get install -y software-properties-common
-RUN add-apt-repository ppa:deadsnakes/ppa
-RUN apt-get update && apt-get install -y \
-        python3 \
-        python3-pip \
-        python3.9 \
-        python3.9-distutils
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    gcc \
+    g++ \
+    libgl1-mesa-glx
+
+# Initialize conda in bash config files:
+RUN conda init bash
+RUN conda update -n base -c defaults conda -y
+
+# Create the environment:
+RUN conda create -n perfusion -c conda-forge fenics python=3.9 -y
+
+# Activate the environment, and make sure it's activated:
+RUN echo "conda activate perfusion" > ~/.bashrc
 
 # ensure the installation is working and pip is available
 RUN python3.9 -m pip install pip --user
-RUN python3.9 -m pip install --upgrade pip distlib wheel setuptools
+RUN python3.9 -m pip install --upgrade pip distlib wheel setuptools cython
+
 RUN cd /app/ && python3.9 -m pip install --no-cache-dir ./in-silico-trial
+RUN cd /app/ && python3.9 -m pip install --no-cache-dir -r requirements.txt
+RUN export DIJITSO_CACHE_DIR=/patient/.cache
 
-# the other requirements to run
-RUN python3 -m pip install --no-cache-dir -r requirements.txt
+ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "perfusion", "python3.9", "API.py"]
 
-# copy all local contents
-COPY . .
-
-ENTRYPOINT ["python3.9", "API.py"]

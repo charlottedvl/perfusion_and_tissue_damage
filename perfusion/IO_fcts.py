@@ -2,6 +2,7 @@ from dolfin import *
 import numpy as np
 import untangle
 import yaml
+import os
 
 
 #%%
@@ -158,7 +159,15 @@ def basic_flow_config_reader_yml(input_file_path,parser):
     if hasattr(parser.parse_args(), 'inlet_boundary_file'):
         if parser.parse_args().inlet_boundary_file is not None:
             configs['input']['inlet_boundary_file'] = parser.parse_args().inlet_boundary_file
-
+    
+    comm = MPI.comm_world
+    rank = comm.Get_rank()
+    if rank==0:
+        if not os.path.exists(configs['output']['res_fldr']):
+            os.makedirs(configs['output']['res_fldr'])
+        with open(configs['output']['res_fldr']+'settings.yaml', 'w') as outfile:
+            yaml.dump(configs, outfile, default_flow_style=False)
+    
     return configs
 
 
@@ -209,14 +218,14 @@ def initialise_permeabilities(K1_space,K2_space,mesh, permeability_folder,**kwar
         
         with XDMFFile(comm,permeability_folder+"K1_form.xdmf") as myfile:
             myfile.read_checkpoint(K1, "K1_form")
-        
         K3 = K1.copy(deepcopy=True)
     elif model_type == 'a':
         K1 = Function(K1_space)
-        K2, K3 = [], []
+        K2 = Function(K2_space)
         
         with XDMFFile(comm,permeability_folder+"K1_form.xdmf") as myfile:
             myfile.read_checkpoint(K1, "K1_form")
+        K3 = K1.copy(deepcopy=True)
     else:
         raise Exception("unknown model type: " + model_type)
     

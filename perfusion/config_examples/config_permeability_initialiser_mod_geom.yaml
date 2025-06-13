@@ -1,0 +1,14 @@
+input:
+  # xdmf file refering to a tetrahedral mesh with labelled boundaries and subdomains
+  mesh_file: '../brain_meshes/b0000_age81.44_sex2/clustered.xdmf'
+output:
+  # folder for results
+  res_fldr: '../brain_meshes/b0000_age81.44_sex2/permeability/'
+  # save sub-results
+  save_subres: false
+  res_vars: {'K1_form'}
+physical:
+  # normal vector of the cortical surface in the reference coordinate system
+  e_ref: [0, 0, 1]
+  # arteriole/venule permeability tensor form [row1, row2, row3]
+  K1_form: [0, 0, 0, 0, 0, 0, 0, 0, 1]

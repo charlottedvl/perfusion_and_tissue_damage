@@ -16,7 +16,7 @@ When passing two arguments, the first arguments contains the path to an
 alternative YAML file to be used as the configuration file and the second
 argument the path where to write an outcome summary as YAML to.
 
-Yidan Xue - 2021/03
+Yidan Xue - 2021/11
 """
 from dolfin import *
 import scipy.interpolate
@@ -81,9 +81,12 @@ kf, kt, kb = configs['parameter']['kf'], configs['parameter']['kt'], configs['pa
 # scale ratio between grey and white matters
 perfusion_scale = configs['parameter']['perfusion_gm_wm']
 
+# cell death threshold for core
+core_threshold = configs['parameter']['core_threshold']
+
 # define the relationship between hypoxic fraction and perfusion - based on Green's function simulations
 def hypoxia_estimate(perfusion):
-    return 1-1/(1+np.exp(-(ks1*perfusion+ks2)))
+    return 1-1/(1+np.power(np.exp(-(ks1*perfusion+ks2)),2)) #if perfusion < 0.5*64.48 else 0
 
 # define the ODE for cell death, h[0] - dead, h[1] - toxic, h[2] - hypoxic fraction
 def cell_death(h, t):
@@ -150,7 +153,7 @@ for i in range(num_gm_idx):
         hs = odeint(cell_death, hi2, t_a)
         dead_vec[gm_idx[i]] = hs[-1,0]
         # core volume
-        if dead_vec[gm_idx[i]] > 0.8:
+        if dead_vec[gm_idx[i]] > core_threshold:
             ID = int(gm_idx[i])
             core = core + Cell(mesh, ID).volume()/1000
 
@@ -169,7 +172,7 @@ for i in range(num_wm_idx):
         hs = odeint(cell_death, hi2, t_a)
         dead_vec[wm_idx[i]] = hs[-1,0]
         # core volume
-        if dead_vec[wm_idx[i]] > 0.8:
+        if dead_vec[wm_idx[i]] > core_threshold:
             ID = int(wm_idx[i])
             core = core + Cell(mesh, ID).volume()/1000
 
@@ -188,6 +191,12 @@ if len(sys.argv) >= 2:
     with open(sys.argv[2], 'w') as outfile:
         yaml.safe_dump(
             {'core-volume': core},
+            outfile
+        )
+
+    with open(configs['output']['res_fldr']+"tissue_health_outcome.yml", 'a') as outfile:
+        yaml.safe_dump(
+            {'core-volume'+' infarct_'+str(arrival_time)+'_'+str(recovery_time): core},
             outfile
         )
 

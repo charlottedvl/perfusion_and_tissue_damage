@@ -1,4 +1,13 @@
-scipy==1.5.2
-untangle
-argparse
-PyYAML
+desist==0.1.0
+docopt==0.6.2
+matplotlib==3.4.3
+meshio==4.4.6
+nibabel==3.2.1
+numpy==1.21.3
+pandas==1.3.4
+pathos==0.2.8
+PyYAML==6.0
+scipy==1.7.1
+tables==3.7.0
+tqdm==4.62.3
+untangle==1.1.1

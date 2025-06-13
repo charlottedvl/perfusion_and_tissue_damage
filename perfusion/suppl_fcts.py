@@ -157,101 +157,60 @@ def perm_tens_comp(K_space,subdomains,mesh,e_ref,e_loc,K1_form):
 
 #%%
 def scale_permeabilities(subdomains, K1, K2, K3, \
-                         K1_ref_gm, K2_ref_gm, K3_ref_gm, gmowm_perm_rat,res_fldr,save_pvd,**kwarg): 
-    if 'model_type' in kwarg:
-        model_type = kwarg.get('model_type')
-    else:
-        model_type = 'acv'
+                         K1_ref_gm, K2_ref_gm, K3_ref_gm, gmowm_perm_rat,res_fldr,**kwarg):
     
     loc1 = subdomains.where_equal(11)# white matter cell indices
     loc2 = subdomains.where_equal(12)# gray matter cell indices
     
-    if model_type == 'acv':
-        K1_array = K1.vector().get_local()
-        K2_array = K2.vector().get_local()
-        K3_array = K3.vector().get_local()
-        
-        # obtain reference values    
-        K1_ref_wm = K1_ref_gm/gmowm_perm_rat
-        K2_ref_wm = K2_ref_gm/gmowm_perm_rat
-        K3_ref_wm = K3_ref_gm/gmowm_perm_rat
-        
-        location = 0
-        for loc in [loc1,loc2]:
-            for i in range(len(loc)):
-                idx1 = int(loc[i])*9
-                idx2 = int(loc[i])*9+9
-                if location == 0: #WM
-                    K1_array[idx1:idx2] *= K1_ref_wm
-                    K3_array[idx1:idx2] *= K3_ref_wm
-                    K2_array[loc[i]] = K2_ref_wm
-                else: #GM
-                    K1_array[idx1:idx2] *= K1_ref_gm
-                    K3_array[idx1:idx2] *= K3_ref_gm
-                    K2_array[loc[i]] = K2_ref_gm
-            location = location + 1
-        
-        K1.vector().set_local(K1_array)
-        K2.vector().set_local(K2_array)
-        K3.vector().set_local(K3_array)
-    elif model_type == 'a':
-        K1_array = K1.vector().get_local()
-        
-        # obtain reference values    
-        K1_ref_wm = K1_ref_gm/gmowm_perm_rat
-        
-        location = 0
-        for loc in [loc1,loc2]:
-            for i in range(len(loc)):
-                idx1 = int(loc[i])*9
-                idx2 = int(loc[i])*9+9
-                if location == 0: #WM
-                    K1_array[idx1:idx2] *= K1_ref_wm
-                else: #GM
-                    K1_array[idx1:idx2] *= K1_ref_gm
-            location = location + 1
-        
-        K1.vector().set_local(K1_array)
-    else:
-        raise Exception("unknown model type: " + model_type)
+    K1_array = K1.vector().get_local()
+    K2_array = K2.vector().get_local()
+    K3_array = K3.vector().get_local()
+    
+    # obtain reference values    
+    K1_ref_wm = K1_ref_gm/gmowm_perm_rat
+    K2_ref_wm = K2_ref_gm/gmowm_perm_rat
+    K3_ref_wm = K3_ref_gm/gmowm_perm_rat
+    
+    location = 0
+    for loc in [loc1,loc2]:
+        for i in range(len(loc)):
+            idx1 = int(loc[i])*9
+            idx2 = int(loc[i])*9+9
+            if location == 0: #WM
+                K1_array[idx1:idx2] *= K1_ref_wm
+                K3_array[idx1:idx2] *= K3_ref_wm
+                K2_array[loc[i]] = K2_ref_wm
+            else: #GM
+                K1_array[idx1:idx2] *= K1_ref_gm
+                K3_array[idx1:idx2] *= K3_ref_gm
+                K2_array[loc[i]] = K2_ref_gm
+        location = location + 1
+    
+    K1.vector().set_local(K1_array)
+    K2.vector().set_local(K2_array)
+    K3.vector().set_local(K3_array)
     
     return K1, K2, K3
     
 #%%
 def scale_coupling_coefficients(subdomains, beta12gm, beta23gm, gmowm_beta_rat, \
-                                K2_space, res_fldr,save_pvd,**kwarg): 
-    if 'model_type' in kwarg:
-        model_type = kwarg.get('model_type')
-    else:
-        model_type = 'acv'
+                                K2_space, res_fldr,**kwarg): 
     
     loc1 = subdomains.where_equal(11)# white matter cell indices
     loc2 = subdomains.where_equal(12)# gray matter cell indices
     
-    if model_type == 'acv':
-        beta12 = Function(K2_space)
-        beta23 = Function(K2_space)
-        beta12_array = beta12.vector().get_local()
-        beta23_array = beta23.vector().get_local()
-        
-        beta12_array[loc2] = beta12gm
-        beta12_array[loc1] = beta12gm/gmowm_beta_rat
-        beta23_array[loc2] = beta23gm
-        beta23_array[loc1] = beta23gm/gmowm_beta_rat
-        
-        beta12.vector().set_local(beta12_array)
-        beta23.vector().set_local(beta23_array)
-    elif model_type == 'a':
-        beta12 = Function(K2_space)
-        beta23 = []
-        beta12_array = beta12.vector().get_local()
-        
-        beta12_array[loc2] = beta12gm
-        beta12_array[loc1] = beta12gm/gmowm_beta_rat
-        
-        beta12.vector().set_local(beta12_array)
-    else:
-        raise Exception("unknown model type: " + model_type)
+    beta12 = Function(K2_space)
+    beta23 = Function(K2_space)
+    beta12_array = beta12.vector().get_local()
+    beta23_array = beta23.vector().get_local()
+    
+    beta12_array[loc2] = beta12gm
+    beta12_array[loc1] = beta12gm/gmowm_beta_rat
+    beta23_array[loc2] = beta23gm
+    beta23_array[loc1] = beta23gm/gmowm_beta_rat
+    
+    beta12.vector().set_local(beta12_array)
+    beta23.vector().set_local(beta23_array)
     
     return beta12, beta23
     
@@ -557,3 +516,209 @@ def region_label_assembler(region):
     return region_labels, n_labels
     
     
+#%%
+def compute_boundary_area(mesh,boundaries,labels,n_labels):
+    area = []
+    
+    n = FacetNormal(mesh)
+    dS = ds(subdomain_data=boundaries)
+    for i in range(n_labels):
+        ID = int(labels[i])
+        area.append( assemble( Constant(1.0)*dS(ID,domain=mesh) ) )
+    return np.array(area)
+
+
+#%%
+def compute_subdm_vol(mesh,subdomains,labels,n_labels):
+    volume = []
+    
+    dV = dx(subdomain_data=subdomains)
+    for i in range(n_labels):
+        ID = int(labels[i])
+        volume.append(  assemble( Constant(1.0)*dV(ID,domain=mesh) ) )
+    return np.array(volume)
+    
+
+#%%
+def surface_integrate(variable,mesh,boundaries,labels,n_labels,magn):
+    dS = ds(subdomain_data=boundaries)
+    surface_integrals = []
+    
+    if variable.value_rank()==0:
+        for i in range(n_labels):
+            ID = int(labels[i])
+            surface_integrals.append( assemble( variable*dS(ID) ) )
+    elif magn:
+        for i in range(n_labels):
+            ID = int(labels[i])
+            surface_integrals.append( assemble( sqrt(inner(variable, variable))*dS(ID) ) )
+    else:
+        n = FacetNormal(mesh)
+        for i in range(n_labels):
+            ID = int(labels[i])
+            surface_integrals.append( assemble(dot(variable,n)*dS(ID)) )
+    return np.array(surface_integrals)
+
+
+#%%
+def volume_integrate(variable,mesh,subdomains,labels,n_labels,magn):
+    dV = dx(subdomain_data=subdomains)
+    volume_integrals = []
+    
+    if variable.value_rank()==0:
+        for i in range(n_labels):
+            ID = int(labels[i])
+            volume_integrals.append( assemble( variable*dV(ID) ) )
+    elif magn:
+        for i in range(n_labels):
+            ID = int(labels[i])
+            volume_integrals.append( assemble( sqrt(inner(variable, variable))*dV(ID) ) )
+    else:
+        print("warning: volumetric integration of non-scalar variables has not been implemented!")
+        return volume_integrals
+    return np.array(volume_integrals)
+
+
+#%%
+def compute_my_variables(p,K1,K2,K3,beta12,beta23,p_venous,Vp,Vvel,K2_space, \
+                         configs,myResults,compartmental_model,rank,**kwarg):
+    if 'save_data' in kwarg:
+        save_data = kwarg.get('save_data')
+    else:
+        save_data = True
+    
+    out_vars = configs['output']['res_vars']
+    if len(out_vars)>0:
+        if compartmental_model == 'acv':
+            p1, p2, p3 = p.split()
+            if 'perfusion' in out_vars: myResults['perfusion'] = project(beta12 * (p1-p2),K2_space,\
+                                                                          solver_type='bicgstab', preconditioner_type='petsc_amg')
+        elif compartmental_model == 'a':
+            p1, p3 = p.copy(deepcopy=False), p.copy(deepcopy=True)
+            p3vec = p3.vector().get_local()
+            p3vec[:] = p_venous
+            p3.vector().set_local(p3vec)
+            p2 = project( (beta12*p1 + beta23*p3)/(beta12+beta23), Vp, solver_type='bicgstab', preconditioner_type='petsc_amg')
+            beta_total = project( 1 / (1/beta12+1/beta23), K2_space, solver_type='bicgstab', preconditioner_type='petsc_amg')
+            if 'perfusion' in out_vars: myResults['perfusion'] = project( beta_total * (p-Constant(p_venous)),K2_space,\
+                                                                          solver_type='bicgstab', preconditioner_type='petsc_amg')
+        else:
+            raise Exception("unknown model type: " + compartmental_model)
+        myResults['press1'], myResults['press2'], myResults['press3'] = p1, p2, p3
+        myResults['K1'], myResults['K2'], myResults['K3'] = K1, K2, K3
+        myResults['beta12'], myResults['beta23'] = beta12, beta23
+        # compute velocities and perfusion
+        if 'vel1' in out_vars: myResults['vel1'] = project(-K1*grad(p1),Vvel, solver_type='bicgstab', preconditioner_type='petsc_amg')
+        if 'vel2' in out_vars: myResults['vel2'] = project(-K2*grad(p2),Vvel, solver_type='bicgstab', preconditioner_type='petsc_amg')
+        if 'vel3' in out_vars: myResults['vel3'] = project(-K3*grad(p3),Vvel, solver_type='bicgstab', preconditioner_type='petsc_amg')
+    else:
+        if rank==0: print('No variables have been defined for saving!')
+    
+    # save variables
+    res_keys = set(myResults.keys())
+    if save_data:
+        for myvar in out_vars:
+            if myvar in res_keys:
+                with XDMFFile(configs['output']['res_fldr']+myvar+'.xdmf') as myfile:
+                    if myvar!='perfusion':
+                        myfile.write_checkpoint(myResults[myvar], myvar, 0, XDMFFile.Encoding.HDF5, False)
+                    else:
+                        perf_scaled = myResults[myvar].copy(deepcopy=True)
+                        perf_scaled.vector()[:] = perf_scaled.vector()[:]*6000
+                        myfile.write_checkpoint(perf_scaled, myvar, 0, XDMFFile.Encoding.HDF5, False)
+            else:
+                if rank==0: print('warning: '+myvar+' variable cannot be saved - variable undefined!')
+
+
+#%%
+def compute_integral_quantities(configs,myResults,my_integr_vars,mesh,subdomains,boundaries,rank,**kwarg):
+    if 'save_data' in kwarg:
+        save_data = kwarg.get('save_data')
+    else:
+        save_data = True
+    
+    surf_int_values = []; surf_int_header = ''; surf_int_dat_struct = ''
+    volu_int_values = []; volu_int_header = ''; volu_int_dat_struct = ''
+    res_keys = set(myResults.keys())
+    
+    int_vars = configs['output']['integral_vars']
+    if len(int_vars)>0:
+        int_types = set()
+        for intvar in int_vars:
+            int_types.add( intvar.split('_')[-1] )
+        if 'surfave' in int_types:
+            bound_label, n_bound_label = region_label_assembler(boundaries)
+            bound_label = bound_label[bound_label>0]
+            n_bound_label = len(bound_label)
+            bound_areas = compute_boundary_area(mesh,boundaries,bound_label,n_bound_label)
+            surf_int_values.append(bound_label); surf_int_values.append(bound_areas)
+            surf_int_header += 'surf ID,area,'; surf_int_dat_struct += '%d,%e,'
+        elif 'surfint' in int_types:
+            bound_label, n_bound_label = region_label_assembler(boundaries)
+            bound_label = bound_label[bound_label>0]
+            n_bound_label = len(bound_label)
+            surf_int_values.append(bound_label)
+            surf_int_header += 'surf ID,'; surf_int_dat_struct += '%d,'
+        if 'voluave' in int_types:
+            subdom_label, n_subdom_label = region_label_assembler(subdomains)
+            subdom_vols  = compute_subdm_vol(mesh,subdomains,subdom_label,n_subdom_label)
+            volu_int_values.append(subdom_label); volu_int_values.append(subdom_vols)
+            volu_int_header += 'volu ID,volu,'; volu_int_dat_struct += '%d,%e,'
+        elif 'voluint' in int_types:
+            subdom_label, n_subdom_label = region_label_assembler(subdomains)
+            volu_int_values.append(subdom_label)
+            volu_int_header += 'volu ID,'; volu_int_dat_struct += '%d,'
+        
+        for intvar in int_vars:
+            intvar_parts = intvar.split('_')
+            var2int = intvar_parts[0]
+            magn_indicator = intvar.split('_')[1] == 'magn'
+            int_type = intvar_parts[-1]
+            if var2int in res_keys:
+                if int_type == 'surfint':
+                    my_integr_vars[intvar] = surface_integrate(myResults[var2int],mesh,boundaries,\
+                                                                          bound_label,n_bound_label,magn_indicator)
+                elif int_type == 'voluint':
+                    my_integr_vars[intvar] = volume_integrate(myResults[var2int],mesh,subdomains,\
+                                                                          subdom_label,n_subdom_label,magn_indicator)
+                    if len(my_integr_vars[intvar])==0: del my_integr_vars[intvar]
+                elif int_type == 'surfave':
+                    my_integr_vars[intvar] = surface_integrate(myResults[var2int],mesh,boundaries,\
+                                                                          bound_label,n_bound_label,magn_indicator)
+                    my_integr_vars[intvar] = my_integr_vars[intvar]/bound_areas
+                elif int_type == 'voluave':
+                    my_integr_vars[intvar] = volume_integrate(myResults[var2int],mesh,subdomains,\
+                                                                          subdom_label,n_subdom_label,magn_indicator)
+                    if len(my_integr_vars[intvar])==0: del my_integr_vars[intvar]
+                else:
+                    if rank==0: print('warning: ' + int_type + ' is not recognised!')
+            else:
+                if rank==0: print('warning: '+var2int+' variable cannot be integrated - variable undefined!')
+        
+        for intvar in list(my_integr_vars.keys()):
+            int_types = ( intvar.split('_')[-1] )
+            if int_types[:4] == 'surf':
+                surf_int_values.append(my_integr_vars[intvar])
+                surf_int_header += intvar+','; surf_int_dat_struct += '%e,'
+            else:
+                volu_int_values.append(my_integr_vars[intvar])
+                volu_int_header += intvar+','; volu_int_dat_struct += '%e,'
+        surf_int_values = np.array(surf_int_values)
+        surf_int_values = surf_int_values.transpose()
+        volu_int_values = np.array(volu_int_values)
+        volu_int_values = volu_int_values.transpose()
+        
+        
+    
+        if save_data:
+            if len(surf_int_values)>0:
+                np.savetxt(configs['output']['res_fldr']+'surface_integrals.csv',\
+                              surf_int_values,surf_int_dat_struct[:-1],header=surf_int_header[:-1])
+            if len(volu_int_values)>0:
+                np.savetxt(configs['output']['res_fldr']+'volume_integrals.csv',\
+                              volu_int_values,volu_int_dat_struct,header=volu_int_header[:-1])
+        return surf_int_values, surf_int_header, volu_int_values, volu_int_header
+    else:
+        if rank==0:
+            print('No variables have been defined for integration!')
+        return [], [], [], []

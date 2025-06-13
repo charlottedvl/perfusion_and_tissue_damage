@@ -276,7 +276,7 @@ def set_up_fe_solver2(mesh, subdomains, boundaries, V, v_1, v_2, v_3, \
                 # computed from the volumentric flow rate [mm^3/s] and the surface area [mm^2]
                 for i in range(n_labels):
                     if b1[i]>0:
-                        integrals_N.append(b1[i]*V*dS( int(boundary_labels[i]) ))
+                        integrals_N.append(b1[i]*v_1*dS( int(boundary_labels[i]) ))
             elif inlet_BC_type == 'mixed':
                 # Neumann boundary conditions
                 dS = ds(subdomain_data=boundaries)
@@ -298,7 +298,7 @@ def set_up_fe_solver2(mesh, subdomains, boundaries, V, v_1, v_2, v_3, \
                 for i in range(n_labels):
                     if BC_data[i,4] == 1: # Neumann (pressure gradient ~ flux) boundary condition
                         if b1[i]>0:
-                            integrals_N.append(b1[i]*V*dS( int(boundary_labels[i]) ))
+                            integrals_N.append(b1[i]*v_1*dS( int(boundary_labels[i]) ))
             else:
                 raise Exception("inlet_BC_type must be Neumann or Dirichlet ('NBC' or 'DBC')")
             
@@ -314,10 +314,11 @@ def set_up_fe_solver2(mesh, subdomains, boundaries, V, v_1, v_2, v_3, \
         """ END - VOLUME FLOW RATE READING/COMPUTATION """
         
         # Define variational problem
+        beta_total = 1 / (1/beta12+1/beta23)
         LHS = \
-        inner(K1*grad(p), grad(v_1))*dx + beta12*p*v_1*dx
+        inner(K1*grad(p), grad(v_1))*dx + beta_total*p*v_1*dx
         
-        RHS = sigma1*v_1*dx + sum(integrals_N) + beta12*p_venous*v_1*dx
+        RHS = sigma1*v_1*dx + sum(integrals_N) + beta_total*p_venous*v_1*dx
     else:
         raise Exception("unknown model type: " + model_type)
 

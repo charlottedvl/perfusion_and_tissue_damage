@@ -1,0 +1,2 @@
+Vesselname,Clotlocation(mm),Clotlength(mm),Permeability,Porosity
+"Tree_1Tree_1",3,3,0,0

@@ -1,0 +1,10 @@
+ID	Name	Length (mm)	Proximal Radius (mm)	Distal Radius (mm)	Elastic modulus (1e6 Pa)
+1	Tree_1	200	10	10	0.4
+
+Bifurcations
+
+Boundary Nodes
+Inlets: 1i
+Outlets Body:
+Outlets Head: 1o
+Outlets Brain:

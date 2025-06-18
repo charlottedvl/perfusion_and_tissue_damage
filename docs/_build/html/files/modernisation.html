@@ -1,0 +1,1684 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Gemini Perfusion Model Modernisation &#8212; Gemini  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="gemini-perfusion-model-modernisation">
+<h1>Gemini Perfusion Model Modernisation<a class="headerlink" href="#gemini-perfusion-model-modernisation" title="Link to this heading">¶</a></h1>
+<nav class="contents local" id="contents">
+<ul class="simple">
+<li><p><a class="reference internal" href="#introduction" id="id60">Introduction</a></p></li>
+<li><p><a class="reference internal" href="#background" id="id61">Background</a></p></li>
+<li><p><a class="reference internal" href="#modernisation-goals" id="id62">Modernisation Goals</a></p></li>
+<li><p><a class="reference internal" href="#overview-of-repository-structure" id="id63">Overview of Repository Structure</a></p></li>
+<li><p><a class="reference internal" href="#legend-of-key-folders" id="id64">Legend of Key Folders</a></p></li>
+<li><p><a class="reference internal" href="#requirements" id="id65">Requirements</a></p></li>
+<li><p><a class="reference internal" href="#core-fenicsx-stack" id="id66">Core FEniCSx Stack</a></p></li>
+<li><p><a class="reference internal" href="#linear-algebra-mpi" id="id67">Linear Algebra / MPI</a></p></li>
+<li><p><a class="reference internal" href="#scientific-python-ecosystem" id="id68">Scientific Python Ecosystem</a></p></li>
+<li><p><a class="reference internal" href="#utilities-postprocessing" id="id69">Utilities / Postprocessing</a></p></li>
+<li><p><a class="reference internal" href="#execution-environment" id="id70">Execution Environment</a></p></li>
+<li><p><a class="reference internal" href="#documentation-and-compatibility-references" id="id71">Documentation and Compatibility References</a></p></li>
+<li><p><a class="reference internal" href="#containerisation-recommended" id="id72">Containerisation (Recommended)</a></p></li>
+</ul>
+</nav>
+<section id="introduction">
+<h2><a class="toc-backref" href="#id60" role="doc-backlink">Introduction</a><a class="headerlink" href="#introduction" title="Link to this heading">¶</a></h2>
+<p>The Gemini Perfusion Model aims to simulate cerebral perfusion through porous media by solving Darcy flow equations on patient-specific brain geometries.
+Originally developed using the FEniCS-Legacy finite element library, the model was constrained by challenges including limited parallel scaling, legacy dependency maintenance, and difficulties with extensibility.</p>
+<p>The modernisation project addresses these limitations by transitioning the codebase from FEniCS-Legacy to FEniCSx.
+This migration improves the solver’s scalability on high-performance computing (HPC) systems, enhances portability through containerisation, and modularises code structure for future extensions such as oxygen transport and thrombosis modelling.</p>
+<p>In addition to the core numerical solvers, supporting components such as YAML-based configuration, MPI domain decomposition, and boundary condition generation were redesigned.
+The updated model (referred to as <code class="docutils literal notranslate"><span class="pre">Gem_X</span></code>) retains compatibility with both single and multi-compartment perfusion (A and ACV models), while achieving significant performance and usability improvements.</p>
+<p>This document describes the modernisation methodology, highlights technical changes, evaluates computational scaling, and outlines remaining opportunities for future development.</p>
+</section>
+<section id="background">
+<h2><a class="toc-backref" href="#id61" role="doc-backlink">Background</a><a class="headerlink" href="#background" title="Link to this heading">¶</a></h2>
+<p>The original Gemini Perfusion Model was developed using the FEniCS-Legacy finite element library. While it served as a robust tool for simulating cerebral perfusion, several inherent limitations became apparent over time, necessitating a modernization effort.</p>
+<ol class="arabic simple">
+<li><p><strong>Technical Debt and Maintenance Challenges</strong>: The Legacy codebase accumulated technical debt due to outdated programming practices and dependencies on obsolete libraries. This made maintenance arduous and increased the risk of introducing bugs during updates. The lack of comprehensive documentation further complicated understanding and modifying the codebase. [1]</p></li>
+<li><p><strong>Scalability and Performance Constraints</strong>: Designed primarily for serial computations, the Legacy model struggled with scalability. As computational demands grew, especially for high-resolution simulations, the model’s performance bottlenecks became more pronounced, limiting its applicability in large-scale studies. [2]</p></li>
+<li><p><strong>Integration Difficulties</strong>: Integrating the Legacy system with modern tools and platforms was challenging. Its monolithic architecture and reliance on deprecated technologies hindered seamless interoperability with contemporary systems, affecting data exchange and workflow automation. [3]</p></li>
+<li><p><strong>Security Vulnerabilities</strong>: The use of outdated components exposed the system to potential security threats. Without regular updates and patches, the Legacy model was susceptible to known vulnerabilities, posing risks to data integrity and system reliability. [4]</p></li>
+<li><p><strong>Resource and Talent Constraints</strong>: As the industry moved forward, finding developers proficient in the technologies used by the Legacy model became increasingly difficult. This scarcity of expertise not only escalated maintenance costs but also impeded the onboarding of new team members. [5]</p></li>
+</ol>
+<p>Recognizing these challenges, the decision to transition to FEniCSx was driven by the need for a more maintainable, scalable, and secure platform. FEniCSx offers enhanced performance, better support for parallel computations, and improved integration capabilities, aligning with the evolving requirements of modern computational modeling.</p>
+<p>—</p>
+<p><strong>References</strong></p>
+<p>[1] “Challenges Of Legacy Code In Software Development,” Enozom. <a class="reference external" href="https://enozom.com/blog/challenges-of-legacy-code-in-software-development/">https://enozom.com/blog/challenges-of-legacy-code-in-software-development/</a></p>
+<p>[2] “Legacy Code: 5 Challenges, Tools and Tips to Overcome Them,” Swimm. <a class="reference external" href="https://swimm.io/learn/legacy-code/legacy-code-5-challenges-tools-and-tips-to-overcome-them">https://swimm.io/learn/legacy-code/legacy-code-5-challenges-tools-and-tips-to-overcome-them</a></p>
+<p>[3] “Unlocking Value and Ensuring Continuity: Best Practices for Managing Legacy Code,” Medium. <a class="reference external" href="https://medium.com/tech-lead-hub/unlocking-value-and-ensuring-continuity-best-practices-for-managing-legacy-code-2a06349b267">https://medium.com/tech-lead-hub/unlocking-value-and-ensuring-continuity-best-practices-for-managing-legacy-code-2a06349b267</a></p>
+<p>[4] “Why legacy code is a security risk — and how AI can help,” GitLab. <a class="reference external" href="https://about.gitlab.com/the-source/security/why-legacy-code-is-a-security-risk-and-how-ai-can-help/">https://about.gitlab.com/the-source/security/why-legacy-code-is-a-security-risk-and-how-ai-can-help/</a></p>
+<p>[5] “The Pros and Cons of Working With Legacy Code,” Axis Software Dynamics. <a class="reference external" href="https://axissoftwaredynamics.com/the-pros-and-cons-of-working-with-legacy-code/">https://axissoftwaredynamics.com/the-pros-and-cons-of-working-with-legacy-code/</a></p>
+</section>
+<section id="modernisation-goals">
+<h2><a class="toc-backref" href="#id62" role="doc-backlink">Modernisation Goals</a><a class="headerlink" href="#modernisation-goals" title="Link to this heading">¶</a></h2>
+<p>The modernisation of the Gemini Perfusion Model was driven by both technical and scientific objectives, reflecting the need to update the software ecosystem to current computational standards while enhancing its scientific capabilities.</p>
+<p>Technically, the transition aimed to achieve full MPI-based parallel compatibility, enabling simulations to efficiently utilise high-performance computing (HPC) resources.
+By moving to FEniCSx, the model benefits from better support for domain decomposition and distributed linear algebra solvers, essential for scaling to finer meshes and more complex simulations.</p>
+<p>Configuration flexibility was also prioritised.
+The adoption of YAML-based input files allows users to easily modify simulation parameters, boundary conditions, and solver options without needing to alter source code directly.
+This improves reproducibility, facilitates rapid experimentation, and lowers the barrier to entry for new users.</p>
+<p>Modularity was a key goal in the redesign.
+The modern codebase separates concerns into distinct, manageable components (e.g., I/O handling, finite element operations, permeability initialisation), improving maintainability and enabling straightforward extension to future applications such as oxygen transport or thrombus dynamics.</p>
+<p>Performance improvements were central to the modernisation.
+Benchmarks demonstrate that the updated model achieves significantly faster execution times relative to the Legacy code, particularly for larger, parallelised problems.
+Despite an initially steeper learning curve due to increased abstraction and a more complex build environment, the modernised model offers greater customisability.
+Researchers can more easily integrate new physics, adjust solver settings, or perform novel numerical experiments, making the platform a more powerful and future-proof tool for cerebral perfusion studies.</p>
+</section>
+<section id="overview-of-repository-structure">
+<h2><a class="toc-backref" href="#id63" role="doc-backlink">Overview of Repository Structure</a><a class="headerlink" href="#overview-of-repository-structure" title="Link to this heading">¶</a></h2>
+<p>To support reproducibility and usability, the repository follows the structure outlined below:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+<p>├── README.md
+├── VP_results
+│   └── p0000
+├── brain_meshes
+│   └── b0000
+│       ├── affine_matrices.yaml
+│       └──  …
+├── containers
+│   ├── container.def
+│   └── new_container.def
+├── doc
+│   ├── Makefile
+│   ├── _build
+│   │   ├── doctrees
+│   │   │   ├── environment.pickle
+│   │   │   ├── files
+│   │   │   │   ├── Perf_IO.doctree
+│   │   │   │   ├── Perf_finite_element_fcts.doctree
+│   │   │   │   └── …
+│   │   │   └── index.doctree
+│   │   └── html
+│   │       ├── .buildinfo
+│   │       ├── .buildinfo.bak
+│   │       ├── .doctrees
+│   │       │   ├── environment.pickle
+│   │       │   ├── files
+│   │       │   │   ├── Perf_IO.doctree
+│   │       │   │   └── …
+│   │       │   └── index.doctree
+│   │       ├── _sources
+│   │       │   ├── files
+│   │       │   │   ├── Perf_IO.rst.txt
+│   │       │   │   └── …
+│   │       │   └── index.rst.txt
+│   │       ├── _static
+│   │       │   ├── alabaster.css
+│   │       │   └── …
+│   │       ├── files
+│   │       │   ├── Perf_IO.html
+│   │       │   └── …
+│   │       └── …
+│   ├── conf.py
+│   ├── doctrees
+│   │   ├── environment.pickle
+│   │   ├── files
+│   │   │   ├── Perf_IO.doctree
+│   │   │   └── …
+│   │   └── index.doctree
+│   ├── fidel_files
+│   │   ├── FEniCSx_Oxygen_Model_Test_Form.pdf
+│   │   └── …
+│   ├── files
+│   │   ├── Perf_IO.rst
+│   │   └── …
+│   ├── g2_report
+│   │   ├── conclusions.tex
+│   │   ├── figures
+│   │   │   └── CULogo.png
+│   │   ├── front_page.tex
+│   │   └── …
+│   ├── html
+│   │   ├── .buildinfo
+│   │   ├── .buildinfo.bak
+│   │   ├── _modules
+│   │   │   ├── Perf_IO_fcts.html
+│   │   │   └── index.html
+│   │   ├── _sources
+│   │   │   ├── files
+│   │   │   │   ├── Perf_IO.rst.txt
+│   │   │   │   └── …
+│   │   │   └── index.rst.txt
+│   │   ├── _static
+│   │   │   ├── alabaster.css
+│   │   │   └── …
+│   │   ├── files
+│   │   │   ├── Perf_IO.html
+│   │   │   └── …
+│   │   ├── genindex.html
+│   │   └── …
+│   ├── index.rst
+│   └── make.bat
+├── file_path_finder.py
+├── perfusion
+│   ├── __pycache__
+│   │   ├── IO_fcts.cpython-313.pyc
+│   │   ├── finite_element_fcts.cpython-313.pyc
+│   │   └── suppl_fcts.cpython-313.pyc
+│   └── weak_vs_strong
+│       └── run1
+├── run_this_file.py
+├── scripts
+│   ├── Ares
+│   │   ├── README
+│   │   └── …
+│   ├── run_files
+│   │   ├── Leg_basic.sh
+│   │   └── …
+│   └── sub_scripts
+│       └── text.txt
+├── src
+│   ├── Gem_Legacy
+│   │   ├── .dockerignore
+│   │   ├── …
+│   │   ├── oxygen
+│   │   │   ├── API.py
+│   │   │   └── …
+│   │   ├── perfusion
+│   │   │   ├── API.py
+│   │   │   ├── …
+│   │   │   ├── boundary_data
+│   │   │   │   └── BCs.csv
+│   │   │   ├── conda_build.def
+│   │   │   ├── config_basic_flow_solver.yaml
+│   │   │   ├── …
+│   │   │   ├── config_examples
+│   │   │   │   ├── config_basic_flow_solver_RMCAo_mod_geom.yaml
+│   │   │   │   └── …
+│   │   │   ├── config_permeability_initialiser.yaml
+│   │   │   ├── config_templates
+│   │   │   │   └── config_base.yaml
+│   │   │   ├── convert_msh2hdf5.py
+│   │   │   ├── …
+│   │   │   ├── verification
+│   │   │   │   ├── Verification_coupled.pvsm
+│   │   │   │   ├── …
+│   │   │   │   ├── verification_coupled
+│   │   │   │   │   ├── 1-D_Anatomy.txt
+│   │   │   │   │   ├── BFOnly.py
+│   │   │   │   │   ├── Clots.txt
+│   │   │   │   │   ├── bf_sim
+│   │   │   │   │   │   └── Model_parameters.txt
+│   │   │   │   │   └── config.xml
+│   │   │   │   ├── verify_perfusion.sh
+│   │   │   │   └── verify_perfusion_coupled.sh
+│   │   │   └── weak_vs_strong
+│   │   │       ├── plotting
+│   │   │       │   ├── speedup_vs_np_a_FE1.png
+│   │   │       │   └── …
+│   │   │       ├── run_all_occlusions.sub
+│   │   │       └── …
+│   │   ├── perfusion_runner.sh
+│   │   ├── perfusion_runner_mod_geom.sh
+│   │   ├── requirements.txt
+│   │   ├── runner.py
+│   │   ├── sensitivity
+│   │   │   ├── IO_fcts.py
+│   │   │   ├── clear.sh
+│   │   │   └── …
+│   │   ├── singularity.def
+│   │   ├── test_patient.yml
+│   │   └── tissue_health
+│   │       ├── API.py
+│   │       ├── IO_fcts.py
+│   │       ├── README.md
+│   │       ├── beta_versions
+│   │       │   ├── .gitkeep
+│   │       │   └── …
+│   │       ├── config_propagation.yaml
+│   │       └── …
+│   └── Gem_X
+│       ├── API.py
+│       ├── …
+│       ├── configurations
+│       │   ├── config_oxygen_solver.yaml
+│       │   ├── perfusion
+│       │   │   ├── Perfusion_yamls.zip
+│       │   │   ├── config_basic_flow_solver.yaml
+│       │   │   ├── …
+│       │   │   ├── config_examples
+│       │   │   │   ├── config_basic_flow_solver_RMCAo_mod_geom.yaml
+│       │   │   │   └── …
+│       │   │   └── config_permeability_initialiser.yaml
+│       │   ├── test_patient.yml
+│       │   └── tissue_health
+│       │       ├── config_propagation.yaml
+│       │       ├── config_propagation_LMCAo.yaml
+│       │       └── config_tissue_damage.yaml
+│       ├── core
+│       │   ├── oxygen
+│       │   │   ├── API.py
+│       │   │   ├── Pytest_Validation
+│       │   │   │   ├── README
+│       │   │   │   ├── __pycache__
+│       │   │   │   │   ├── conftest.cpython-312-pytest-8.3.5.pyc
+│       │   │   │   │   └── test_compare_fields.cpython-312-pytest-8.3.5.pyc
+│       │   │   │   ├── comparison.def
+│       │   │   │   └── …
+│       │   │   ├── README.md
+│       │   │   ├── __pycache__
+│       │   │   │   ├── FE_solver.cpython-312.pyc
+│       │   │   │   └── …
+│       │   │   ├── depth_func_DG.h5
+│       │   │   ├── oxygen_main.py
+│       │   │   └── to_be_implemented.txt
+│       │   ├── perfusion
+│       │   │   ├── API.py
+│       │   │   ├── …
+│       │   │   ├── Pytest_Validation
+│       │   │   │   ├── README
+│       │   │   │   ├── __pycache__
+│       │   │   │   │   ├── conftest.cpython-312-pytest-8.3.5.pyc
+│       │   │   │   │   └── test_compare_fields.cpython-312-pytest-8.3.5.pyc
+│       │   │   │   ├── comparison.def
+│       │   │   │   └── …
+│       │   │   ├── README.md
+│       │   │   ├── __pycache__
+│       │   │   │   ├── IO_fcts.cpython-310.pyc
+│       │   │   │   └── …
+│       │   │   ├── basic_flow_solver.py
+│       │   │   ├── boundary_data
+│       │   │   │   └── BCs.csv
+│       │   │   ├── coupled_flow_solver.py
+│       │   │   ├── …
+│       │   │   └── verification
+│       │   │       ├── Verification_coupled.pvsm
+│       │   │       ├── …
+│       │   │       ├── verification_coupled
+│       │   │       │   ├── 1-D_Anatomy.txt
+│       │   │       │   ├── BFOnly.py
+│       │   │       │   ├── Clots.txt
+│       │   │       │   ├── bf_sim
+│       │   │       │   │   └── Model_parameters.txt
+│       │   │       │   └── config.xml
+│       │   │       ├── verify_perfusion.sh
+│       │   │       └── verify_perfusion_coupled.sh
+│       │   ├── sensitivity
+│       │   │   ├── clear.sh
+│       │   │   └── …
+│       │   └── tissue_health
+│       │       ├── API.py
+│       │       ├── README.md
+│       │       ├── beta_versions
+│       │       │   ├── .gitkeep
+│       │       │   ├── dead_fraction.csv
+│       │       │   ├── infarct_estimate.py
+│       │       │   └── infarct_estimate_treatment_beta.py
+│       │       ├── infarct_estimate_treatment.py
+│       │       └── …
+│       ├── functions
+│       │   ├── Oxy_FE_solver.py
+│       │   ├── …
+│       │   ├── __pycache__
+│       │   │   ├── Oxy_FE_solver.cpython-313.pyc
+│       │   │   └── …
+│       │   ├── functions_list.txt
+│       │   └── …
+│       ├── post_processing
+│       │   ├── convert_msh2hdf5.py
+│       │   └── …
+│       ├── requirements.txt
+│       └── runners
+│           ├── build_and_run_docker_image.sh
+│           └── …
+└── tests</p>
+<blockquote>
+<div><p>└── text.txt</p>
+</div></blockquote>
+</section>
+<section id="legend-of-key-folders">
+<h2><a class="toc-backref" href="#id64" role="doc-backlink">Legend of Key Folders</a><a class="headerlink" href="#legend-of-key-folders" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">brain_meshes/</span></code>: Mesh files, permeability tensors, boundary conditions.
+- Contains <cite>.msh</cite> mesh files and YAML files for affine matrices and permeability tensors, which define the properties of the simulated brain regions.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">src/Gem_X/</span></code>: Modernised FEniCSx-based implementation.
+- Code files for the FEniCSx solver and utilities designed for the latest version of the software.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">src/Gem_Legacy/</span></code>: Legacy FEniCS-based code.
+- Older code files based on the legacy FEniCS implementation, for comparison or backward compatibility.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">doc/</span></code>: Documentation sources and Sphinx build outputs.
+- Contains <cite>.rst</cite> files for the project’s documentation, along with configuration and build files for generating HTML or LaTeX outputs.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">containers/</span></code>: Apptainer/Singularity container definitions.
+- Files used for defining container environments for reproducible computing, including YAML configurations.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/</span></code>: HPC job submission scripts.
+- Includes scripts for running simulations and setting up environments in high-performance computing systems.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">perfusion/</span></code>: Performance testing scripts for strong/weak scaling.
+- Scripts to analyze the performance of simulations under different load conditions, assessing both strong and weak scaling.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tests/</span></code>: Basic unit test placeholders.
+- Unit tests for various modules and functionality of the codebase, including legacy and modern solvers, utility functions, and models.</p></li>
+</ul>
+</section>
+<section id="requirements">
+<h2><a class="toc-backref" href="#id65" role="doc-backlink">Requirements</a><a class="headerlink" href="#requirements" title="Link to this heading">¶</a></h2>
+<p>To ensure reproducibility and compatibility, all simulations were conducted using the following software environment (as shown by <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">list</span></code>). Only the packages directly used in the mesh preprocessing, permeability initialisation, boundary-condition generation, and flow solvers are listed.</p>
+</section>
+<section id="core-fenicsx-stack">
+<h2><a class="toc-backref" href="#id66" role="doc-backlink">Core FEniCSx Stack</a><a class="headerlink" href="#core-fenicsx-stack" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>fenics-basix</strong> 0.9.0 [Fenics Basix](<a class="reference external" href="https://fenicsproject.org">https://fenicsproject.org</a>)</p></li>
+<li><p><strong>fenics-dolfinx</strong> 0.9.0 [Fenics DolfinX](<a class="reference external" href="https://fenicsproject.org">https://fenicsproject.org</a>)</p></li>
+<li><p><strong>fenics-ffcx</strong> 0.9.0 [Fenics FFCx](<a class="reference external" href="https://fenicsproject.org">https://fenicsproject.org</a>)</p></li>
+<li><p><strong>fenics-ufl</strong> 2024.2.0 [Fenics UFL](<a class="reference external" href="https://fenicsproject.org">https://fenicsproject.org</a>)</p></li>
+</ul>
+</section>
+<section id="linear-algebra-mpi">
+<h2><a class="toc-backref" href="#id67" role="doc-backlink">Linear Algebra / MPI</a><a class="headerlink" href="#linear-algebra-mpi" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>petsc4py</strong> 3.22.3 [petsc4py](<a class="reference external" href="https://petsc4py.readthedocs.io">https://petsc4py.readthedocs.io</a>)  (PETSc backend for solvers)</p></li>
+<li><p><strong>mpi4py</strong> 4.0.3 [mpi4py](<a class="reference external" href="https://mpi4py.readthedocs.io">https://mpi4py.readthedocs.io</a>)    (MPI communication)</p></li>
+<li><p><strong>h5py</strong> 3.13.0 [h5py](<a class="reference external" href="http://www.h5py.org">http://www.h5py.org</a>)    (HDF5 I/O for meshes and results)</p></li>
+</ul>
+</section>
+<section id="scientific-python-ecosystem">
+<h2><a class="toc-backref" href="#id68" role="doc-backlink">Scientific Python Ecosystem</a><a class="headerlink" href="#scientific-python-ecosystem" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>numpy</strong> 2.2.3 [numpy](<a class="reference external" href="https://numpy.org">https://numpy.org</a>)    (array manipulations)</p></li>
+<li><p><strong>scipy</strong> 1.15.2 [scipy](<a class="reference external" href="https://scipy.org">https://scipy.org</a>)   (numerical utilities)</p></li>
+<li><p><strong>pandas</strong> 2.2.3 [pandas](<a class="reference external" href="https://pandas.pydata.org">https://pandas.pydata.org</a>)   (CSV handling in <code class="docutils literal notranslate"><span class="pre">BC_creator.py</span></code>)</p></li>
+<li><p><strong>PyYAML</strong> 6.0.2 [PyYAML](<a class="reference external" href="https://pyyaml.org">https://pyyaml.org</a>)   (YAML configuration parsing)</p></li>
+</ul>
+</section>
+<section id="utilities-postprocessing">
+<h2><a class="toc-backref" href="#id69" role="doc-backlink">Utilities / Postprocessing</a><a class="headerlink" href="#utilities-postprocessing" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>joblib</strong> 1.4.2 [joblib](<a class="reference external" href="https://joblib.readthedocs.io">https://joblib.readthedocs.io</a>)   (optional parallel loops)</p></li>
+<li><p><strong>tqdm</strong> 4.67.1 [tqdm](<a class="reference external" href="https://tqdm.github.io">https://tqdm.github.io</a>)    (progress bars in long loops)</p></li>
+</ul>
+</section>
+<section id="execution-environment">
+<h2><a class="toc-backref" href="#id70" role="doc-backlink">Execution Environment</a><a class="headerlink" href="#execution-environment" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>Python</strong> 3.10.x [Python](<a class="reference external" href="https://www.python.org">https://www.python.org</a>)</p></li>
+<li><p><strong>MPI</strong> — OpenMPI / MPICH 3.x or higher</p></li>
+<li><p><strong>Linux/Unix</strong> with standard shell tools</p></li>
+</ul>
+</section>
+<section id="documentation-and-compatibility-references">
+<h2><a class="toc-backref" href="#id71" role="doc-backlink">Documentation and Compatibility References</a><a class="headerlink" href="#documentation-and-compatibility-references" title="Link to this heading">¶</a></h2>
+<p>For further details on the core components of the FEniCSx stack and their documentation, refer to the following sources:</p>
+<ul class="simple">
+<li><p><strong>dolfinx</strong>: Python API documentation for <code class="docutils literal notranslate"><span class="pre">dolfinx</span></code> (v0.9.0) [Fenics DolfinX](<a class="reference external" href="https://fenicsproject.org">https://fenicsproject.org</a>)</p></li>
+<li><p><strong>FFCx</strong>: Compiler documentation for the FEniCSx FFC compiler (v0.9.0) [Fenics FFCx](<a class="reference external" href="https://fenicsproject.org">https://fenicsproject.org</a>)</p></li>
+<li><p><strong>UFL</strong>: Unified Form Language (UFL) documentation (v2024.2.0) [Fenics UFL](<a class="reference external" href="https://fenicsproject.org">https://fenicsproject.org</a>)</p></li>
+<li><p><strong>Basix</strong>: Documentation for the Basix finite element library (v0.9.0) [Fenics Basix](<a class="reference external" href="https://fenicsproject.org">https://fenicsproject.org</a>)</p></li>
+</ul>
+</section>
+<section id="containerisation-recommended">
+<h2><a class="toc-backref" href="#id72" role="doc-backlink">Containerisation (Recommended)</a><a class="headerlink" href="#containerisation-recommended" title="Link to this heading">¶</a></h2>
+<p>For maximal reproducibility, it is recommended to encapsulate this environment in a Docker or Singularity container specifying the above versions. This ensures consistent behavior across different compute nodes and reduces setup overhead on HPC systems. The def files for the containers are given within the containers file with instructions for use.</p>
+</section>
+</section>
+<section id="perfusion-pipeline">
+<h1>Perfusion Pipeline<a class="headerlink" href="#perfusion-pipeline" title="Link to this heading">¶</a></h1>
+<ol class="arabic">
+<li><p>Extract the <code class="docutils literal notranslate"><span class="pre">brain_meshes.tar.xz</span></code> archive, and place its contents in the main project directory.</p></li>
+<li><p>Compute the permeability tensor by running <code class="docutils literal notranslate"><span class="pre">permeability_initialiser.py</span></code>. For parallel execution, use:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mpirun<span class="w"> </span>-n<span class="w"> </span>&lt;number_of_processors&gt;<span class="w"> </span>python3<span class="w"> </span>permeability_initialiser.py
+</pre></div>
+</div>
+<p>With 4 cores, execution typically completes in under 2 minutes. Parameters are read from the <code class="docutils literal notranslate"><span class="pre">config_permeability_initialiser.yaml</span></code> file. This script only needs to be run once, unless permeability configuration parameters are changed—then the tensor must be re-initialised.</p>
+</li>
+<li><p>Solve for the pressure and velocity fields using <code class="docutils literal notranslate"><span class="pre">basic_flow_solver.py</span></code>. The solver supports parallel execution for healthy perfusion simulations. Example command:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mpirun<span class="w"> </span>-n<span class="w"> </span>&lt;number_of_processors&gt;<span class="w"> </span>python3<span class="w"> </span>basic_flow_solver.py
+</pre></div>
+</div>
+<p>Using 4 cores and first-order finite elements, the simulation typically completes in under 2 minutes. Parameters are defined in <code class="docutils literal notranslate"><span class="pre">config_basic_flow_solver.yaml</span></code>.</p>
+</li>
+<li><p>For occluded scenarios, a boundary condition file must be provided to specify pressure and/or volumetric flow rate on cortical surface territories. An example for right MCA occlusion is included as <code class="docutils literal notranslate"><span class="pre">BC_template.csv</span></code>. Similar files can be generated by running <code class="docutils literal notranslate"><span class="pre">BC_creator.py</span></code> (in serial):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3<span class="w"> </span>BC_creator.py
+</pre></div>
+</div>
+<p>After generating this file, re-run the solver with updated YAML configuration pointing to the new inlet boundary file. Ensure that the <code class="docutils literal notranslate"><span class="pre">output/res_fldr</span></code> path is changed to avoid overwriting results from previous simulations.</p>
+</li>
+</ol>
+<section id="file-paths">
+<h2>File Paths<a class="headerlink" href="#file-paths" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>The <code class="docutils literal notranslate"><span class="pre">brain_meshes.tar.xz</span></code> archive should be placed in the main project directory alongside the following subdirectories:
+- <code class="docutils literal notranslate"><span class="pre">VP_results/</span></code>
+- <code class="docutils literal notranslate"><span class="pre">brain_meshes/</span></code>
+- <code class="docutils literal notranslate"><span class="pre">containers/</span></code>
+- <code class="docutils literal notranslate"><span class="pre">doc/</span></code>
+- <code class="docutils literal notranslate"><span class="pre">src/</span></code>
+- <code class="docutils literal notranslate"><span class="pre">scripts/</span></code>
+- <code class="docutils literal notranslate"><span class="pre">perfusion/</span></code>
+- <code class="docutils literal notranslate"><span class="pre">tests/</span></code></p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">config_permeability_initialiser.yaml</span></code> and <code class="docutils literal notranslate"><span class="pre">config_basic_flow_solver.yaml</span></code> files are located in the main directory (or the <code class="docutils literal notranslate"><span class="pre">src/</span></code> folder).</p></li>
+<li><p>The boundary condition template file <code class="docutils literal notranslate"><span class="pre">BC_template.csv</span></code> can be found in the <code class="docutils literal notranslate"><span class="pre">perfusion/</span></code> folder, and the results will be saved in the <code class="docutils literal notranslate"><span class="pre">output/</span></code> directory.</p></li>
+</ul>
+</section>
+<section id="boundary-condition-surface-region-ids">
+<h2>Boundary Condition Surface Region IDs<a class="headerlink" href="#boundary-condition-surface-region-ids" title="Link to this heading">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">.csv</span></code> file summarising the boundary conditions uses the following surface region IDs for cortical territories:</p>
+<ul class="simple">
+<li><p>21 – Left ACA</p></li>
+<li><p>22 – Left MCA</p></li>
+<li><p>23 – Left PCA</p></li>
+<li><p>24 – Right ACA</p></li>
+<li><p>25 – Right MCA</p></li>
+<li><p>26 – Right PCA</p></li>
+<li><p>30 –</p></li>
+<li><p>4  –</p></li>
+</ul>
+</section>
+</section>
+<section id="configuration-files">
+<h1>Configuration Files<a class="headerlink" href="#configuration-files" title="Link to this heading">¶</a></h1>
+<section id="modernized-occlusion-handling-via-configuration-file">
+<h2>Modernized Occlusion Handling via Configuration File<a class="headerlink" href="#modernized-occlusion-handling-via-configuration-file" title="Link to this heading">¶</a></h2>
+<p>In the legacy <code class="docutils literal notranslate"><span class="pre">FEniCS</span></code> implementation, occlusion scenarios were manually specified through command-line arguments or by modifying the Python source code. For example, a right MCA occlusion would be triggered by executing:</p>
+<div class="literal-block-wrapper docutils container" id="id9">
+<div class="code-block-caption"><span class="caption-text">Legacy command-line execution</span><a class="headerlink" href="#id9" title="Link to this code">¶</a></div>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3<span class="w"> </span>BC_creator.py<span class="w"> </span>--occluded<span class="w"> </span>--occl_ID<span class="w"> </span><span class="m">25</span><span class="w"> </span>--mesh_file<span class="w"> </span>path/to/mesh.xdmf
+</pre></div>
+</div>
+</div>
+<p>This approach relied on <code class="docutils literal notranslate"><span class="pre">argparse</span></code> to handle parameter input at runtime. While functional, it suffered from several usability issues:</p>
+<ul class="simple">
+<li><p>Required users to remember and manually supply all flags at each run</p></li>
+<li><p>Increased the likelihood of syntax or logic errors due to missing arguments</p></li>
+<li><p>Coupled execution logic tightly with parameter values, reducing script modularity</p></li>
+<li><p>Made it difficult to reproduce simulations or conduct batch studies across occlusion cases</p></li>
+</ul>
+<p>In contrast, the updated configuration system in the <code class="docutils literal notranslate"><span class="pre">FEniCSx</span></code> implementation encapsulates all relevant inputs in a single YAML configuration file. Occlusion status and arterial selection are defined explicitly using simple flags and lists:</p>
+<div class="literal-block-wrapper docutils container" id="id10">
+<div class="code-block-caption"><span class="caption-text">Occlusion-specific fields in FEniCSx configuration</span><a class="headerlink" href="#id10" title="Link to this code">¶</a></div>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">input</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">healthy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">False</span>
+<span class="w">  </span><span class="nt">occl_ID</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">25</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">read_inlet_boundary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">inlet_boundary_file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">boundary_data/BCs_RMCA.csv</span>
+</pre></div>
+</div>
+</div>
+<p>This design improves usability and maintainability by separating configuration from code logic. The YAML file is human-readable, version-controllable, and fully reproducible. The benefits include:</p>
+<ul class="simple">
+<li><p><strong>Explicit case control:</strong> The <code class="docutils literal notranslate"><span class="pre">healthy</span></code> flag toggles between healthy and pathological simulations.</p></li>
+<li><p><strong>Flexible occlusion specification:</strong> Arterial occlusion IDs are provided in the <code class="docutils literal notranslate"><span class="pre">occl_ID</span></code> list.</p></li>
+<li><p><strong>Transparent boundary conditions:</strong> The <code class="docutils literal notranslate"><span class="pre">inlet_boundary_file</span></code> points to a CSV file with surface region assignments, pressures, and flow rates.</p></li>
+<li><p><strong>Improved reproducibility:</strong> Entire simulation setups are defined in one file.</p></li>
+<li><p><strong>Ease of automation:</strong> Compatible with batch scripts, parameter sweeps, and HPC arrays.</p></li>
+</ul>
+<section id="how-to-use-the-permeability-initialiser-configuration-file">
+<h3>How to Use the Permeability Initialiser Configuration File<a class="headerlink" href="#how-to-use-the-permeability-initialiser-configuration-file" title="Link to this heading">¶</a></h3>
+<p>The permeability tensor fields are generated by <code class="docutils literal notranslate"><span class="pre">permeability_initialiser.py</span></code>, which reads the mesh, computes directional tensors, and writes HDF5/XDMF output. All parameters are defined in a YAML file (e.g., <code class="docutils literal notranslate"><span class="pre">config_permeability_initialiser.yaml</span></code>) with three blocks: <code class="docutils literal notranslate"><span class="pre">input</span></code>, <code class="docutils literal notranslate"><span class="pre">output</span></code>, and <code class="docutils literal notranslate"><span class="pre">physical</span></code>.</p>
+<ol class="arabic">
+<li><p><strong>input: Mesh file</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">input</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">mesh_file</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;../brain_meshes/b0000/clustered.xdmf&#39;</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong>mesh_file</strong>: Path to the labelled tetrahedral mesh with boundary markers.</p></li>
+</ul>
+</li>
+<li><p><strong>output: Result storage and resolution</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">output</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">res_fldr</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;../brain_meshes/b0000/permeability/&#39;</span>
+<span class="w">  </span><span class="nt">save_subres</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">  </span><span class="nt">res_vars</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="s">&#39;K1_form&#39;</span><span class="p p-Indicator">}</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong>res_fldr</strong>: Directory for saving permeability tensors.</p></li>
+<li><p><strong>save_subres</strong>: Save intermediate results (set to true only for debugging).</p></li>
+<li><p><strong>res_vars</strong>: Variables to compute (e.g., <code class="docutils literal notranslate"><span class="pre">K1_form</span></code>).</p></li>
+</ul>
+</li>
+<li><p><strong>physical: Tensor definition</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">physical</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">e_ref</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">K1_form</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">]</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong>e_ref</strong>: Reference normal vector for orientation inference.</p></li>
+<li><p><strong>K1_form</strong>: Flattened 3×3 tensor defining permeability magnitude and direction.</p></li>
+</ul>
+</li>
+</ol>
+<p>Usage Tips:</p>
+<ul class="simple">
+<li><p>Ensure the mesh has correct boundary facets and normals.</p></li>
+<li><p>Adjust <code class="docutils literal notranslate"><span class="pre">K1_form</span></code> for anisotropic configurations.</p></li>
+<li><p>Re-run the initialiser if any mesh or physical parameters change.</p></li>
+<li><p>Consistency between mesh and solver is critical.</p></li>
+</ul>
+</section>
+<section id="how-to-use-the-basic-flow-solver-configuration-files">
+<h3>How to Use the Basic Flow Solver Configuration Files<a class="headerlink" href="#how-to-use-the-basic-flow-solver-configuration-files" title="Link to this heading">¶</a></h3>
+<p>The pressure and velocity solver is fully driven by <code class="docutils literal notranslate"><span class="pre">config_basic_flow_solver.yaml</span></code>. This file is split into five blocks: <code class="docutils literal notranslate"><span class="pre">input</span></code>, <code class="docutils literal notranslate"><span class="pre">output</span></code>, <code class="docutils literal notranslate"><span class="pre">physical</span></code>, <code class="docutils literal notranslate"><span class="pre">simulation</span></code>, and <code class="docutils literal notranslate"><span class="pre">optimisation</span></code>.</p>
+<ol class="arabic">
+<li><p><strong>input: Data paths and mode</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">input</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">healthy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">False</span>
+<span class="w">  </span><span class="nt">occl_ID</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">25</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">read_inlet_boundary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">inlet_boundary_file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">boundary_data/BCs_RMCA.csv</span>
+<span class="w">  </span><span class="nt">mesh_file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">../brain_meshes/b0000/clustered.xdmf</span>
+<span class="w">  </span><span class="nt">permeability_folder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">../brain_meshes/b0000/permeability/</span>
+<span class="w">  </span><span class="nt">inlet_BC_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DBC</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong>healthy</strong>: Boolean for healthy vs occluded.</p></li>
+<li><p><strong>occl_ID</strong>: List of occluded artery IDs.</p></li>
+<li><p><strong>read_inlet_boundary</strong>: Read inlet data from CSV.</p></li>
+<li><p><strong>inlet_BC_type</strong>: DBC, NBC, or MIXED (if not reading CSV).</p></li>
+</ul>
+</li>
+<li><p><strong>output: Results configuration</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">output</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">comp_ave</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">  </span><span class="nt">res_fldr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">../VP_results/p0000/a/DBC/healthy/read_inlet_true/FE_degree_1/np8/</span>
+<span class="w">  </span><span class="nt">res_vars</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="s">&#39;press1&#39;</span><span class="p p-Indicator">,</span><span class="s">&#39;press2&#39;</span><span class="p p-Indicator">,</span><span class="s">&#39;press3&#39;</span><span class="p p-Indicator">,</span><span class="s">&#39;vel1&#39;</span><span class="p p-Indicator">,</span><span class="s">&#39;vel2&#39;</span><span class="p p-Indicator">,</span><span class="s">&#39;perfusion&#39;</span><span class="p p-Indicator">,</span><span class="s">&#39;beta12&#39;</span><span class="p p-Indicator">,</span><span class="s">&#39;beta23&#39;</span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">integral_vars</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong>res_fldr</strong>: Output directory (must differ between runs).</p></li>
+<li><p><strong>res_vars</strong>: Variables to save (pressures, velocities, perfusion, etc.).</p></li>
+<li><p><strong>integral_vars</strong>: Optional surface integrals.</p></li>
+</ul>
+</li>
+<li><p><strong>physical: Model constants</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">physical</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">K1gm_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.001234</span>
+<span class="w">  </span><span class="nt">beta12gm</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.326e-06</span>
+<span class="w">  </span><span class="nt">p_arterial</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10000.0</span>
+<span class="w">  </span><span class="nt">p_venous</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0</span>
+<span class="w">  </span><span class="nt">Q_brain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10.0</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Permeability and coupling coefficients.</p></li>
+<li><p>Inlet/outlet pressures and total inflow rate.</p></li>
+</ul>
+</li>
+<li><p><strong>simulation: Discretisation settings</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">simulation</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">fe_degr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">  </span><span class="nt">model_type</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;a&#39;</span>
+<span class="w">  </span><span class="nt">vel_order</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong>fe_degr</strong>: Finite element degree for pressure.</p></li>
+<li><p><strong>vel_order</strong>: Velocity projection order.</p></li>
+<li><p><strong>model_type</strong>: <cite>‘a’</cite> (arteriole-only) or <cite>‘acv’</cite> (3-compartment).</p></li>
+</ul>
+</li>
+<li><p><strong>optimisation: Parameter tuning</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">optimisation</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">parameters</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&#39;gmowm_beta_rat&#39;</span><span class="p p-Indicator">,</span><span class="s">&#39;K1gm_ref&#39;</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">random_init</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">init_param_range</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">0.1</span><span class="p p-Indicator">,</span><span class="nv">10</span><span class="p p-Indicator">],[</span><span class="nv">0.0001</span><span class="p p-Indicator">,</span><span class="nv">0.01</span><span class="p p-Indicator">]]</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong>parameters</strong>: List to optimise.</p></li>
+<li><p><strong>random_init</strong>: Random initialisation flag.</p></li>
+<li><p><strong>init_param_range</strong>: Allowed parameter ranges.</p></li>
+</ul>
+</li>
+</ol>
+<p>Usage Tips:</p>
+<ul class="simple">
+<li><p>Keep separate configs for healthy and occluded runs.</p></li>
+<li><p>Use descriptive paths in <code class="docutils literal notranslate"><span class="pre">res_fldr</span></code> to avoid overwrites.</p></li>
+<li><p>Verify <code class="docutils literal notranslate"><span class="pre">occl_ID</span></code> matches mesh/CSV labels.</p></li>
+<li><p>Automate swaps with scripts or symbolic links.</p></li>
+</ul>
+</section>
+</section>
+</section>
+<section id="version-specific-notes">
+<h1>Version-Specific Notes<a class="headerlink" href="#version-specific-notes" title="Link to this heading">¶</a></h1>
+<section id="modernisation-scope">
+<h2>Modernisation Scope<a class="headerlink" href="#modernisation-scope" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Current main branch focuses on <code class="docutils literal notranslate"><span class="pre">Gem_X</span></code> (FEniCSx).</p></li>
+<li><p>Oxygen transport and thrombus transport models are in <strong>separate branches</strong>.</p></li>
+<li><p>Perfusion models (A, ACV) fully modernised and MPI-compatible.</p></li>
+</ul>
+</section>
+<section id="known-limitations">
+<h2>Known Limitations<a class="headerlink" href="#known-limitations" title="Link to this heading">¶</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Memory allocation issues have been observed when using third-order finite elements (<cite>fe_degr: 3</cite>) in the full three-compartment (<cite>model_type: ‘acv’</cite>) model under Dirichlet (DBC), Neumann (NBC), and mixed boundary condition options. The failure occurs during the pressure solve in the <cite>basic_flow_solver.py</cite> stage.</p>
+<p>This limitation prevents running higher-fidelity simulations for the ACV model and hinders performing a proper grid-convergence study alongside the single-compartment (<cite>model_type: ‘a’</cite>) solver. Future work should address memory usage and solver scalability for third-order ACV cases to enable these analyses.</p>
+</div>
+</section>
+</section>
+<section id="results-and-scaling">
+<h1>Results and Scaling<a class="headerlink" href="#results-and-scaling" title="Link to this heading">¶</a></h1>
+<section id="weak-and-strong-scaling-tests">
+<h2>Weak and Strong Scaling Tests<a class="headerlink" href="#weak-and-strong-scaling-tests" title="Link to this heading">¶</a></h2>
+</section>
+<section id="performance-gains">
+<h2>Performance Gains<a class="headerlink" href="#performance-gains" title="Link to this heading">¶</a></h2>
+</section>
+</section>
+<section id="modernisation-from-fenics-legacy-to-fenicsx-0-9">
+<h1>Modernisation from FEniCS-Legacy to FEniCSx-0.9<a class="headerlink" href="#modernisation-from-fenics-legacy-to-fenicsx-0-9" title="Link to this heading">¶</a></h1>
+<p>The perfusion model comprises three “runner” scripts: <code class="docutils literal notranslate"><span class="pre">permeability_initialiser.py</span></code>, <code class="docutils literal notranslate"><span class="pre">basic_flow_solver.py</span></code>, and <code class="docutils literal notranslate"><span class="pre">BC_creator.py</span></code>. These invoke our supporting libraries (<code class="docutils literal notranslate"><span class="pre">IO_fcts.py</span></code>, <code class="docutils literal notranslate"><span class="pre">suppl_fcts.py</span></code>, and <code class="docutils literal notranslate"><span class="pre">finite_element_fcts.py</span></code>). In this section, we illustrate how each runner was modernised to use <code class="docutils literal notranslate"><span class="pre">dolfinx-0.9</span></code>, providing a direct translation guide.</p>
+<section id="permeability-initialiser">
+<h2>Permeability Initialiser<a class="headerlink" href="#permeability-initialiser" title="Link to this heading">¶</a></h2>
+<p>This script computes an anisotropic permeability tensor field aligned with local vessel orientations. Below we compare key components of the legacy and FEniCSx-0.9 implementations.</p>
+<p><strong>Legacy ``dolfin``</strong>:</p>
+<div class="literal-block-wrapper docutils container" id="id11">
+<div class="code-block-caption"><span class="caption-text">Legacy log suppression</span><a class="headerlink" href="#id11" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dolfin</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">set_log_level</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Modern ``dolfinx``</strong>:</p>
+<div class="literal-block-wrapper docutils container" id="id12">
+<div class="code-block-caption"><span class="caption-text">FEniCSx log suppression <span id="id1">[dolfinxPyDocs]</span></span><a class="headerlink" href="#id12" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dolfinx</span><span class="w"> </span><span class="kn">import</span> <span class="n">log</span>
+<span class="n">log</span><span class="o">.</span><span class="n">set_log_level</span><span class="p">(</span><span class="n">log</span><span class="o">.</span><span class="n">LogLevel</span><span class="o">.</span><span class="n">WARNING</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Legacy ``dolfin``</strong>:</p>
+<div class="literal-block-wrapper docutils container" id="id13">
+<div class="code-block-caption"><span class="caption-text">Legacy tensor function space</span><a class="headerlink" href="#id13" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">K_space</span> <span class="o">=</span> <span class="n">TensorFunctionSpace</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="s2">&quot;DG&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Modern ``dolfinx``</strong>:</p>
+<div class="literal-block-wrapper docutils container" id="id14">
+<div class="code-block-caption"><span class="caption-text">FEniCSx tensor-valued space using Basix <span id="id2">[basixDocs]</span></span><a class="headerlink" href="#id14" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">basix.ufl</span>
+<span class="n">element_tensor</span> <span class="o">=</span> <span class="n">basix</span><span class="o">.</span><span class="n">ufl</span><span class="o">.</span><span class="n">element</span><span class="p">(</span>
+    <span class="s2">&quot;DG&quot;</span><span class="p">,</span> <span class="s2">&quot;tetrahedron&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">dim</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">K_space</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">functionspace</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">element_tensor</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Legacy ``dolfin``</strong>:</p>
+<div class="literal-block-wrapper docutils container" id="id15">
+<div class="code-block-caption"><span class="caption-text">Legacy rank-guarded prints</span><a class="headerlink" href="#id15" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Step 1: Reading input files&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Modern ``dolfinx``</strong>:</p>
+<div class="literal-block-wrapper docutils container" id="id16">
+<div class="code-block-caption"><span class="caption-text">FEniCSx print0 helper</span><a class="headerlink" href="#id16" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">IO_fcts</span><span class="w"> </span><span class="kn">import</span> <span class="n">print0</span>
+<span class="n">print0</span><span class="p">(</span><span class="s2">&quot;Step 1: Reading input files&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Legacy ``dolfin``</strong>:</p>
+<div class="literal-block-wrapper docutils container" id="id17">
+<div class="code-block-caption"><span class="caption-text">Legacy XDMF checkpoint writes</span><a class="headerlink" href="#id17" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">XDMFFile</span><span class="p">(</span><span class="n">path</span> <span class="o">+</span> <span class="s1">&#39;K1_form.xdmf&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+    <span class="n">file</span><span class="o">.</span><span class="n">write_checkpoint</span><span class="p">(</span><span class="n">K1</span><span class="p">,</span> <span class="s2">&quot;K1_form&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">XDMFFile</span><span class="o">.</span><span class="n">Encoding</span><span class="o">.</span><span class="n">HDF5</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Modern ``dolfinx``</strong>:</p>
+<div class="literal-block-wrapper docutils container" id="id18">
+<div class="code-block-caption"><span class="caption-text">FEniCSx write_function with explicit mesh</span><a class="headerlink" href="#id18" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dolfinx.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">XDMFFile</span>
+<span class="k">with</span> <span class="n">XDMFFile</span><span class="p">(</span>
+      <span class="n">mesh</span><span class="o">.</span><span class="n">comm</span><span class="p">,</span> <span class="n">path</span> <span class="o">+</span> <span class="s1">&#39;K1_form.xdmf&#39;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span>
+      <span class="n">encoding</span><span class="o">=</span><span class="n">XDMFFile</span><span class="o">.</span><span class="n">Encoding</span><span class="o">.</span><span class="n">HDF5</span>
+    <span class="p">)</span> <span class="k">as</span> <span class="n">xdmf</span><span class="p">:</span>
+    <span class="n">xdmf</span><span class="o">.</span><span class="n">write_mesh</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+    <span class="n">xdmf</span><span class="o">.</span><span class="n">write_function</span><span class="p">(</span><span class="n">K1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Each of these updates preserves the original algorithmic flow—reading the mesh, computing vessel orientation, assembling the tensor, and writing results—while adopting the explicit, MPI-aware, and Basix-driven APIs of <code class="docutils literal notranslate"><span class="pre">dolfinx-0.9</span></code>. This pattern is repeated across the other runner scripts, ensuring a uniform transition from legacy to modern code.</p>
+</section>
+<section id="basic-flow-solver">
+<h2>Basic Flow Solver<a class="headerlink" href="#basic-flow-solver" title="Link to this heading">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">basic_flow_solver.py</span></code> script sets up and solves the multi-compartment Darcy flow problem for cerebral perfusion. Key modernisations for <code class="docutils literal notranslate"><span class="pre">dolfinx-0.9</span></code> are highlighted below.</p>
+<p><strong>Legacy ``dolfin``</strong>:</p>
+<div class="literal-block-wrapper docutils container" id="id19">
+<div class="code-block-caption"><span class="caption-text">Legacy ghost-mode setting</span><a class="headerlink" href="#id19" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ghost mode options: &#39;none&#39;, &#39;shared_facet&#39;, &#39;shared_vertex&#39;</span>
+<span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;ghost_mode&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;none&#39;</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Modern ``dolfinx``</strong>:</p>
+<div class="literal-block-wrapper docutils container" id="id20">
+<div class="code-block-caption"><span class="caption-text">FEniCSx ghost-mode setting <span id="id3">[dolfinxPyDocs]</span></span><a class="headerlink" href="#id20" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">dolfinx.mesh</span>
+<span class="c1"># Disable ghosting entirely</span>
+<span class="n">mesh_obj</span> <span class="o">=</span> <span class="n">dolfinx</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">create_mesh</span><span class="p">(</span>
+    <span class="n">comm</span><span class="p">,</span>
+    <span class="n">topology</span><span class="p">,</span>
+    <span class="n">geometry</span><span class="p">,</span>
+    <span class="n">ghost_mode</span><span class="o">=</span><span class="n">dolfinx</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">GhostMode</span><span class="o">.</span><span class="n">NONE</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Legacy ``dolfin``</strong>:</p>
+<div class="literal-block-wrapper docutils container" id="id21">
+<div class="code-block-caption"><span class="caption-text">Legacy log suppression</span><a class="headerlink" href="#id21" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dolfin</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">set_log_level</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Modern ``dolfinx``</strong>:</p>
+<div class="literal-block-wrapper docutils container" id="id22">
+<div class="code-block-caption"><span class="caption-text">FEniCSx log suppression <span id="id4">[dolfinxPyDocs]</span></span><a class="headerlink" href="#id22" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dolfinx.log</span><span class="w"> </span><span class="kn">import</span> <span class="n">set_log_level</span><span class="p">,</span> <span class="n">LogLevel</span>
+<span class="n">set_log_level</span><span class="p">(</span><span class="n">LogLevel</span><span class="o">.</span><span class="n">WARNING</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Legacy argument parsing</strong>:</p>
+<div class="literal-block-wrapper docutils container" id="id23">
+<div class="code-block-caption"><span class="caption-text">Legacy argument parsing</span><a class="headerlink" href="#id23" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--config_file&quot;</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+<span class="n">config_file</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span><span class="o">.</span><span class="n">config_file</span>
+<span class="n">configs</span> <span class="o">=</span> <span class="n">IO_fcts</span><span class="o">.</span><span class="n">basic_flow_config_reader_yml</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span> <span class="n">parser</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Modern argument parsing</strong>:</p>
+<div class="literal-block-wrapper docutils container" id="id24">
+<div class="code-block-caption"><span class="caption-text">FEniCSx argument parsing</span><a class="headerlink" href="#id24" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+    <span class="s2">&quot;--config_file&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+    <span class="n">default</span><span class="o">=</span><span class="s2">&quot;./config_basic_flow_solver.yaml&quot;</span>
+<span class="p">)</span>
+<span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+<span class="n">configs</span> <span class="o">=</span> <span class="n">IO_fcts</span><span class="o">.</span><span class="n">basic_flow_config_reader_yml</span><span class="p">(</span>
+    <span class="n">args</span><span class="o">.</span><span class="n">config_file</span><span class="p">,</span> <span class="n">parser</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Legacy result saving</strong>:</p>
+<div class="literal-block-wrapper docutils container" id="id25">
+<div class="code-block-caption"><span class="caption-text">Legacy result saving</span><a class="headerlink" href="#id25" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">XDMFFile</span><span class="p">(</span><span class="n">res_fldr</span> <span class="o">+</span> <span class="s1">&#39;K1_form.xdmf&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write_checkpoint</span><span class="p">(</span><span class="n">K1</span><span class="p">,</span> <span class="s2">&quot;K1_form&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">XDMFFile</span><span class="o">.</span><span class="n">Encoding</span><span class="o">.</span><span class="n">HDF5</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+<span class="c1"># timing saved by redirecting sys.stdout to a log file</span>
+<span class="n">old</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">stdout</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">res_fldr</span> <span class="o">+</span> <span class="s2">&quot;time.log&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Total time:&quot;</span><span class="p">,</span> <span class="n">total</span><span class="p">)</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">stdout</span> <span class="o">=</span> <span class="n">old</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Modern result saving</strong>:</p>
+<div class="literal-block-wrapper docutils container" id="id26">
+<div class="code-block-caption"><span class="caption-text">FEniCSx result saving <span id="id5">[dolfinxPyDocs]</span></span><a class="headerlink" href="#id26" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dolfinx.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">XDMFFile</span>
+<span class="k">with</span> <span class="n">XDMFFile</span><span class="p">(</span>
+      <span class="n">mesh</span><span class="o">.</span><span class="n">comm</span><span class="p">,</span>
+      <span class="n">res_fldr</span> <span class="o">+</span> <span class="s2">&quot;K1_form.xdmf&quot;</span><span class="p">,</span>
+      <span class="s2">&quot;w&quot;</span><span class="p">,</span>
+      <span class="n">encoding</span><span class="o">=</span><span class="n">XDMFFile</span><span class="o">.</span><span class="n">Encoding</span><span class="o">.</span><span class="n">HDF5</span>
+    <span class="p">)</span> <span class="k">as</span> <span class="n">xdmf</span><span class="p">:</span>
+    <span class="n">xdmf</span><span class="o">.</span><span class="n">write_mesh</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+    <span class="n">xdmf</span><span class="o">.</span><span class="n">write_function</span><span class="p">(</span><span class="n">K1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># timing logged via standard file I/O</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">res_fldr</span> <span class="o">+</span> <span class="s2">&quot;time_info.log&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">logf</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Total time:&quot;</span><span class="p">,</span> <span class="n">total</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">logf</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Each update retains the original computational pipeline—reading configuration, allocating function spaces, assembling and solving the variational problem, and writing results—while leveraging <code class="docutils literal notranslate"><span class="pre">dolfinx-0.9</span></code>’s explicit, MPI-aware API.</p>
+<p>In migrating the <code class="docutils literal notranslate"><span class="pre">basic_flow_solver.py</span></code> from legacy <code class="docutils literal notranslate"><span class="pre">dolfin</span></code> to <code class="docutils literal notranslate"><span class="pre">dolfinx-0.9</span></code>, we retained the overall workflow but refactored many function signatures to expose parameters explicitly and improve readability.</p>
+<section id="mesh-i-o-and-configuration-reader">
+<h3>Mesh I/O and Configuration Reader<a class="headerlink" href="#mesh-i-o-and-configuration-reader" title="Link to this heading">¶</a></h3>
+<p><strong>Legacy:</strong></p>
+<div class="literal-block-wrapper docutils container" id="id27">
+<div class="code-block-caption"><span class="caption-text">Legacy configuration and mesh I/O</span><a class="headerlink" href="#id27" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">configs</span> <span class="o">=</span> <span class="n">IO_fcts</span><span class="o">.</span><span class="n">basic_flow_config_reader_yml</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span> <span class="n">parser</span><span class="p">)</span>
+<span class="n">mesh</span><span class="p">,</span> <span class="n">subdomains</span><span class="p">,</span> <span class="n">boundaries</span> <span class="o">=</span> <span class="n">IO_fcts</span><span class="o">.</span><span class="n">mesh_reader</span><span class="p">(</span>
+    <span class="n">configs</span><span class="p">[</span><span class="s1">&#39;input&#39;</span><span class="p">][</span><span class="s1">&#39;mesh_file&#39;</span><span class="p">]</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Modern ``dolfinx-0.9``:</strong></p>
+<div class="literal-block-wrapper docutils container" id="id28">
+<div class="code-block-caption"><span class="caption-text">Modern configuration and mesh I/O</span><a class="headerlink" href="#id28" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">configs</span> <span class="o">=</span> <span class="n">IO_fcts</span><span class="o">.</span><span class="n">basic_flow_config_reader_yml</span><span class="p">(</span>
+    <span class="n">args</span><span class="o">.</span><span class="n">config_file</span><span class="p">,</span> <span class="n">parser</span>
+<span class="p">)</span>
+<span class="n">mesh</span><span class="p">,</span> <span class="n">subdomains</span><span class="p">,</span> <span class="n">boundaries</span> <span class="o">=</span> <span class="n">IO_fcts</span><span class="o">.</span><span class="n">mesh_reader</span><span class="p">(</span>
+    <span class="n">configs</span><span class="p">[</span><span class="s1">&#39;input&#39;</span><span class="p">][</span><span class="s1">&#39;mesh_file&#39;</span><span class="p">]</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Note:</strong> The new reader validates additional fields (e.g., <code class="docutils literal notranslate"><span class="pre">healthy</span></code>, <code class="docutils literal notranslate"><span class="pre">occl_ID</span></code>) but the call structure remains unchanged.</p>
+</section>
+<section id="function-space-allocation">
+<h3>Function-Space Allocation<a class="headerlink" href="#function-space-allocation" title="Link to this heading">¶</a></h3>
+<p><strong>Legacy:</strong></p>
+<div class="literal-block-wrapper docutils container" id="id29">
+<div class="code-block-caption"><span class="caption-text">Legacy function-space allocation</span><a class="headerlink" href="#id29" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Vp</span><span class="p">,</span> <span class="n">Vvel</span><span class="p">,</span> <span class="n">v_1</span><span class="p">,</span> <span class="n">v_2</span><span class="p">,</span> <span class="n">v_3</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">p3</span><span class="p">,</span> <span class="n">K1_space</span><span class="p">,</span> <span class="n">K2_space</span> <span class="o">=</span> \
+    <span class="n">fe_mod</span><span class="o">.</span><span class="n">alloc_fct_spaces</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">fe_degree</span><span class="p">,</span> <span class="n">model_type</span><span class="p">,</span> <span class="n">vel_order</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Modern ``dolfinx-0.9``:</strong></p>
+<div class="literal-block-wrapper docutils container" id="id30">
+<div class="code-block-caption"><span class="caption-text">Modern function-space allocation</span><a class="headerlink" href="#id30" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Vp</span><span class="p">,</span> <span class="n">Vvel</span><span class="p">,</span> <span class="n">v_1</span><span class="p">,</span> <span class="n">v_2</span><span class="p">,</span> <span class="n">v_3</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">p3</span><span class="p">,</span> <span class="n">K1_space</span><span class="p">,</span> <span class="n">K2_space</span> <span class="o">=</span> \
+    <span class="n">fe_mod</span><span class="o">.</span><span class="n">alloc_fct_spaces</span><span class="p">(</span>
+        <span class="n">mesh</span><span class="p">,</span>
+        <span class="n">configs</span><span class="p">[</span><span class="s1">&#39;simulation&#39;</span><span class="p">][</span><span class="s1">&#39;fe_degr&#39;</span><span class="p">],</span>
+        <span class="n">model_type</span><span class="o">=</span><span class="n">compartmental_model</span><span class="p">,</span>
+        <span class="n">vel_order</span><span class="o">=</span><span class="n">velocity_order</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Change:</strong> Keyword arguments (<code class="docutils literal notranslate"><span class="pre">model_type</span></code>, <code class="docutils literal notranslate"><span class="pre">vel_order</span></code>) clarify intent and improve extensibility.</p>
+</section>
+<section id="solver-setup">
+<h3>Solver Setup<a class="headerlink" href="#solver-setup" title="Link to this heading">¶</a></h3>
+<p><strong>Legacy:</strong></p>
+<div class="literal-block-wrapper docutils container" id="id31">
+<div class="code-block-caption"><span class="caption-text">Legacy solver setup</span><a class="headerlink" href="#id31" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">LHS</span><span class="p">,</span> <span class="n">RHS</span><span class="p">,</span> <span class="n">sigma1</span><span class="p">,</span> <span class="n">sigma2</span><span class="p">,</span> <span class="n">sigma3</span><span class="p">,</span> <span class="n">BCs</span> <span class="o">=</span> \
+    <span class="n">fe_mod</span><span class="o">.</span><span class="n">set_up_fe_solver2</span><span class="p">(</span>
+        <span class="n">mesh</span><span class="p">,</span> <span class="n">subdomains</span><span class="p">,</span> <span class="n">boundaries</span><span class="p">,</span>
+        <span class="n">Vp</span><span class="p">,</span> <span class="n">v_1</span><span class="p">,</span> <span class="n">v_2</span><span class="p">,</span> <span class="n">v_3</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">p3</span><span class="p">,</span>
+        <span class="n">K1</span><span class="p">,</span> <span class="n">K2</span><span class="p">,</span> <span class="n">K3</span><span class="p">,</span> <span class="n">beta12</span><span class="p">,</span> <span class="n">beta23</span><span class="p">,</span>
+        <span class="n">p_arterial</span><span class="p">,</span> <span class="n">p_venous</span><span class="p">,</span>
+        <span class="n">configs</span><span class="p">[</span><span class="s1">&#39;input&#39;</span><span class="p">][</span><span class="s1">&#39;read_inlet_boundary&#39;</span><span class="p">],</span>
+        <span class="n">configs</span><span class="p">[</span><span class="s1">&#39;input&#39;</span><span class="p">][</span><span class="s1">&#39;inlet_boundary_file&#39;</span><span class="p">],</span>
+        <span class="n">configs</span><span class="p">[</span><span class="s1">&#39;input&#39;</span><span class="p">][</span><span class="s1">&#39;inlet_BC_type&#39;</span><span class="p">]</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Modern ``dolfinx-0.9``:</strong></p>
+<div class="literal-block-wrapper docutils container" id="id32">
+<div class="code-block-caption"><span class="caption-text">Modern solver setup</span><a class="headerlink" href="#id32" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">LHS</span><span class="p">,</span> <span class="n">RHS</span><span class="p">,</span> <span class="n">sigma1</span><span class="p">,</span> <span class="n">sigma2</span><span class="p">,</span> <span class="n">sigma3</span><span class="p">,</span> <span class="n">BCs</span> <span class="o">=</span> \
+    <span class="n">fe_mod</span><span class="o">.</span><span class="n">set_up_fe_solver2</span><span class="p">(</span>
+        <span class="n">mesh_obj</span><span class="p">,</span> <span class="n">subdomains</span><span class="p">,</span> <span class="n">boundaries</span><span class="p">,</span>
+        <span class="n">Vp</span><span class="p">,</span> <span class="n">v_1</span><span class="p">,</span> <span class="n">v_2</span><span class="p">,</span> <span class="n">v_3</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">p3</span><span class="p">,</span>
+        <span class="n">K1</span><span class="p">,</span> <span class="n">K2</span><span class="p">,</span> <span class="n">K3</span><span class="p">,</span> <span class="n">beta12</span><span class="p">,</span> <span class="n">beta23</span><span class="p">,</span>
+        <span class="n">p_arterial</span><span class="p">,</span> <span class="n">p_venous</span><span class="p">,</span>
+        <span class="n">configs</span><span class="p">[</span><span class="s1">&#39;input&#39;</span><span class="p">][</span><span class="s1">&#39;read_inlet_boundary&#39;</span><span class="p">],</span>
+        <span class="n">configs</span><span class="p">[</span><span class="s1">&#39;input&#39;</span><span class="p">][</span><span class="s1">&#39;inlet_boundary_file&#39;</span><span class="p">],</span>
+        <span class="n">configs</span><span class="p">[</span><span class="s1">&#39;input&#39;</span><span class="p">][</span><span class="s1">&#39;inlet_BC_type&#39;</span><span class="p">],</span>
+        <span class="n">model_type</span><span class="o">=</span><span class="n">compartmental_model</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Change:</strong> The explicit <code class="docutils literal notranslate"><span class="pre">model_type</span></code> keyword avoids hidden defaults and documents the solver’s configuration.</p>
+</section>
+<section id="linear-solver-invocation">
+<h3>Linear Solver Invocation<a class="headerlink" href="#linear-solver-invocation" title="Link to this heading">¶</a></h3>
+<p><strong>Legacy:</strong></p>
+<div class="literal-block-wrapper docutils container" id="id33">
+<div class="code-block-caption"><span class="caption-text">Legacy linear solver invocation</span><a class="headerlink" href="#id33" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">p</span> <span class="o">=</span> <span class="n">fe_mod</span><span class="o">.</span><span class="n">solve_lin_sys</span><span class="p">(</span>
+    <span class="n">Vp</span><span class="p">,</span> <span class="n">LHS</span><span class="p">,</span> <span class="n">RHS</span><span class="p">,</span> <span class="n">BCs</span><span class="p">,</span>
+    <span class="n">lin_solver</span><span class="p">,</span> <span class="n">precond</span><span class="p">,</span> <span class="n">rtol</span><span class="p">,</span> <span class="n">mon_conv</span><span class="p">,</span> <span class="n">init_sol</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Modern ``dolfinx-0.9``:</strong></p>
+<div class="literal-block-wrapper docutils container" id="id34">
+<div class="code-block-caption"><span class="caption-text">Modern linear solver invocation</span><a class="headerlink" href="#id34" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">p</span> <span class="o">=</span> <span class="n">fe_mod</span><span class="o">.</span><span class="n">solve_lin_sys</span><span class="p">(</span>
+    <span class="n">Vp</span><span class="p">,</span> <span class="n">LHS</span><span class="p">,</span> <span class="n">RHS</span><span class="p">,</span> <span class="n">BCs</span><span class="p">,</span>
+    <span class="n">lin_solver</span><span class="p">,</span> <span class="n">precond</span><span class="p">,</span>
+    <span class="n">rtol</span><span class="p">,</span> <span class="n">mon_conv</span><span class="p">,</span> <span class="n">init_sol</span><span class="p">,</span>
+    <span class="n">inlet_BC_type</span><span class="p">,</span>
+    <span class="n">model_type</span><span class="o">=</span><span class="n">compartmental_model</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Change:</strong> Passing <code class="docutils literal notranslate"><span class="pre">inlet_BC_type</span></code> allows the solver to adjust PETSc options based on boundary-condition type; <code class="docutils literal notranslate"><span class="pre">model_type</span></code> continues to guide internal logic.</p>
+<p>Overall, function calls now uniformly use keyword arguments for any non-trivial option. This enhances maintainability, self-documentation, and flexibility for batch experiments or future extensions.```</p>
+</section>
+</section>
+<section id="boundary-condition-generator-modernisation">
+<h2>Boundary Condition Generator Modernisation<a class="headerlink" href="#boundary-condition-generator-modernisation" title="Link to this heading">¶</a></h2>
+<p>In the legacy <code class="docutils literal notranslate"><span class="pre">FEniCS</span></code> implementation, boundary condition assignment was handled via a script called <code class="docutils literal notranslate"><span class="pre">BC_creator.py</span></code>, which assigned pressures and volumetric flow rates to surface regions of the cerebral mesh. These values were distributed based on surface area and optionally modified to reflect artery occlusions. Execution relied heavily on command-line arguments passed to <code class="docutils literal notranslate"><span class="pre">argparse</span></code>, requiring the user to explicitly set flags for occlusions and mesh paths:</p>
+<div class="literal-block-wrapper docutils container" id="id35">
+<div class="code-block-caption"><span class="caption-text">Legacy boundary condition invocation</span><a class="headerlink" href="#id35" title="Link to this code">¶</a></div>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3<span class="w"> </span>BC_creator.py<span class="w"> </span>--occluded<span class="w"> </span>--occl_ID<span class="w"> </span><span class="m">25</span><span class="w"> </span>--mesh_file<span class="w"> </span>path/to/mesh.xdmf
+</pre></div>
+</div>
+</div>
+<p>The new <code class="docutils literal notranslate"><span class="pre">FEniCSx</span></code>-based implementation shifts to a configuration-driven model, removing the need for command-line specification of occlusions. Instead, simulation state and pathology are encoded directly in a YAML config file:</p>
+<div class="literal-block-wrapper docutils container" id="id36">
+<div class="code-block-caption"><span class="caption-text">Occlusion config snippet</span><a class="headerlink" href="#id36" title="Link to this code">¶</a></div>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">input</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">healthy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">False</span>
+<span class="w">  </span><span class="nt">occl_ID</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">25</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">inlet_BC_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MIXED</span>
+</pre></div>
+</div>
+</div>
+<p>This enables a significantly cleaner and more modular design. Major differences in the modern implementation include:</p>
+<ul class="simple">
+<li><p><strong>Centralised Configuration:</strong> All logic related to occlusion state, output folder, and mesh location is controlled from a single YAML file, streamlining batch execution and improving reproducibility.</p></li>
+<li><p><strong>Surface-Area Scaling:</strong> The total volumetric inflow (<code class="docutils literal notranslate"><span class="pre">Q_brain</span></code>) is distributed across boundary regions proportionally to their surface area, consistent with the legacy implementation.</p></li>
+<li><p><strong>Arterial Mapping Logic:</strong> Artery IDs are mapped via internal dictionaries to groups of cluster labels. This replaces the external CSV-based <code class="docutils literal notranslate"><span class="pre">boundary_mapper.csv</span></code> logic and ensures compatibility across different mesh resolutions.</p></li>
+<li><p><strong>Mixed Boundary Condition Support:</strong> The new script allows specification of <code class="docutils literal notranslate"><span class="pre">DBC</span></code>, <code class="docutils literal notranslate"><span class="pre">NBC</span></code>, or <code class="docutils literal notranslate"><span class="pre">MIXED</span></code> inlet conditions. For mixed cases, occluded arteries automatically receive Neumann BCs while others use Dirichlet conditions.</p></li>
+<li><p><strong>MPI-safe Output:</strong> Output is written only by rank 0, ensuring compatibility with parallel runs.</p></li>
+</ul>
+<div class="literal-block-wrapper docutils container" id="id37">
+<div class="code-block-caption"><span class="caption-text">Modern artery-mapped boundary matrix row</span><a class="headerlink" href="#id37" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">label</span><span class="p">,</span> <span class="n">Q_i</span><span class="p">,</span> <span class="n">P_i</span><span class="p">,</span> <span class="n">artery_ID</span><span class="p">,</span> <span class="n">flag</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<section id="arterial-mapping-logic">
+<h3>Arterial Mapping Logic<a class="headerlink" href="#arterial-mapping-logic" title="Link to this heading">¶</a></h3>
+<p>In the legacy implementation, the association between surface region labels and their corresponding feeding arteries was handled via an external CSV file called <code class="docutils literal notranslate"><span class="pre">boundary_mapper.csv</span></code>. This file contained a manually prepared mapping between mesh surface labels and major cerebral arteries. The code parsed this file and constructed a lookup table used during boundary condition assignment:</p>
+<div class="literal-block-wrapper docutils container" id="id38">
+<div class="code-block-caption"><span class="caption-text">Legacy mapping from CSV file</span><a class="headerlink" href="#id38" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">boundary_mapper</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span>
+    <span class="s1">&#39;boundary_mapper.csv&#39;</span><span class="p">,</span> <span class="n">skiprows</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s1">&#39;,&#39;</span>
+<span class="p">)</span>
+<span class="n">boundary_map</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">boundary_values</span><span class="p">))</span>
+<span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">boundary_values</span><span class="p">):</span>
+    <span class="n">boundary_map</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span>
+        <span class="n">boundary_mapper</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">boundary_mapper</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">val</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="modern-approach-hardcoded-arterial-groups">
+<h3>Modern Approach: Hardcoded Arterial Groups<a class="headerlink" href="#modern-approach-hardcoded-arterial-groups" title="Link to this heading">¶</a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">FEniCSx</span></code> implementation removes this external dependency by introducing an internally defined mapping between cluster IDs and cerebral arteries using structured Python dictionaries:</p>
+<div class="literal-block-wrapper docutils container" id="id39">
+<div class="code-block-caption"><span class="caption-text">Modern arterial group assignment</span><a class="headerlink" href="#id39" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">artery_groups</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="mi">24</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">32</span><span class="p">)),</span>    <span class="c1"># Right ACA</span>
+    <span class="mi">25</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">52</span><span class="p">)),</span>    <span class="c1"># Right MCA</span>
+    <span class="mi">22</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">52</span><span class="p">,</span> <span class="mi">80</span><span class="p">)),</span>    <span class="c1"># Left MCA</span>
+    <span class="mi">21</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">80</span><span class="p">,</span> <span class="mi">100</span><span class="p">)),</span>   <span class="c1"># Left ACA</span>
+    <span class="mi">26</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">89</span><span class="p">,</span> <span class="mi">100</span><span class="p">)),</span>   <span class="c1"># Right PCA</span>
+    <span class="mi">23</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">112</span><span class="p">)),</span>  <span class="c1"># Left PCA</span>
+    <span class="mi">4</span><span class="p">:</span>  <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">112</span><span class="p">,</span> <span class="mi">118</span><span class="p">)),</span>  <span class="c1"># cerebular</span>
+    <span class="mi">30</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">118</span><span class="p">,</span> <span class="mi">130</span><span class="p">))</span>   <span class="c1"># Brainstem or Circle of Willis</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="literal-block-wrapper docutils container" id="id40">
+<div class="code-block-caption"><span class="caption-text">Boundary label to artery mapping</span><a class="headerlink" href="#id40" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">art_id</span><span class="p">,</span> <span class="n">label_list</span> <span class="ow">in</span> <span class="n">artery_groups</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="k">if</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">label_list</span><span class="p">:</span>
+        <span class="n">artery</span> <span class="o">=</span> <span class="n">art_id</span>
+</pre></div>
+</div>
+</div>
+<p>This redesign offers several advantages:</p>
+<ul class="simple">
+<li><p><strong>Mesh Version Independence:</strong> Removes the need to maintain external CSV files for each new mesh discretisation.</p></li>
+<li><p><strong>Clarity and Control:</strong> Makes arterial mapping transparent and easy to update or extend within the code itself.</p></li>
+<li><p><strong>Robustness:</strong> Prevents issues arising from corrupted or inconsistent mapping files.</p></li>
+<li><p><strong>Streamlined Automation:</strong> Batch runs across multiple occlusion configurations do not require separate file dependencies.</p></li>
+</ul>
+<p>Overall, the switch to internally defined artery groups significantly improves the maintainability and portability of the codebase while preserving the anatomical fidelity of the boundary condition application.```</p>
+</section>
+</section>
+<section id="io-fcts">
+<h2>IO_fcts<a class="headerlink" href="#io-fcts" title="Link to this heading">¶</a></h2>
+<p>the following functions are listed in the order in which they appear within the perfusion model run through. some of these functions are shared by the scripts in the perfusion folder.</p>
+<section id="perm-init-config-reader-yml">
+<h3>perm_init_config_reader_yml<a class="headerlink" href="#perm-init-config-reader-yml" title="Link to this heading">¶</a></h3>
+<p>Note: No changes were made to the code itself, however extensive documentation was added in the DolfinX version for usability.</p>
+</section>
+<section id="mesh-reader">
+<h3>mesh_reader<a class="headerlink" href="#mesh-reader" title="Link to this heading">¶</a></h3>
+<p><strong>*reading mesh*</strong></p>
+<p>-Dolfin Version:</p>
+<blockquote>
+<div><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">mesh</span> <span class="o">=</span> <span class="n">Mesh</span><span class="p">()</span>
+<span class="k">with</span> <span class="n">XDMFFile</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">mesh_file</span><span class="p">)</span> <span class="k">as</span> <span class="n">myfile</span><span class="p">:</span>
+    <span class="n">myfile</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The mesh is directly read into the <code class="docutils literal notranslate"><span class="pre">mesh</span></code> object, and the <code class="docutils literal notranslate"><span class="pre">XDMFFile</span></code> reads the entire mesh structure in one go.</p>
+</div></blockquote>
+<p>-DolfinX Version:</p>
+<blockquote>
+<div><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">XDMFFile</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">mesh_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">xdmf_file</span><span class="p">:</span>
+    <span class="n">mesh</span> <span class="o">=</span> <span class="n">xdmf_file</span><span class="o">.</span><span class="n">read_mesh</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;mesh&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The mesh is read using the <code class="docutils literal notranslate"><span class="pre">read_mesh</span></code> function and specifically named (<code class="docutils literal notranslate"><span class="pre">name=&quot;mesh&quot;</span></code>).</p>
+</div></blockquote>
+<dl class="simple">
+<dt>-Improvement:</dt><dd><p>The DolfinX version makes the reading process more explicit, especially when dealing with multiple mesh components, and aligns better with the DolfinX API.</p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="connectivity-creation">
+<h2>Connectivity Creation<a class="headerlink" href="#connectivity-creation" title="Link to this heading">¶</a></h2>
+<dl class="simple">
+<dt>-Dolfin Version:</dt><dd><p>There is no explicit creation of connectivity between cells and facets.</p>
+</dd>
+</dl>
+<p>-DolfinX Version:</p>
+<blockquote>
+<div><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">mesh</span><span class="o">.</span><span class="n">topology</span><span class="o">.</span><span class="n">create_connectivity</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">topology</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">topology</span><span class="o">.</span><span class="n">dim</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">mesh</span><span class="o">.</span><span class="n">topology</span><span class="o">.</span><span class="n">create_connectivity</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">topology</span><span class="o">.</span><span class="n">dim</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">topology</span><span class="o">.</span><span class="n">dim</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Connectivity between cells and facets is explicitly created using <code class="docutils literal notranslate"><span class="pre">create_connectivity</span></code>.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>-Improvement:</dt><dd><p>The DolfinX version provides explicit connectivity creation, which is useful for higher-dimensional meshes (e.g., 3D) and when certain operations require this connectivity (e.g., boundary conditions, integrals on facets).</p>
+</dd>
+</dl>
+</section>
+<section id="mesh-validation">
+<h2>Mesh Validation<a class="headerlink" href="#mesh-validation" title="Link to this heading">¶</a></h2>
+<dl class="simple">
+<dt>-Dolfin Version:</dt><dd><p>There is no explicit validation for the mesh type.</p>
+</dd>
+</dl>
+<p>-DolfinX Version:</p>
+<blockquote>
+<div><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">dolfinx</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">Mesh</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load a valid mesh from </span><span class="si">{</span><span class="n">mesh_file</span><span class="si">}</span><span class="s2">. Check the file format.&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The DolfinX version includes explicit validation to ensure the mesh is a valid <code class="docutils literal notranslate"><span class="pre">dolfinx.mesh.Mesh</span></code> object.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>-Improvement:</dt><dd><p>This safeguard ensures the mesh is correctly loaded and is of the expected type, reducing the chance of runtime errors.</p>
+</dd>
+</dl>
+</section>
+<section id="subdomains-and-boundaries">
+<h2>Subdomains and Boundaries<a class="headerlink" href="#subdomains-and-boundaries" title="Link to this heading">¶</a></h2>
+<ul>
+<li><p>Dolfin Version:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">subdomains</span> <span class="o">=</span> <span class="n">MeshFunction</span><span class="p">(</span><span class="s2">&quot;size_t&quot;</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">XDMFFile</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">mesh_file</span><span class="p">[:</span><span class="o">-</span><span class="mi">5</span><span class="p">]</span><span class="o">+</span><span class="s1">&#39;_physical_region.xdmf&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">myfile</span><span class="p">:</span>
+    <span class="n">myfile</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">subdomains</span><span class="p">)</span>
+<span class="n">boundaries</span> <span class="o">=</span> <span class="n">MeshFunction</span><span class="p">(</span><span class="s2">&quot;size_t&quot;</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">XDMFFile</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">mesh_file</span><span class="p">[:</span><span class="o">-</span><span class="mi">5</span><span class="p">]</span><span class="o">+</span><span class="s1">&#39;_facet_region.xdmf&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">myfile</span><span class="p">:</span>
+    <span class="n">myfile</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">boundaries</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Subdomains and boundaries are read as <code class="docutils literal notranslate"><span class="pre">MeshFunction</span></code> objects.</p>
+</li>
+<li><p>DolfinX Version:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">physical_region_file</span> <span class="o">=</span> <span class="n">mesh_file</span><span class="p">[:</span><span class="o">-</span><span class="mi">5</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;_physical_region.xdmf&#39;</span>
+<span class="k">with</span> <span class="n">XDMFFile</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">physical_region_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">xdmf_file</span><span class="p">:</span>
+    <span class="n">subdomains</span> <span class="o">=</span> <span class="n">xdmf_file</span><span class="o">.</span><span class="n">read_meshtags</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;mesh&quot;</span><span class="p">)</span>
+
+<span class="n">facet_region_file</span> <span class="o">=</span> <span class="n">mesh_file</span><span class="p">[:</span><span class="o">-</span><span class="mi">5</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;_facet_region.xdmf&#39;</span>
+<span class="k">with</span> <span class="n">XDMFFile</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">facet_region_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">xdmf_file</span><span class="p">:</span>
+    <span class="n">boundaries</span> <span class="o">=</span> <span class="n">xdmf_file</span><span class="o">.</span><span class="n">read_meshtags</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;mesh&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Subdomains and boundaries are read using <code class="docutils literal notranslate"><span class="pre">read_meshtags</span></code>, which is a more robust method in DolfinX.</p>
+</li>
+<li><p><strong>Improvement:</strong>
+<code class="docutils literal notranslate"><span class="pre">read_meshtags</span></code> ensures better handling for mesh tags in DolfinX.</p></li>
+<li><p><strong>New Complexity:</strong>
+The DolfinX version introduces error handling using try-except blocks:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">try</span><span class="p">:</span>
+    <span class="k">with</span> <span class="n">XDMFFile</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">physical_region_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">xdmf_file</span><span class="p">:</span>
+        <span class="n">subdomains</span> <span class="o">=</span> <span class="n">xdmf_file</span><span class="o">.</span><span class="n">read_meshtags</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;mesh&quot;</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="n">subdomains</span> <span class="o">=</span> <span class="kc">None</span>
+</pre></div>
+</div>
+<p>This adds complexity but improves robustness by handling failures gracefully.</p>
+</li>
+</ul>
+</section>
+<section id="communication-barrier">
+<h2>Communication Barrier<a class="headerlink" href="#communication-barrier" title="Link to this heading">¶</a></h2>
+<ul>
+<li><p><strong>Dolfin Version:</strong>
+No explicit barrier is used.</p></li>
+<li><p><strong>DolfinX Version:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">comm</span><span class="o">.</span><span class="n">Barrier</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>An MPI barrier is added to synchronize all processes in the communicator.</p>
+</li>
+<li><p><strong>Improvement:</strong>
+The barrier ensures that all processes in parallel are synchronized, which is important in parallel simulations to avoid race conditions or inconsistent results.</p></li>
+</ul>
+<section id="print0">
+<h3>print0<a class="headerlink" href="#print0" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>Dolfin Version:</strong>
+The print statements are wrapped in a check for <code class="docutils literal notranslate"><span class="pre">rank</span> <span class="pre">==</span> <span class="pre">0</span></code> to ensure only rank 0 prints the output.</p></li>
+<li><p><strong>DolfinX Version:</strong>
+The <code class="docutils literal notranslate"><span class="pre">print0</span></code> function is introduced to wrap print statements with the <code class="docutils literal notranslate"><span class="pre">rank</span> <span class="pre">==</span> <span class="pre">0</span></code> check, improving code readability and reusability by abstracting the conditional check and supporting arbitrary arguments.</p></li>
+</ul>
+</section>
+<section id="basic-flow-config-reader-yml">
+<h3>basic_flow_config_reader_yml<a class="headerlink" href="#basic-flow-config-reader-yml" title="Link to this heading">¶</a></h3>
+<p>Note: No changes were made to the code itself, however extensive documentation was added in the DolfinX version for usability.</p>
+</section>
+<section id="initialise-permeabilities">
+<h3>initialise_permeabilities<a class="headerlink" href="#initialise-permeabilities" title="Link to this heading">¶</a></h3>
+<p>In the transition from the legacy Dolfin to the modern DolfinX framework, significant modifications were made to the <cite>initialise_permeabilities</cite> function. These changes were necessitated by the removal of convenient utilities such as <cite>read_checkpoint</cite> and <cite>read_function</cite> from the DolfinX API. As a result, a more manual and modular approach was adopted for reading function data from file.</p>
+<p>Main Differences:</p>
+<ul>
+<li><p><strong>Loss of `read_checkpoint` and `read_function`</strong>:
+In Dolfin, permeability tensors were easily restored from <cite>.xdmf</cite> files using simple calls to <cite>read_checkpoint</cite>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">K</span> <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="n">V</span><span class="p">)</span>
+<span class="n">K</span> <span class="o">=</span> <span class="n">read_checkpoint</span><span class="p">(</span><span class="n">xdmf_file</span><span class="p">,</span> <span class="s2">&quot;K&quot;</span><span class="p">,</span> <span class="n">V</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In DolfinX, these high-level utilities are no longer available and must be replaced by manual HDF5 operations.</p>
+</li>
+<li><p><strong>Introduction of Two New Functions</strong>:</p>
+<p><cite>find_dataset_key(f, key)</cite>: A helper to recursively locate the correct dataset path inside a possibly nested HDF5 file:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">find_dataset_key</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">key</span>
+    <span class="k">for</span> <span class="n">group_key</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">f</span><span class="p">[</span><span class="n">group_key</span><span class="p">],</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">):</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">find_dataset_key</span><span class="p">(</span><span class="n">f</span><span class="p">[</span><span class="n">group_key</span><span class="p">],</span> <span class="n">key</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">group_key</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">return</span> <span class="kc">None</span>
+</pre></div>
+</div>
+<p><cite>read_function_from_h5(K, filename, dataset_name)</cite>: A function to load data into a DolfinX <cite>Function</cite> from HDF5:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">read_function_from_h5</span><span class="p">(</span><span class="n">K</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">dataset_name</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">driver</span><span class="o">=</span><span class="s2">&quot;mpio&quot;</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="n">K</span><span class="o">.</span><span class="n">function_space</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">comm</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">dataset_path</span> <span class="o">=</span> <span class="n">find_dataset_key</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">dataset_name</span><span class="p">)</span>
+        <span class="n">full_data</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="n">dataset_path</span><span class="p">][:]</span>
+    <span class="n">dofmap</span> <span class="o">=</span> <span class="n">K</span><span class="o">.</span><span class="n">function_space</span><span class="o">.</span><span class="n">dofmap</span>
+    <span class="n">local_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dofmap</span><span class="o">.</span><span class="n">list</span><span class="o">.</span><span class="n">array</span><span class="p">)</span>
+    <span class="n">local_data</span> <span class="o">=</span> <span class="n">full_data</span><span class="p">[:</span><span class="n">local_size</span><span class="p">]</span>
+    <span class="n">K</span><span class="o">.</span><span class="n">x</span><span class="o">.</span><span class="n">array</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">local_data</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Increased Coding Complexity</strong>:
+The need to manually manage the data layout, MPI scattering, and ownership of local vs. ghost degrees of freedom has added substantial complexity to the codebase. Instead of a single <cite>read_checkpoint</cite> call, permeability recovery now requires explicit data loading and assignment logic.</p></li>
+<li><p><strong>Greater Flexibility and Customisation</strong>:
+Although the new approach is more verbose, it enables much finer control over:</p>
+<ul class="simple">
+<li><p>The structure and storage format of HDF5 datasets.</p></li>
+<li><p>How and when data is scattered across MPI processes.</p></li>
+<li><p>Debugging at each stage of data input (e.g., raw shape checking, per-rank printing).</p></li>
+</ul>
+</li>
+<li><p><strong>Debugging Enhancements</strong>:
+The updated <cite>initialise_permeabilities</cite> function includes detailed printouts (through <cite>print0</cite>) to trace the data loading process, providing better insight during both development and simulation runs.</p>
+<p>For example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mpi4py</span><span class="w"> </span><span class="kn">import</span> <span class="n">MPI</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">print0</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="o">.</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+</ul>
+<p>The new design reflects a common theme in DolfinX: trading simplicity for greater flexibility and scalability. While users must now implement some low-level file I/O routines themselves, they gain full transparency over how simulation inputs are handled across distributed memory systems. This design choice better aligns with professional-grade large-scale simulations, at the cost of a steeper learning curve for developers migrating from Dolfin.</p>
+<ul class="simple">
+<li><p><strong>Explicit MPI Parallelism:</strong>
+DolfinX consistently enforces MPI parallelism across functions, adding explicit barriers (e.g., <code class="docutils literal notranslate"><span class="pre">comm.Barrier()</span></code>) and rank-specific operations (e.g., <code class="docutils literal notranslate"><span class="pre">print0</span></code>), ensuring synchronization and safe distributed execution. Legacy Dolfin code assumed serial or minimally parallel contexts, without explicit synchronization.</p></li>
+<li><p><strong>Structured Mesh and Tag Handling:</strong>
+In DolfinX, meshes, subdomains, and boundaries are loaded using explicit calls like <code class="docutils literal notranslate"><span class="pre">read_mesh</span></code> and <code class="docutils literal notranslate"><span class="pre">read_meshtags</span></code>, providing clearer structure and error handling. Legacy Dolfin used <code class="docutils literal notranslate"><span class="pre">MeshFunction</span></code> without validation or fallback in case of file errors.</p></li>
+<li><p><strong>Manual Data Management:</strong>
+DolfinX replaces utilities like <code class="docutils literal notranslate"><span class="pre">read_checkpoint</span></code> and <code class="docutils literal notranslate"><span class="pre">read_function</span></code> with manual HDF5 reading and assignment routines (e.g., <code class="docutils literal notranslate"><span class="pre">read_function_from_h5</span></code>), giving fine-grained control but requiring more complex, modular code. Dolfin’s legacy functions abstracted this into simpler but less flexible calls.</p></li>
+<li><p><strong>Error Handling and Robustness:</strong>
+DolfinX introduces systematic error checking for mesh validity, file reading, and dataset presence (e.g., <code class="docutils literal notranslate"><span class="pre">find_dataset_key</span></code>), improving robustness during simulations. In contrast, Dolfin legacy versions often assumed successful reads without verification.</p></li>
+<li><p><strong>Flexibility vs Simplicity Trade-off:</strong>
+While DolfinX is more verbose and demands careful programming (especially for large parallel runs), it offers superior flexibility, scalability, and debugging capabilities compared to the simpler, more compact Dolfin legacy scripts.</p></li>
+</ul>
+</section>
+</section>
+<section id="suppl-fcts">
+<h2>suppl_fcts<a class="headerlink" href="#suppl-fcts" title="Link to this heading">¶</a></h2>
+<p>The following functions are listed in the order in which they appear within the perfusion model run-through. Some of these functions are shared across scripts in the perfusion model.</p>
+<section id="comp-vessel-orientation">
+<h3>comp_vessel_orientation<a class="headerlink" href="#comp-vessel-orientation" title="Link to this heading">¶</a></h3>
+<p>The function comp_vessel_orientation computes vessel orientation based on a permeability field derived from boundary conditions. Both DolfinX and legacy implementations share the same objective but differ in execution, as outlined below:</p>
+</section>
+</section>
+</section>
+<section id="id6">
+<span id="id7"></span><h1>comp_vessel_orientation<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h1>
+<p>The function <code class="docutils literal notranslate"><span class="pre">comp_vessel_orientation</span></code> computes vessel orientation based on a permeability field derived from boundary conditions. Both DolfinX and legacy implementations share the same objective but differ in execution, as outlined below:</p>
+<section id="imports-and-dependencies">
+<h2>Imports and Dependencies<a class="headerlink" href="#imports-and-dependencies" title="Link to this heading">¶</a></h2>
+<div class="literal-block-wrapper docutils container" id="id41">
+<div class="code-block-caption"><span class="caption-text">Legacy Dolfin Imports</span><a class="headerlink" href="#id41" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dolfin</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</pre></div>
+</div>
+</div>
+<div class="literal-block-wrapper docutils container" id="id42">
+<div class="code-block-caption"><span class="caption-text">DolfinX Imports</span><a class="headerlink" href="#id42" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">dolfinx</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">ufl</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mpi4py</span><span class="w"> </span><span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">petsc4py</span><span class="w"> </span><span class="kn">import</span> <span class="n">PETSc</span>
+</pre></div>
+</div>
+</div>
+<ul class="simple">
+<li><p><strong>Reason:</strong> DolfinX requires a more modular import approach due to its separation from the monolithic Dolfin interface.</p></li>
+<li><p><strong>Benefit:</strong> More fine-grained control and compatibility with MPI/PETSc workflows.</p></li>
+<li><p><strong>Negative:</strong> Increased verbosity and steeper learning curve for new users.</p></li>
+</ul>
+</section>
+<section id="function-space-definition">
+<h2>Function Space Definition<a class="headerlink" href="#function-space-definition" title="Link to this heading">¶</a></h2>
+<div class="literal-block-wrapper docutils container" id="id43">
+<div class="code-block-caption"><span class="caption-text">Legacy Function Space</span><a class="headerlink" href="#id43" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">V</span> <span class="o">=</span> <span class="n">FunctionSpace</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="s2">&quot;CG&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="literal-block-wrapper docutils container" id="id44">
+<div class="code-block-caption"><span class="caption-text">DolfinX Function Space</span><a class="headerlink" href="#id44" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">V</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">FunctionSpace</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;CG&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<ul class="simple">
+<li><p><strong>Reason:</strong> DolfinX enforces an explicit tuple-based function space declaration.</p></li>
+<li><p><strong>Benefit:</strong> Allows greater generality for function space definitions, including mixed and vector-valued spaces.</p></li>
+<li><p><strong>Negative:</strong> Less intuitive for users transitioning from legacy syntax.</p></li>
+</ul>
+</section>
+<section id="boundary-conditions-setup">
+<h2>Boundary Conditions Setup<a class="headerlink" href="#boundary-conditions-setup" title="Link to this heading">¶</a></h2>
+<div class="literal-block-wrapper docutils container" id="id45">
+<div class="code-block-caption"><span class="caption-text">Legacy DirichletBC</span><a class="headerlink" href="#id45" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">bc</span> <span class="o">=</span> <span class="n">DirichletBC</span><span class="p">(</span><span class="n">V</span><span class="p">,</span> <span class="n">Constant</span><span class="p">(</span><span class="mf">0.0</span><span class="p">),</span> <span class="n">boundary_markers</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="literal-block-wrapper docutils container" id="id46">
+<div class="code-block-caption"><span class="caption-text">DolfinX DirichletBC</span><a class="headerlink" href="#id46" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fdim</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">topology</span><span class="o">.</span><span class="n">dim</span> <span class="o">-</span> <span class="mi">1</span>
+<span class="n">boundary_facets</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">topology</span><span class="o">.</span><span class="n">find_entities</span><span class="p">(</span><span class="n">fdim</span><span class="p">,</span> <span class="n">marker</span><span class="p">)</span>
+<span class="n">dofs</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">locate_dofs_topological</span><span class="p">(</span><span class="n">V</span><span class="p">,</span> <span class="n">fdim</span><span class="p">,</span> <span class="n">boundary_facets</span><span class="p">)</span>
+<span class="n">bc</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">dirichletbc</span><span class="p">(</span><span class="n">PETSc</span><span class="o">.</span><span class="n">ScalarType</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">dofs</span><span class="p">,</span> <span class="n">V</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<ul class="simple">
+<li><p><strong>Reason:</strong> Boundary condition assignment now uses low-level DOF maps rather than string expressions.</p></li>
+<li><p><strong>Benefit:</strong> Enables mesh-independent and scalable boundary condition definitions suitable for parallel environments.</p></li>
+<li><p><strong>Negative:</strong> Requires explicit geometry-based functions or labels, increasing code complexity.</p></li>
+</ul>
+</section>
+<section id="solver-setup-and-solution">
+<h2>Solver Setup and Solution<a class="headerlink" href="#solver-setup-and-solution" title="Link to this heading">¶</a></h2>
+<div class="literal-block-wrapper docutils container" id="id47">
+<div class="code-block-caption"><span class="caption-text">Legacy Solve</span><a class="headerlink" href="#id47" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">solve</span><span class="p">(</span><span class="n">a</span> <span class="o">==</span> <span class="n">L</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">bc</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="literal-block-wrapper docutils container" id="id48">
+<div class="code-block-caption"><span class="caption-text">DolfinX Solve</span><a class="headerlink" href="#id48" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">problem</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">petsc</span><span class="o">.</span><span class="n">LinearProblem</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">bcs</span><span class="o">=</span><span class="p">[</span><span class="n">bc</span><span class="p">])</span>
+<span class="n">u</span> <span class="o">=</span> <span class="n">problem</span><span class="o">.</span><span class="n">solve</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<ul class="simple">
+<li><p><strong>Reason:</strong> DolfinX replaces global <cite>solve</cite> with a <cite>LinearProblem</cite> object.</p></li>
+<li><p><strong>Benefit:</strong> Better encapsulation of linear solver settings and increased solver flexibility.</p></li>
+<li><p><strong>Negative:</strong> More verbose setup and the need to separately handle forward scatter of solutions.</p></li>
+</ul>
+</section>
+<section id="gradient-projection-and-normalization">
+<h2>Gradient Projection and Normalization<a class="headerlink" href="#gradient-projection-and-normalization" title="Link to this heading">¶</a></h2>
+<div class="literal-block-wrapper docutils container" id="id49">
+<div class="code-block-caption"><span class="caption-text">DolfinX Gradient Projection</span><a class="headerlink" href="#id49" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">grad_u</span> <span class="o">=</span> <span class="n">ufl</span><span class="o">.</span><span class="n">grad</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
+<span class="n">projected_grad</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">Function</span><span class="p">(</span><span class="n">W</span><span class="p">)</span>
+<span class="n">fem</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">grad_u</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">projected_grad</span><span class="p">)</span>
+<span class="n">normed_grad</span> <span class="o">=</span> <span class="n">projected_grad</span> <span class="o">/</span> <span class="n">ufl</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">ufl</span><span class="o">.</span><span class="n">inner</span><span class="p">(</span><span class="n">projected_grad</span><span class="p">,</span> <span class="n">projected_grad</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<ul class="simple">
+<li><p><strong>Reason:</strong> Manual gradient computation and projection are more explicit in DolfinX.</p></li>
+<li><p><strong>Benefit:</strong> Allows modular projections into various spaces and better control over function norms.</p></li>
+<li><p><strong>Negative:</strong> Requires additional projection logic and normalization steps.</p></li>
+</ul>
+</section>
+<section id="parallelization-and-i-o-handling">
+<h2>Parallelization and I/O Handling<a class="headerlink" href="#parallelization-and-i-o-handling" title="Link to this heading">¶</a></h2>
+<div class="literal-block-wrapper docutils container" id="id50">
+<div class="code-block-caption"><span class="caption-text">DolfinX Parallel Output</span><a class="headerlink" href="#id50" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">io</span><span class="o">.</span><span class="n">XDMFFile</span><span class="p">(</span><span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">xdmf</span><span class="p">:</span>
+    <span class="n">xdmf</span><span class="o">.</span><span class="n">write_mesh</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+    <span class="n">xdmf</span><span class="o">.</span><span class="n">write_function</span><span class="p">(</span><span class="n">function</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<ul class="simple">
+<li><p><strong>Reason:</strong> DolfinX enforces explicit MPI rank management and new XDMF I/O patterns.</p></li>
+<li><p><strong>Benefit:</strong> Ensures correct file handling in distributed runs and compatibility with parallel file formats.</p></li>
+<li><p><strong>Negative:</strong> Requires conditional <code class="docutils literal notranslate"><span class="pre">rank</span> <span class="pre">==</span> <span class="pre">0</span></code> blocks and manual handling of XDMF I/O lifecycle.</p></li>
+</ul>
+</section>
+<section id="debugging-and-output-messages">
+<h2>Debugging and Output Messages<a class="headerlink" href="#debugging-and-output-messages" title="Link to this heading">¶</a></h2>
+<div class="literal-block-wrapper docutils container" id="id51">
+<div class="code-block-caption"><span class="caption-text">Rank-aware Output</span><a class="headerlink" href="#id51" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">IO_fcts</span><span class="w"> </span><span class="kn">import</span> <span class="n">print0</span>
+<span class="n">print0</span><span class="p">(</span><span class="s2">&quot;Computation complete.&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<ul class="simple">
+<li><p><strong>Reason:</strong> Standard <cite>print</cite> replaced by wrapped logging via <code class="docutils literal notranslate"><span class="pre">IO_fcts.print0</span></code>.</p></li>
+<li><p><strong>Benefit:</strong> Enables rank-aware logging to avoid duplicate outputs in multi-rank runs.</p></li>
+<li><p><strong>Negative:</strong> Adds reliance on custom utility functions and potential I/O bottlenecks on rank 0.</p></li>
+</ul>
+</section>
+</section>
+<section id="region-label-assembler">
+<span id="id8"></span><h1>region_label_assembler<a class="headerlink" href="#region-label-assembler" title="Link to this heading">¶</a></h1>
+<p>The following examples demonstrate the differences between the Dolfin (legacy) and DolfinX implementations of the <code class="docutils literal notranslate"><span class="pre">region_label_assembler</span></code> routine, which is used to gather and broadcast unique region tags across MPI ranks. Key updates include syntax modernization, explicit data casting, and MPI semantics using <code class="docutils literal notranslate"><span class="pre">MPI.COMM_WORLD</span></code>.</p>
+<section id="key-differences-and-their-implications">
+<h2>Key Differences and Their Implications<a class="headerlink" href="#key-differences-and-their-implications" title="Link to this heading">¶</a></h2>
+</section>
+<section id="meshtag-access-differences">
+<h2>MeshTag Access Differences<a class="headerlink" href="#meshtag-access-differences" title="Link to this heading">¶</a></h2>
+<p><strong>DolfinX:</strong></p>
+<div class="literal-block-wrapper docutils container" id="id52">
+<div class="code-block-caption"><span class="caption-text">Accessing region labels using DolfinX’s MeshTags.values</span><a class="headerlink" href="#id52" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">region_labels</span> <span class="o">=</span> <span class="n">region</span><span class="o">.</span><span class="n">values</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Legacy Dolfin:</strong></p>
+<div class="literal-block-wrapper docutils container" id="id53">
+<div class="code-block-caption"><span class="caption-text">Accessing region labels using Dolfin’s MeshFunction.array()</span><a class="headerlink" href="#id53" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">region_labels</span> <span class="o">=</span> <span class="n">region</span><span class="o">.</span><span class="n">array</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<ul class="simple">
+<li><p><strong>Reason:</strong> DolfinX replaces <cite>array()</cite> with <cite>values</cite> to streamline the interface and better align with Pythonic naming conventions.</p></li>
+<li><p><strong>Benefit:</strong> Easier integration with NumPy and enhanced code clarity.</p></li>
+<li><p><strong>Negative:</strong> Requires adjustment when porting legacy code.</p></li>
+</ul>
+</section>
+<section id="explicit-casting-to-int64-and-use-of-modulo">
+<h2>Explicit Casting to <code class="docutils literal notranslate"><span class="pre">int64</span></code> and Use of Modulo<a class="headerlink" href="#explicit-casting-to-int64-and-use-of-modulo" title="Link to this heading">¶</a></h2>
+<p><strong>DolfinX:</strong></p>
+<div class="literal-block-wrapper docutils container" id="id54">
+<div class="code-block-caption"><span class="caption-text">Forcing int64 casting and positive int32 mapping in DolfinX</span><a class="headerlink" href="#id54" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">region_labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">region_labels</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+<span class="n">region_labels</span> <span class="o">=</span> <span class="p">(</span><span class="n">region_labels</span> <span class="o">%</span> <span class="p">(</span><span class="mi">2</span><span class="o">**</span><span class="mi">31</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Legacy Dolfin:</strong></p>
+<div class="literal-block-wrapper docutils container" id="id55">
+<div class="code-block-caption"><span class="caption-text">Absence of explicit casting in Dolfin (legacy) implementation</span><a class="headerlink" href="#id55" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">region_labels</span> <span class="o">=</span> <span class="n">region</span><span class="o">.</span><span class="n">array</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<ul class="simple">
+<li><p><strong>Reason:</strong> Ensures consistent type across all ranks and avoids integer overflow when working with label values.</p></li>
+<li><p><strong>Benefit:</strong> Cross-platform stability and compatibility, especially in large datasets.</p></li>
+<li><p><strong>Negative:</strong> Added complexity for newcomers or legacy code maintainers.</p></li>
+</ul>
+</section>
+<section id="mpi-interface-differences">
+<h2>MPI Interface Differences<a class="headerlink" href="#mpi-interface-differences" title="Link to this heading">¶</a></h2>
+<p><strong>DolfinX:</strong></p>
+<div class="literal-block-wrapper docutils container" id="id56">
+<div class="code-block-caption"><span class="caption-text">Modernized MPI initialization using MPI.COMM_WORLD in DolfinX</span><a class="headerlink" href="#id56" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">comm</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Legacy Dolfin:</strong></p>
+<div class="literal-block-wrapper docutils container" id="id57">
+<div class="code-block-caption"><span class="caption-text">Legacy MPI initialization using MPI.comm_world in Dolfin</span><a class="headerlink" href="#id57" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">comm</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">comm_world</span>
+</pre></div>
+</div>
+</div>
+<ul class="simple">
+<li><p><strong>Reason:</strong> DolfinX uses standardized mpi4py interfaces to improve readability and align with modern conventions.</p></li>
+<li><p><strong>Benefit:</strong> Future-proof and consistent with other MPI-based libraries.</p></li>
+<li><p><strong>Negative:</strong> Slightly changes the function signature and may confuse those migrating.</p></li>
+</ul>
+</section>
+<section id="scalar-extraction-for-label-count">
+<h2>Scalar Extraction for Label Count<a class="headerlink" href="#scalar-extraction-for-label-count" title="Link to this heading">¶</a></h2>
+<p><strong>DolfinX:</strong></p>
+<div class="literal-block-wrapper docutils container" id="id58">
+<div class="code-block-caption"><span class="caption-text">Explicit scalar casting and type annotations in DolfinX</span><a class="headerlink" href="#id58" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">n_labels</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_labels</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<p><strong>Legacy Dolfin:</strong></p>
+<div class="literal-block-wrapper docutils container" id="id59">
+<div class="code-block-caption"><span class="caption-text">Implicit typing and return conversion in Dolfin (legacy)</span><a class="headerlink" href="#id59" title="Link to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">n_labels</span> <span class="o">=</span> <span class="n">n_labels</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<ul class="simple">
+<li><p><strong>Reason:</strong> Explicit scalar conversion is emphasized in DolfinX for type clarity and compatibility.</p></li>
+<li><p><strong>Benefit:</strong> Prevents type errors in strict type-checking environments.</p></li>
+<li><p><strong>Negative:</strong> Verbose and may seem redundant to users familiar with implicit conversions.</p></li>
+</ul>
+<section id="perm-tens-comp">
+<h3>perm_tens_comp<a class="headerlink" href="#perm-tens-comp" title="Link to this heading">¶</a></h3>
+</section>
+<section id="comp-transf-mat">
+<h3>comp_transf_mat<a class="headerlink" href="#comp-transf-mat" title="Link to this heading">¶</a></h3>
+</section>
+<section id="scale-coupling-coefficients">
+<h3>scale_coupling_coefficients<a class="headerlink" href="#scale-coupling-coefficients" title="Link to this heading">¶</a></h3>
+</section>
+<section id="scale-permeabilities">
+<h3>scale_permeabilities<a class="headerlink" href="#scale-permeabilities" title="Link to this heading">¶</a></h3>
+</section>
+<section id="compute-my-variables">
+<h3>compute_my_variables<a class="headerlink" href="#compute-my-variables" title="Link to this heading">¶</a></h3>
+</section>
+<section id="project-expression">
+<h3>project_expression<a class="headerlink" href="#project-expression" title="Link to this heading">¶</a></h3>
+</section>
+<section id="project-tensor-expression">
+<h3>project_tensor_expression<a class="headerlink" href="#project-tensor-expression" title="Link to this heading">¶</a></h3>
+</section>
+<section id="interpolate-to-mesh-order">
+<h3>interpolate_to_mesh_order<a class="headerlink" href="#interpolate-to-mesh-order" title="Link to this heading">¶</a></h3>
+</section>
+<section id="compute-integral-quantities">
+<h3>compute_integral_quantities<a class="headerlink" href="#compute-integral-quantities" title="Link to this heading">¶</a></h3>
+</section>
+</section>
+<section id="finite-element-fcts">
+<h2>finite_element_fcts<a class="headerlink" href="#finite-element-fcts" title="Link to this heading">¶</a></h2>
+<section id="alloc-fct-spaces">
+<h3>alloc_fct_spaces<a class="headerlink" href="#alloc-fct-spaces" title="Link to this heading">¶</a></h3>
+</section>
+<section id="set-up-fe-solver2-acv-model-differences">
+<h3>set_up_fe_solver2: ACV Model Differences<a class="headerlink" href="#set-up-fe-solver2-acv-model-differences" title="Link to this heading">¶</a></h3>
+</section>
+<section id="set-up-fe-solver2-a-model-differences">
+<h3>set_up_fe_solver2: A Model Differences<a class="headerlink" href="#set-up-fe-solver2-a-model-differences" title="Link to this heading">¶</a></h3>
+</section>
+<section id="solve-lin-sys">
+<h3>solve_lin_sys<a class="headerlink" href="#solve-lin-sys" title="Link to this heading">¶</a></h3>
+</section>
+</section>
+</section>
+<section id="summary-of-modernization-of-the-cerebral-perfusion-solver">
+<h1>Summary of Modernization of the Cerebral Perfusion Solver<a class="headerlink" href="#summary-of-modernization-of-the-cerebral-perfusion-solver" title="Link to this heading">¶</a></h1>
+<section id="adapting-the-solver-to-fenicsx">
+<h2>Adapting the Solver to FEniCSx<a class="headerlink" href="#adapting-the-solver-to-fenicsx" title="Link to this heading">¶</a></h2>
+</section>
+<section id="boundary-condition-management">
+<h2>Boundary Condition Management<a class="headerlink" href="#boundary-condition-management" title="Link to this heading">¶</a></h2>
+</section>
+<section id="parallelization-and-performance-enhancements">
+<h2>Parallelization and Performance Enhancements<a class="headerlink" href="#parallelization-and-performance-enhancements" title="Link to this heading">¶</a></h2>
+</section>
+<section id="enhanced-solver-configuration-and-monitoring">
+<h2>Enhanced Solver Configuration and Monitoring<a class="headerlink" href="#enhanced-solver-configuration-and-monitoring" title="Link to this heading">¶</a></h2>
+</section>
+<section id="function-space-and-solution-management">
+<h2>Function Space and Solution Management<a class="headerlink" href="#function-space-and-solution-management" title="Link to this heading">¶</a></h2>
+</section>
+</section>
+<section id="summary-and-future-work">
+<h1>Summary and Future Work<a class="headerlink" href="#summary-and-future-work" title="Link to this heading">¶</a></h1>
+<section id="summary-of-achievements">
+<h2>Summary of Achievements<a class="headerlink" href="#summary-of-achievements" title="Link to this heading">¶</a></h2>
+</section>
+<section id="future-work">
+<h2>Future Work<a class="headerlink" href="#future-work" title="Link to this heading">¶</a></h2>
+</section>
+</section>
+<section id="references">
+<h1>References<a class="headerlink" href="#references" title="Link to this heading">¶</a></h1>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">Gemini</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="background.html">Background Theory</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="structure.html">Code Structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modernisation_concise.html">Modernisation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hpc.html">HPC Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="performance.html">Code Performance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="IO_fcts.html">IO_fcts module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="finite_element_fcts.html">finite_element_fcts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="suppl_fcts.html">suppl_fcts</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Adam Brierley.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/files/modernisation.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

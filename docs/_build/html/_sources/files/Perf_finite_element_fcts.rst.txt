@@ -1,0 +1,7 @@
+Perf_finite_element_fcts
+========================
+
+.. automodule:: Perf_finite_element_fcts
+    :members:
+    :undoc-members:
+    :show-inheritance:

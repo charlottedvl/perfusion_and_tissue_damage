@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Modernisation &#8212; Gemini  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="HPC Tutorials" href="hpc.html" />
+    <link rel="prev" title="Code Structure" href="structure.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="modernisation">
+<h1>Modernisation<a class="headerlink" href="#modernisation" title="Link to this heading">¶</a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Link to this heading">¶</a></h2>
+<p>The GEMINI perfusion model simulates blood flow in brain tissue during acute ischemic stroke using a multi-compartment porous medium framework, implemented in FEniCSx. The pipeline includes:</p>
+<ul class="simple">
+<li><p><strong>Pre-processing</strong>: Preparing anatomical brain meshes.</p></li>
+<li><p><strong>Permeability Initialization</strong>: Computing tissue permeability tensors.</p></li>
+<li><p><strong>Numerical Solution</strong>: Solving for pressure and velocity fields under healthy or occluded conditions.</p></li>
+</ul>
+<p>The model uses human-readable YAML configuration files to define physical, numerical, and boundary parameters. This guide outlines the requirements and steps to run the model.</p>
+</section>
+<section id="running-the-perfusion-model">
+<h2>Running the Perfusion Model<a class="headerlink" href="#running-the-perfusion-model" title="Link to this heading">¶</a></h2>
+<p>### Requirements</p>
+<p>The model requires the following software (specific versions ensure compatibility):</p>
+<ul class="simple">
+<li><p><strong>FEniCSx Stack</strong>:
+- fenics-basix (0.9.0)
+- fenics-dolfinx (0.9.0)
+- fenics-ffcx (0.9.0)
+- fenics-ufl (2024.2.0)</p></li>
+<li><p><strong>Linear Algebra/MPI</strong>:
+- petsc4py (3.22.3)
+- mpi4py (4.0.3)
+- h5py (3.13.0)</p></li>
+<li><p><strong>Scientific Python</strong>:
+- numpy (2.2.3)
+- scipy (1.15.2)
+- pandas (2.2.3)
+- PyYAML (6.0.2)</p></li>
+<li><p><strong>Utilities</strong>:
+- joblib (1.4.2)
+- tqdm (4.67.1)</p></li>
+<li><p><strong>Environment</strong>:
+- Python 3.10.x
+- OpenMPI/MPICH 3.x+
+- Linux/Unix</p></li>
+</ul>
+<p>For reproducibility, use the provided Singularity container (see <cite>containers/container.def</cite>).</p>
+<p>### Pipeline Steps</p>
+<ol class="arabic">
+<li><p><strong>Extract Meshes</strong>:
+- Unpack <cite>brain_meshes.tar.xz</cite> into the project directory.</p></li>
+<li><p><strong>Initialize Permeability</strong>:
+- Run <cite>permeability_initialiser.py</cite> to compute permeability tensors:</p>
+<blockquote>
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mpirun<span class="w"> </span>-n<span class="w"> </span><span class="m">4</span><span class="w"> </span>python3<span class="w"> </span>src/Gem_X/permeability_initialiser.py
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Uses <cite>config_permeability_initialiser.yaml</cite>. Takes ~2 minutes with 4 cores.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><strong>Solve Flow</strong>:
+- Run <cite>basic_flow_solver.py</cite> for pressure and velocity fields:</p>
+<blockquote>
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mpirun<span class="w"> </span>-n<span class="w"> </span><span class="m">4</span><span class="w"> </span>python3<span class="w"> </span>src/Gem_X/basic_flow_solver.py
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Uses <cite>config_basic_flow_solver.yaml</cite>. Takes ~2 minutes with 4 cores.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><strong>Handle Occlusions</strong>:
+- Generate boundary conditions for occluded scenarios (e.g., right MCA occlusion):</p>
+<blockquote>
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3<span class="w"> </span>src/Gem_X/BC_creator.py
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Update <cite>config_basic_flow_solver.yaml</cite> to point to the generated <cite>BCs_RMCA.csv</cite> and change the output folder to avoid overwriting.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ol>
+</section>
+<section id="configuration-files">
+<h2>Configuration Files<a class="headerlink" href="#configuration-files" title="Link to this heading">¶</a></h2>
+<p>### Permeability Initialiser Config</p>
+<p>The <cite>config_permeability_initialiser.yaml</cite> file controls permeability tensor generation:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">input</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">mesh_file</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;../brain_meshes/b0000/clustered.xdmf&#39;</span>
+<span class="nt">output</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">res_fldr</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;../brain_meshes/b0000/permeability/&#39;</span>
+<span class="w">  </span><span class="nt">save_subres</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">  </span><span class="nt">res_vars</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&#39;K1_form&#39;</span><span class="p p-Indicator">]</span>
+<span class="nt">physical</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">e_ref</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">K1_form</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">]</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong>input/mesh_file</strong>: Path to the mesh file.</p></li>
+<li><p><strong>output/res_fldr</strong>: Directory for saving tensors.</p></li>
+<li><p><strong>physical/e_ref</strong>: Reference normal vector for cortical surface orientation.</p></li>
+<li><p><strong>physical/K1_form</strong>: Permeability tensor (flattened 3x3 matrix).</p></li>
+</ul>
+<p>### Basic Flow Solver Config</p>
+<p>The <cite>config_basic_flow_solver.yaml</cite> file controls the flow simulation:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">input</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">healthy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">  </span><span class="nt">occl_ID</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">25</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">read_inlet_boundary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">inlet_boundary_file</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;boundary_data/BCs_RMCA.csv&#39;</span>
+<span class="w">  </span><span class="nt">mesh_file</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;../brain_meshes/b0000/clustered.xdmf&#39;</span>
+<span class="w">  </span><span class="nt">permeability_folder</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;../brain_meshes/b0000/permeability/&#39;</span>
+<span class="w">  </span><span class="nt">inlet_BC_type</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;DBC&#39;</span>
+<span class="nt">output</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">res_fldr</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;../VP_results/p0000/a/DBC/healthy/read_inlet_true/FE_degree_1/np8/&#39;</span>
+<span class="w">  </span><span class="nt">res_vars</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&#39;press1&#39;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&#39;vel1&#39;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&#39;perfusion&#39;</span><span class="p p-Indicator">]</span>
+<span class="nt">physical</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">K1gm_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.001234</span>
+<span class="w">  </span><span class="nt">beta12gm</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.326e-06</span>
+<span class="w">  </span><span class="nt">p_arterial</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10000.0</span>
+<span class="w">  </span><span class="nt">p_venous</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0</span>
+<span class="w">  </span><span class="nt">Q_brain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10.0</span>
+<span class="nt">simulation</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">fe_degr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">  </span><span class="nt">model_type</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;a&#39;</span>
+<span class="w">  </span><span class="nt">vel_order</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong>input/healthy</strong>: Toggle healthy (true) or occluded (false) scenarios.</p></li>
+<li><p><strong>input/occl_ID</strong>: List of occluded artery IDs (e.g., 25 for right MCA).</p></li>
+<li><p><strong>output/res_fldr</strong>: Output directory (change to avoid overwriting).</p></li>
+<li><p><strong>physical/K1gm_ref</strong>: Permeability for arterioles.</p></li>
+<li><p><strong>simulation/fe_degr</strong>: Finite element degree (1 for faster runs).</p></li>
+</ul>
+<p><strong>Tips</strong>:
+- Maintain separate config files for different scenarios.
+- Ensure <cite>occl_ID</cite> matches mesh or CSV labels.
+- Use descriptive <cite>res_fldr</cite> names.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">Gemini</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="background.html">Background Theory</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="structure.html">Code Structure</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Modernisation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#introduction">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#running-the-perfusion-model">Running the Perfusion Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration-files">Configuration Files</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="hpc.html">HPC Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="performance.html">Code Performance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="IO_fcts.html">IO_fcts module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="finite_element_fcts.html">finite_element_fcts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="suppl_fcts.html">suppl_fcts</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="structure.html" title="previous chapter">Code Structure</a></li>
+      <li>Next: <a href="hpc.html" title="next chapter">HPC Tutorials</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Adam Brierley.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/files/modernisation_concise.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

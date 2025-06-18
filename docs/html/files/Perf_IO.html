@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Perf_IO_fcts module &#8212; Gemini  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="Code Performance" href="performance.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-Perf_IO_fcts">
+<span id="perf-io-fcts-module"></span><h1>Perf_IO_fcts module<a class="headerlink" href="#module-Perf_IO_fcts" title="Link to this heading">¶</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="Perf_IO_fcts.print0">
+<span class="sig-prename descclassname"><span class="pre">Perf_IO_fcts.</span></span><span class="sig-name descname"><span class="pre">print0</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/Perf_IO_fcts.html#print0"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Perf_IO_fcts.print0" title="Link to this definition">¶</a></dt>
+<dd><p>#NOTE: needs fixing with MPI.</p>
+<p>Print arguments only if rank is 0.</p>
+<p>This function acts as a conditional wrapper around print, typically used
+in parallel computing to restrict output to a single process (rank 0).
+It accepts arguments and keyword arguments (key-value pairs).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>*args</strong> (<em>Any</em>) – Accepts any number of positional arguments of any data type.</p></li>
+<li><p><strong>**kwargs</strong> (<em>Any</em>) – Accepts keyword arguments (kwargs) of any data type - that is
+those passed as ‘key : value’.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>There is no return value; only a functionality.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="Perf_IO_fcts.perm_init_config_reader_yml">
+<span class="sig-prename descclassname"><span class="pre">Perf_IO_fcts.</span></span><span class="sig-name descname"><span class="pre">perm_init_config_reader_yml</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_file_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/Perf_IO_fcts.html#perm_init_config_reader_yml"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Perf_IO_fcts.perm_init_config_reader_yml" title="Link to this definition">¶</a></dt>
+<dd><p>Parameters from a configuration file are stored in ‘configs’ - a nested Python dictionary.</p>
+<p>Read more about “YAML Ain’t Markup Language” configuration files here: <a class="reference external" href="https://yaml.org/">https://yaml.org/</a>.
+This function opens the config_permeability_initialiser.yaml file in readmode. Using
+yaml.load, this is read into ‘configs’, a nested Python dictionary. Using yaml.safeloader
+makes sure only simple datatypes are loaded and that code does not execute arbitrarily.
+A Python dictionary stores key-value pairs, such as ‘e_ref : [0, 0, 1]’. A nested
+dictionary like that stored in ‘configs’ is a dictionary within a dictionary. The values
+of K1_form and e_local are stored as NumPy arrays and K1_form is reshaped into a 3x3 tensor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>input_file_path</strong> (<em>str</em>) – A string showing the path to the relevant YAML configuration file.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>configs</strong> – This is a nested list of key-value pairs, containing the information
+from the YAML file.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="Perf_IO_fcts.mesh_reader">
+<span class="sig-prename descclassname"><span class="pre">Perf_IO_fcts.</span></span><span class="sig-name descname"><span class="pre">mesh_reader</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh_file</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/Perf_IO_fcts.html#mesh_reader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Perf_IO_fcts.mesh_reader" title="Link to this definition">¶</a></dt>
+<dd><p>Read data from the mesh.</p>
+<p>Read about XDMF files here: <a class="reference external" href="https://www.xdmf.org/index.php/XDMF_Model_and_Format">https://www.xdmf.org/index.php/XDMF_Model_and_Format</a>.</p>
+<p>Read about DOLFINx here: <a class="reference external" href="https://docs.fenicsproject.org/dolfinx/main/python/generated/dolfinx.io.html#module-dolfinx.io">https://docs.fenicsproject.org/dolfinx/main/python/generated/dolfinx.io.html#module-dolfinx.io</a>.</p>
+<p>This function imports mesh data from ‘clustered.xdmf’.
+It imports meshtag data from ‘clustered_physical_region.xdmf’,
+and ‘clustered_facet_region.xdmf’ files. These data are then
+stored as dolfinx.mesh objects in ‘mesh’, ‘subdomains’,
+and ‘boundaries’ variables respectively.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>mesh_file</strong> (<em>str</em>) – An string showing the path to the mesh .xdmf file
+in config_permeability_initialiser.yaml.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Mesh</span></code>, <code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">MeshTags</span></code>], <code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">MeshTags</span></code>]]</span></p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p><strong>mesh</strong> (<em>dolfinx.mesh.Mesh</em>) – The clustered mesh file as a DOLFINx object.</p></li>
+<li><p><strong>subdomains</strong> (<em>dolfinx.mesh.MeshTags</em>) – Cell meshtags denoting volumetric regions.</p></li>
+<li><p><strong>boundaries</strong> (<em>dolfinx.mesh.MeshTags</em>) – Boundary meshtags denoting surface regions.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>Meshtags are like integer tags conveniently marking different regions or boundaries of the mesh.</p></li>
+<li><p>For this particular clustered.xdmf mesh:</p></li>
+<li><p>1,042,301 cells</p></li>
+<li><p>2,164,216 facets (in the whole mesh, with no repeats)</p></li>
+<li><p>159,228 facets on a boundary</p></li>
+<li><p>Most of the facet meshtags are 0, indicating that the facet is internal</p></li>
+<li><p>Non-zero values indicate regions on the surface</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="Perf_IO_fcts.find_dataset_key">
+<span class="sig-prename descclassname"><span class="pre">Perf_IO_fcts.</span></span><span class="sig-name descname"><span class="pre">find_dataset_key</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/Perf_IO_fcts.html#find_dataset_key"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Perf_IO_fcts.find_dataset_key" title="Link to this definition">¶</a></dt>
+<dd><p>Recursively find the correct dataset key.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="Perf_IO_fcts.read_function_from_h5">
+<span class="sig-prename descclassname"><span class="pre">Perf_IO_fcts.</span></span><span class="sig-name descname"><span class="pre">read_function_from_h5</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">K</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Function'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/Perf_IO_fcts.html#read_function_from_h5"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Perf_IO_fcts.read_function_from_h5" title="Link to this definition">¶</a></dt>
+<dd><p>Read global (owned) data from HDF5 and scatter into the DolfinX Function <cite>K</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>K</strong> (<em>dolfinx.fem.Function</em>) – Target function to populate with global (non-ghost) values.</p></li>
+<li><p><strong>filename</strong> (<em>str</em>) – Path to the HDF5 file storing the global DoF values.</p></li>
+<li><p><strong>dataset_name</strong> (<em>str</em>) – Logical key for the function dataset (e.g. “Function”).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="Perf_IO_fcts.argument_reader">
+<span class="sig-prename descclassname"><span class="pre">Perf_IO_fcts.</span></span><span class="sig-name descname"><span class="pre">argument_reader</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parser</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/Perf_IO_fcts.html#argument_reader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Perf_IO_fcts.argument_reader" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="Perf_IO_fcts.perm_init_config_reader">
+<span class="sig-prename descclassname"><span class="pre">Perf_IO_fcts.</span></span><span class="sig-name descname"><span class="pre">perm_init_config_reader</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_file_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/Perf_IO_fcts.html#perm_init_config_reader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Perf_IO_fcts.perm_init_config_reader" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="Perf_IO_fcts.basic_flow_config_reader">
+<span class="sig-prename descclassname"><span class="pre">Perf_IO_fcts.</span></span><span class="sig-name descname"><span class="pre">basic_flow_config_reader</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_file_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/Perf_IO_fcts.html#basic_flow_config_reader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Perf_IO_fcts.basic_flow_config_reader" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="Perf_IO_fcts.basic_flow_config_reader2">
+<span class="sig-prename descclassname"><span class="pre">Perf_IO_fcts.</span></span><span class="sig-name descname"><span class="pre">basic_flow_config_reader2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_file_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parser</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/Perf_IO_fcts.html#basic_flow_config_reader2"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Perf_IO_fcts.basic_flow_config_reader2" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="Perf_IO_fcts.basic_flow_config_reader_yml">
+<span class="sig-prename descclassname"><span class="pre">Perf_IO_fcts.</span></span><span class="sig-name descname"><span class="pre">basic_flow_config_reader_yml</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_file_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parser</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/Perf_IO_fcts.html#basic_flow_config_reader_yml"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Perf_IO_fcts.basic_flow_config_reader_yml" title="Link to this definition">¶</a></dt>
+<dd><p>Read and process flow configuration from a YAML file with command-line overrides.</p>
+<ol class="arabic simple">
+<li><p>Checks if input file has YAML extension and loads its contents.</p></li>
+<li><p>Overrides specific configuration values with command-line arguments if provided.</p></li>
+<li><p>Creates results directory if it doesn’t exist (only on rank 0 in parallel).</p></li>
+<li><p>Saves the final configuration to a YAML file in the results directory.</p></li>
+</ol>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_file_path</strong> (<em>str</em>) – Path to the input YAML configuration file.</p></li>
+<li><p><strong>parser</strong> (<em>argparse.ArgumentParser</em>) – Argument parser containing potential command-line overrides.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary containing all configuration parameters after processing,
+with string keys and values of various types.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[str, Any]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="Perf_IO_fcts.input_file_reader">
+<span class="sig-prename descclassname"><span class="pre">Perf_IO_fcts.</span></span><span class="sig-name descname"><span class="pre">input_file_reader</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_file_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/Perf_IO_fcts.html#input_file_reader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Perf_IO_fcts.input_file_reader" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="Perf_IO_fcts.inlet_file_reader">
+<span class="sig-prename descclassname"><span class="pre">Perf_IO_fcts.</span></span><span class="sig-name descname"><span class="pre">inlet_file_reader</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inlet_boundary_file</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/Perf_IO_fcts.html#inlet_file_reader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Perf_IO_fcts.inlet_file_reader" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="Perf_IO_fcts.initialise_permeabilities">
+<span class="sig-prename descclassname"><span class="pre">Perf_IO_fcts.</span></span><span class="sig-name descname"><span class="pre">initialise_permeabilities</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">K1_space</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">K2_space</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">permeability_folder</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwarg</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/Perf_IO_fcts.html#initialise_permeabilities"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Perf_IO_fcts.initialise_permeabilities" title="Link to this definition">¶</a></dt>
+<dd><p>Initialise the three permeability tensor components K1, K2, and K3.</p>
+<ol class="arabic simple">
+<li><p>Reads a model type flag from the input arguments (default: ‘acv’).</p></li>
+<li><p>Allocates K1 and K2 as fem.Functions in the provided function spaces.</p></li>
+<li><p>Loads K1 from file ‘K1_form.h5’ inside the specified permeability folder.</p></li>
+<li><p>Copies the values of K1 into K3 (which shares K1’s function space).</p></li>
+<li><p>If the model type is not recognised, an exception is raised.</p></li>
+<li><p>Prints the first 10 entries of K1 and K2 for debugging.</p></li>
+</ol>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>K1_space</strong> (<em>dolfinx.fem.FunctionSpace</em>) – Function space for K1.</p></li>
+<li><p><strong>K2_space</strong> (<em>dolfinx.fem.FunctionSpace</em>) – Function space for K2.</p></li>
+<li><p><strong>mesh</strong> (<em>dolfinx.mesh.Mesh</em>) – The mesh on which permeability tensors are defined (used implicitly via FunctionSpaces).</p></li>
+<li><p><strong>permeability_folder</strong> (<em>str</em>) – Directory path containing the HDF5 file “K1_form.h5” with stored permeability data.</p></li>
+<li><p><strong>**kwarg</strong> (<em>dict</em>) – <dl class="simple">
+<dt>Optional keyword arguments. Currently accepts:</dt><dd><ul>
+<li><p>model_type : str
+Either ‘acv’ or ‘a’. Determines how permeabilities are initialised.</p></li>
+</ul>
+</dd>
+</dl>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>K1<span class="classifier">dolfinx.fem.Function</span></dt><dd><p>Primary permeability tensor field read from file.</p>
+</dd>
+<dt>K2<span class="classifier">dolfinx.fem.Function</span></dt><dd><p>Secondary permeability tensor field allocated but not filled from file.</p>
+</dd>
+<dt>K3<span class="classifier">dolfinx.fem.Function</span></dt><dd><p>A copy of K1 in the same function space.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>Exception</strong> – If the provided model type is not ‘acv’ or ‘a’.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="Perf_IO_fcts.dict2obj">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">Perf_IO_fcts.</span></span><span class="sig-name descname"><span class="pre">dict2obj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">my_dict</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/Perf_IO_fcts.html#dict2obj"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#Perf_IO_fcts.dict2obj" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></p>
+</dd></dl>
+
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">Gemini</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="background.html">Background Theory</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="structure.html">Code Structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modernisation_concise.html">Modernisation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hpc.html">HPC Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="performance.html">Code Performance</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Perf_IO_fcts module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#Perf_IO_fcts.print0"><code class="docutils literal notranslate"><span class="pre">print0()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Perf_IO_fcts.perm_init_config_reader_yml"><code class="docutils literal notranslate"><span class="pre">perm_init_config_reader_yml()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Perf_IO_fcts.mesh_reader"><code class="docutils literal notranslate"><span class="pre">mesh_reader()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Perf_IO_fcts.find_dataset_key"><code class="docutils literal notranslate"><span class="pre">find_dataset_key()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Perf_IO_fcts.read_function_from_h5"><code class="docutils literal notranslate"><span class="pre">read_function_from_h5()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Perf_IO_fcts.argument_reader"><code class="docutils literal notranslate"><span class="pre">argument_reader()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Perf_IO_fcts.perm_init_config_reader"><code class="docutils literal notranslate"><span class="pre">perm_init_config_reader()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Perf_IO_fcts.basic_flow_config_reader"><code class="docutils literal notranslate"><span class="pre">basic_flow_config_reader()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Perf_IO_fcts.basic_flow_config_reader2"><code class="docutils literal notranslate"><span class="pre">basic_flow_config_reader2()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Perf_IO_fcts.basic_flow_config_reader_yml"><code class="docutils literal notranslate"><span class="pre">basic_flow_config_reader_yml()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Perf_IO_fcts.input_file_reader"><code class="docutils literal notranslate"><span class="pre">input_file_reader()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Perf_IO_fcts.inlet_file_reader"><code class="docutils literal notranslate"><span class="pre">inlet_file_reader()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Perf_IO_fcts.initialise_permeabilities"><code class="docutils literal notranslate"><span class="pre">initialise_permeabilities()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Perf_IO_fcts.dict2obj"><code class="docutils literal notranslate"><span class="pre">dict2obj</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="performance.html" title="previous chapter">Code Performance</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Adam.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/files/Perf_IO.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

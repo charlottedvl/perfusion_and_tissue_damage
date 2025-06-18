@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Perf_IO_fcts &#8212; Gemini  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for Perf_IO_fcts</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">basix.ufl</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">dolfinx</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">dolfinx.io</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">io</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dolfinx</span><span class="w"> </span><span class="kn">import</span> <span class="n">mesh</span><span class="p">,</span><span class="n">fem</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dolfinx.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">XDMFFile</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dolfinx.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">XDMFFile</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dolfinx.mesh</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mesh</span><span class="p">,</span> <span class="n">MeshTags</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">h5py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mpi4py</span><span class="w"> </span><span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">petsc4py</span><span class="w"> </span><span class="kn">import</span> <span class="n">PETSc</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">ufl</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">untangle</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+
+
+<span class="c1"># FUNCTIONS ARE ARRANGED IN ORDER OF APPEARANCE IN THE SCRIPTS</span>
+
+
+<span class="c1"># NOTE: print0 is not currently working properly with MPI. The printed updates </span>
+<span class="c1"># when the code runs suddenly print all at once rather than at the corect stage</span>
+
+
+<span class="n">comm</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
+<span class="c1"># rank = comm.rank</span>
+<span class="n">rank</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">Get_rank</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="print0">
+<a class="viewcode-back" href="../files/Perf_IO.html#Perf_IO_fcts.print0">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">print0</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;#NOTE: needs fixing with MPI.</span>
+<span class="sd">    </span>
+<span class="sd">    Print arguments only if rank is 0.</span>
+
+<span class="sd">    This function acts as a conditional wrapper around print, typically used</span>
+<span class="sd">    in parallel computing to restrict output to a single process (rank 0).</span>
+<span class="sd">    It accepts arguments and keyword arguments (key-value pairs).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    *args : Any</span>
+<span class="sd">        Accepts any number of positional arguments of any data type.</span>
+<span class="sd">    **kwargs : Any</span>
+<span class="sd">        Accepts keyword arguments (kwargs) of any data type - that is </span>
+<span class="sd">        those passed as &#39;key : value&#39;.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    None</span>
+<span class="sd">        There is no return value; only a functionality.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+
+
+<div class="viewcode-block" id="perm_init_config_reader_yml">
+<a class="viewcode-back" href="../files/Perf_IO.html#Perf_IO_fcts.perm_init_config_reader_yml">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">perm_init_config_reader_yml</span><span class="p">(</span><span class="n">input_file_path</span> <span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parameters from a configuration file are stored in &#39;configs&#39; - a nested Python dictionary.</span>
+
+<span class="sd">    Read more about &quot;YAML Ain&#39;t Markup Language&quot; configuration files here: https://yaml.org/. </span>
+<span class="sd">    This function opens the config_permeability_initialiser.yaml file in readmode. Using </span>
+<span class="sd">    yaml.load, this is read into &#39;configs&#39;, a nested Python dictionary. Using yaml.safeloader </span>
+<span class="sd">    makes sure only simple datatypes are loaded and that code does not execute arbitrarily. </span>
+<span class="sd">    A Python dictionary stores key-value pairs, such as &#39;e_ref : [0, 0, 1]&#39;. A nested </span>
+<span class="sd">    dictionary like that stored in &#39;configs&#39; is a dictionary within a dictionary. The values </span>
+<span class="sd">    of K1_form and e_local are stored as NumPy arrays and K1_form is reshaped into a 3x3 tensor.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    input_file_path : str</span>
+<span class="sd">        A string showing the path to the relevant YAML configuration file.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    configs : dict</span>
+<span class="sd">         This is a nested list of key-value pairs, containing the information </span>
+<span class="sd">         from the YAML file.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">input_file_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">configfile</span><span class="p">:</span>
+        <span class="n">configs</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">configfile</span><span class="p">,</span> <span class="n">yaml</span><span class="o">.</span><span class="n">SafeLoader</span><span class="p">)</span>
+    <span class="n">configs</span><span class="p">[</span><span class="s1">&#39;physical&#39;</span><span class="p">][</span><span class="s1">&#39;K1_form&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span> <span class="n">configs</span><span class="p">[</span><span class="s1">&#39;physical&#39;</span><span class="p">][</span><span class="s1">&#39;K1_form&#39;</span><span class="p">]</span> <span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="n">configs</span><span class="p">[</span><span class="s1">&#39;physical&#39;</span><span class="p">][</span><span class="s1">&#39;e_ref&#39;</span><span class="p">]</span> <span class="o">=</span>   <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span> <span class="n">configs</span><span class="p">[</span><span class="s1">&#39;physical&#39;</span><span class="p">][</span><span class="s1">&#39;e_ref&#39;</span><span class="p">]</span> <span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">configs</span></div>
+
+
+
+
+<div class="viewcode-block" id="mesh_reader">
+<a class="viewcode-back" href="../files/Perf_IO.html#Perf_IO_fcts.mesh_reader">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">mesh_reader</span><span class="p">(</span><span class="n">mesh_file</span> <span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Mesh</span><span class="p">,</span> <span class="n">Optional</span><span class="p">[</span><span class="n">MeshTags</span><span class="p">],</span> <span class="n">Optional</span><span class="p">[</span><span class="n">MeshTags</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Read data from the mesh.</span>
+
+<span class="sd">    Read about XDMF files here: https://www.xdmf.org/index.php/XDMF_Model_and_Format.</span>
+
+<span class="sd">    Read about DOLFINx here: https://docs.fenicsproject.org/dolfinx/main/python/generated/dolfinx.io.html#module-dolfinx.io.</span>
+
+<span class="sd">    This function imports mesh data from &#39;clustered.xdmf&#39;.</span>
+<span class="sd">    It imports meshtag data from &#39;clustered_physical_region.xdmf&#39;, </span>
+<span class="sd">    and &#39;clustered_facet_region.xdmf&#39; files. These data are then </span>
+<span class="sd">    stored as dolfinx.mesh objects in &#39;mesh&#39;, &#39;subdomains&#39;, </span>
+<span class="sd">    and &#39;boundaries&#39; variables respectively.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mesh_file : str</span>
+<span class="sd">        An string showing the path to the mesh .xdmf file </span>
+<span class="sd">        in config_permeability_initialiser.yaml.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    mesh : dolfinx.mesh.Mesh</span>
+<span class="sd">        The clustered mesh file as a DOLFINx object.</span>
+<span class="sd">    subdomains : dolfinx.mesh.MeshTags</span>
+<span class="sd">        Cell meshtags denoting volumetric regions.</span>
+<span class="sd">    boundaries : dolfinx.mesh.MeshTags</span>
+<span class="sd">        Boundary meshtags denoting surface regions.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    - Meshtags are like integer tags conveniently marking different regions or boundaries of the mesh.</span>
+<span class="sd">    - For this particular clustered.xdmf mesh:</span>
+<span class="sd">    - 1,042,301 cells</span>
+<span class="sd">    - 2,164,216 facets (in the whole mesh, with no repeats)</span>
+<span class="sd">    - 159,228 facets on a boundary</span>
+<span class="sd">    - Most of the facet meshtags are 0, indicating that the facet is internal</span>
+<span class="sd">    - Non-zero values indicate regions on the surface</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="c1"># MESH</span>
+    <span class="k">with</span> <span class="n">dolfinx</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">XDMFFile</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">mesh_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">xdmf_file</span><span class="p">:</span>
+        <span class="n">mesh</span> <span class="o">=</span> <span class="n">xdmf_file</span><span class="o">.</span><span class="n">read_mesh</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;mesh&quot;</span><span class="p">)</span>  <span class="c1"># Ensure correct naming</span>
+
+
+    <span class="c1"># CONNECTIVITY</span>
+    <span class="c1"># (NOTE: is cell-to-facet necessary?)</span>
+    <span class="n">mesh</span><span class="o">.</span><span class="n">topology</span><span class="o">.</span><span class="n">create_connectivity</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">topology</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">topology</span><span class="o">.</span><span class="n">dim</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="c1"># Associate facets with the cells they bound</span>
+    <span class="n">mesh</span><span class="o">.</span><span class="n">topology</span><span class="o">.</span><span class="n">create_connectivity</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">topology</span><span class="o">.</span><span class="n">dim</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">topology</span><span class="o">.</span><span class="n">dim</span><span class="p">)</span>
+
+
+    <span class="c1"># CHECK MESH VALIDITY</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">dolfinx</span><span class="o">.</span><span class="n">mesh</span><span class="o">.</span><span class="n">Mesh</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load a valid mesh from </span><span class="si">{</span><span class="n">mesh_file</span><span class="si">}</span><span class="s2">. Check the file format.&quot;</span><span class="p">)</span>
+    
+
+    <span class="c1"># SUBDOMAINS (volumetric regions)</span>
+    <span class="c1"># Read cell meshtags from the &#39;clustered_physical_region.xdmf&#39; files</span>
+    <span class="n">physical_region_file</span> <span class="o">=</span> <span class="n">mesh_file</span><span class="p">[:</span><span class="o">-</span><span class="mi">5</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;_physical_region.xdmf&#39;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">XDMFFile</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">physical_region_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">xdmf_file</span><span class="p">:</span>
+            <span class="n">subdomains</span> <span class="o">=</span> <span class="n">xdmf_file</span><span class="o">.</span><span class="n">read_meshtags</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;mesh&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">print0</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error reading subdomains from </span><span class="si">{</span><span class="n">physical_region_file</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">subdomains</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+    <span class="c1"># BOUNDARIES (surface regions)</span>
+    <span class="c1"># Read boundary meshtags from the &#39;clustered_facet_region.xdmf&#39; files</span>
+    <span class="n">facet_region_file</span> <span class="o">=</span> <span class="n">mesh_file</span><span class="p">[:</span><span class="o">-</span><span class="mi">5</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;_facet_region.xdmf&#39;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">XDMFFile</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">facet_region_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">xdmf_file</span><span class="p">:</span>
+            <span class="n">boundaries</span> <span class="o">=</span> <span class="n">xdmf_file</span><span class="o">.</span><span class="n">read_meshtags</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;mesh&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+
+        <span class="n">print0</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error reading boundaries from </span><span class="si">{</span><span class="n">facet_region_file</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">boundaries</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">comm</span><span class="o">.</span><span class="n">Barrier</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">subdomains</span><span class="p">,</span> <span class="n">boundaries</span></div>
+
+
+
+
+
+<div class="viewcode-block" id="find_dataset_key">
+<a class="viewcode-back" href="../files/Perf_IO.html#Perf_IO_fcts.find_dataset_key">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">find_dataset_key</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Recursively find the correct dataset key.&quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">h5py</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">mpi4py</span><span class="w"> </span><span class="kn">import</span> <span class="n">MPI</span>
+
+    <span class="k">while</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">f</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">f</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">):</span>
+        <span class="n">sub_keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">f</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">sub_keys</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Group &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; is empty.&quot;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;/</span><span class="si">{</span><span class="n">sub_keys</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Key &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; not found. Available keys: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">key</span></div>
+
+
+
+
+
+
+<div class="viewcode-block" id="read_function_from_h5">
+<a class="viewcode-back" href="../files/Perf_IO.html#Perf_IO_fcts.read_function_from_h5">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">read_function_from_h5</span><span class="p">(</span><span class="n">K</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">dataset_name</span><span class="o">=</span><span class="s2">&quot;Function&quot;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Read global (owned) data from HDF5 and scatter into the DolfinX Function `K`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    K : dolfinx.fem.Function</span>
+<span class="sd">        Target function to populate with global (non-ghost) values.</span>
+<span class="sd">    filename : str</span>
+<span class="sd">        Path to the HDF5 file storing the global DoF values.</span>
+<span class="sd">    dataset_name : str</span>
+<span class="sd">        Logical key for the function dataset (e.g. &quot;Function&quot;).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># --- Step 1: Read full data on rank 0 ---</span>
+
+    <span class="n">comm</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
+    <span class="n">rank</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">rank</span>
+    <span class="n">flat_data</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">driver</span><span class="o">=</span><span class="s2">&quot;mpio&quot;</span><span class="p">,</span> <span class="n">comm</span><span class="o">=</span><span class="n">comm</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">dataset_key</span> <span class="o">=</span> <span class="n">find_dataset_key</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">dataset_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">dataset_key</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[Rank </span><span class="si">{</span><span class="n">rank</span><span class="si">}</span><span class="s2">] Could not find dataset key for logical name &#39;</span><span class="si">{</span><span class="n">dataset_name</span><span class="si">}</span><span class="s2">&#39; in &#39;</span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+        <span class="n">raw_data</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="n">dataset_key</span><span class="p">][()]</span>
+        <span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[Rank 0] Data shape from file &#39;</span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">raw_data</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> (key: &#39;</span><span class="si">{</span><span class="n">dataset_key</span><span class="si">}</span><span class="s2">&#39;)&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">raw_data</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">flat_data</span> <span class="o">=</span> <span class="n">raw_data</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">raw_data</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">flat_data</span> <span class="o">=</span> <span class="n">raw_data</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[Rank </span><span class="si">{</span><span class="n">rank</span><span class="si">}</span><span class="s2">] Unsupported data shape: </span><span class="si">{</span><span class="n">raw_data</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">flat_data</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">bcast</span><span class="p">(</span><span class="n">flat_data</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">global_flat_size</span> <span class="o">=</span> <span class="n">flat_data</span><span class="o">.</span><span class="n">size</span>
+
+    <span class="c1"># --- Step 2: Determine ownership (exclude ghost cells) ---</span>
+    <span class="n">local_size</span> <span class="o">=</span> <span class="n">index_map</span><span class="o">.</span><span class="n">size_local</span>  <span class="c1"># Non-ghost DoFs only</span>
+
+    <span class="c1"># Compute offset in global array</span>
+    <span class="n">offset</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="n">local_size</span><span class="p">)</span> <span class="o">-</span> <span class="n">local_size</span>
+    <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">offset</span><span class="p">,</span> <span class="n">offset</span> <span class="o">+</span> <span class="n">local_size</span>
+    <span class="c1"># --- Step 4: Assign data to owned DoFs only ---</span>
+    <span class="n">K</span><span class="o">.</span><span class="n">x</span><span class="o">.</span><span class="n">array</span><span class="p">[:</span><span class="n">local_size</span><span class="p">]</span> <span class="o">=</span> <span class="n">flat_data</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">K</span><span class="o">.</span><span class="n">x</span><span class="o">.</span><span class="n">array</span></div>
+
+
+
+
+
+
+<div class="viewcode-block" id="argument_reader">
+<a class="viewcode-back" href="../files/Perf_IO.html#Perf_IO_fcts.argument_reader">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">argument_reader</span><span class="p">(</span><span class="n">parser</span><span class="p">):</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s2">&quot;--darcy_file&quot;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;darcy_file&quot;</span><span class="p">,</span>
+                      <span class="n">help</span><span class="o">=</span><span class="s2">&quot;path to file storing defaults&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;str&quot;</span><span class="p">,</span><span class="n">default</span><span class="o">=</span><span class="s2">&quot;config.xml&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s2">&quot;--mesh_file&quot;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;mesh_file&quot;</span><span class="p">,</span>
+                      <span class="n">help</span><span class="o">=</span><span class="s2">&quot;path to file storing volume mesh&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;str&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s2">&quot;--res_fldr&quot;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;res_fldr&quot;</span><span class="p">,</span>
+                      <span class="n">help</span><span class="o">=</span><span class="s2">&quot;path to folder to store results&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;str&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s2">&quot;--pial_surf_file&quot;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;pial_surf_file&quot;</span><span class="p">,</span>
+                      <span class="n">help</span><span class="o">=</span><span class="s2">&quot;path to file storing pial surface mesh&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;str&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s2">&quot;--inflow_file&quot;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;inflow_file&quot;</span><span class="p">,</span>
+                      <span class="n">help</span><span class="o">=</span><span class="s2">&quot;path to file storing volumetric flow rate values and surface boundary IDs&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;str&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s2">&quot;--press_file&quot;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;press_file&quot;</span><span class="p">,</span>
+                      <span class="n">help</span><span class="o">=</span><span class="s2">&quot;first part of the file name storing pressure values (results)&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;str&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s2">&quot;--vel_file&quot;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;vel_file&quot;</span><span class="p">,</span>
+                      <span class="n">help</span><span class="o">=</span><span class="s2">&quot;first part of the file name storing velocity values (results)&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;str&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s2">&quot;--fe_degr&quot;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;fe_degr&quot;</span><span class="p">,</span>
+                      <span class="n">help</span><span class="o">=</span><span class="s2">&quot;polynomial degree of finite elements&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;int&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s2">&quot;--perm_tens_file&quot;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;perm_tens_file&quot;</span><span class="p">,</span>
+                      <span class="n">help</span><span class="o">=</span><span class="s2">&quot;file containing permeability tensors&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;str&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">parser</span></div>
+
+
+
+<span class="c1">#%%</span>
+<div class="viewcode-block" id="perm_init_config_reader">
+<a class="viewcode-back" href="../files/Perf_IO.html#Perf_IO_fcts.perm_init_config_reader">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">perm_init_config_reader</span><span class="p">(</span><span class="n">input_file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+    <span class="c1"># Untangle converts XML to Python object</span>
+    <span class="n">configs</span> <span class="o">=</span> <span class="n">untangle</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">input_file_path</span><span class="p">)</span><span class="o">.</span><span class="n">permeability_initialiser</span>
+    
+    <span class="n">mesh_file</span> <span class="o">=</span> <span class="n">configs</span><span class="o">.</span><span class="n">input_files_and_folders</span><span class="o">.</span><span class="n">mesh_file</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    
+    <span class="n">e_ref</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span><span class="n">configs</span><span class="o">.</span><span class="n">physical_variables</span><span class="o">.</span><span class="n">e_ref</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">))))</span>
+    <span class="n">K1_form</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span><span class="n">configs</span><span class="o">.</span><span class="n">physical_variables</span><span class="o">.</span><span class="n">K1_form</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">))))</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    
+    <span class="n">res_fldr</span> <span class="o">=</span> <span class="n">configs</span><span class="o">.</span><span class="n">output_files_and_folders</span><span class="o">.</span><span class="n">res_fldr</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="n">save_subres</span> <span class="o">=</span> <span class="s1">&#39;True&#39;</span><span class="o">==</span><span class="n">configs</span><span class="o">.</span><span class="n">output_files_and_folders</span><span class="o">.</span><span class="n">save_subres</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    
+    <span class="k">return</span> <span class="n">mesh_file</span><span class="p">,</span> <span class="n">e_ref</span><span class="p">,</span> <span class="n">K1_form</span><span class="p">,</span> <span class="n">res_fldr</span><span class="p">,</span> <span class="n">save_subres</span></div>
+
+
+
+<span class="c1">#%%</span>
+<div class="viewcode-block" id="basic_flow_config_reader">
+<a class="viewcode-back" href="../files/Perf_IO.html#Perf_IO_fcts.basic_flow_config_reader">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">basic_flow_config_reader</span><span class="p">(</span><span class="n">input_file_path</span><span class="p">):</span>
+    <span class="n">configs</span> <span class="o">=</span> <span class="n">untangle</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">input_file_path</span><span class="p">)</span><span class="o">.</span><span class="n">basic_flow_solver</span>
+    
+    <span class="n">mesh_file</span> <span class="o">=</span> <span class="n">configs</span><span class="o">.</span><span class="n">input_files_and_folders</span><span class="o">.</span><span class="n">mesh_file</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="n">read_inlet_boundary</span> <span class="o">=</span> <span class="s1">&#39;True&#39;</span><span class="o">==</span><span class="n">configs</span><span class="o">.</span><span class="n">input_files_and_folders</span><span class="o">.</span><span class="n">read_inlet_boundary</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="n">inlet_boundary_file</span> <span class="o">=</span> <span class="n">configs</span><span class="o">.</span><span class="n">input_files_and_folders</span><span class="o">.</span><span class="n">inlet_boundary_file</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="n">inlet_BC_type</span> <span class="o">=</span> <span class="n">configs</span><span class="o">.</span><span class="n">input_files_and_folders</span><span class="o">.</span><span class="n">inlet_BC_type</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="n">permeability_folder</span> <span class="o">=</span> <span class="n">configs</span><span class="o">.</span><span class="n">input_files_and_folders</span><span class="o">.</span><span class="n">permeability_folder</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    
+    <span class="n">p_arterial</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">configs</span><span class="o">.</span><span class="n">physical_variables</span><span class="o">.</span><span class="n">p_arterial</span><span class="o">.</span><span class="n">cdata</span><span class="p">)</span>
+    <span class="n">p_venous</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">configs</span><span class="o">.</span><span class="n">physical_variables</span><span class="o">.</span><span class="n">p_venous</span><span class="o">.</span><span class="n">cdata</span><span class="p">)</span>
+    
+    <span class="n">K1gm_ref</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">configs</span><span class="o">.</span><span class="n">physical_variables</span><span class="o">.</span><span class="n">K1gm_ref</span><span class="o">.</span><span class="n">cdata</span><span class="p">)</span>
+    <span class="n">K2gm_ref</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">configs</span><span class="o">.</span><span class="n">physical_variables</span><span class="o">.</span><span class="n">K2gm_ref</span><span class="o">.</span><span class="n">cdata</span><span class="p">)</span>
+    <span class="n">K3gm_ref</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">configs</span><span class="o">.</span><span class="n">physical_variables</span><span class="o">.</span><span class="n">K3gm_ref</span><span class="o">.</span><span class="n">cdata</span><span class="p">)</span>
+    <span class="n">gmowm_perm_rat</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">configs</span><span class="o">.</span><span class="n">physical_variables</span><span class="o">.</span><span class="n">gmowm_perm_rat</span><span class="o">.</span><span class="n">cdata</span><span class="p">)</span>
+    
+    <span class="n">beta12gm</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">configs</span><span class="o">.</span><span class="n">physical_variables</span><span class="o">.</span><span class="n">beta12gm</span><span class="o">.</span><span class="n">cdata</span><span class="p">)</span>
+    <span class="n">beta23gm</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">configs</span><span class="o">.</span><span class="n">physical_variables</span><span class="o">.</span><span class="n">beta23gm</span><span class="o">.</span><span class="n">cdata</span><span class="p">)</span>
+    <span class="n">gmowm_beta_rat</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">configs</span><span class="o">.</span><span class="n">physical_variables</span><span class="o">.</span><span class="n">gmowm_beta_rat</span><span class="o">.</span><span class="n">cdata</span><span class="p">)</span>
+    
+    <span class="n">fe_degr</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">configs</span><span class="o">.</span><span class="n">simulation_settings</span><span class="o">.</span><span class="n">fe_degr</span><span class="o">.</span><span class="n">cdata</span><span class="p">)</span>
+    
+    <span class="n">res_fldr</span> <span class="o">=</span> <span class="n">configs</span><span class="o">.</span><span class="n">output_files_and_folders</span><span class="o">.</span><span class="n">res_fldr</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="n">save_pvd</span> <span class="o">=</span> <span class="s1">&#39;True&#39;</span><span class="o">==</span><span class="n">configs</span><span class="o">.</span><span class="n">output_files_and_folders</span><span class="o">.</span><span class="n">save_pvd</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="n">comp_ave</span> <span class="o">=</span> <span class="s1">&#39;True&#39;</span><span class="o">==</span><span class="n">configs</span><span class="o">.</span><span class="n">output_files_and_folders</span><span class="o">.</span><span class="n">comp_ave</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    
+    
+    <span class="k">if</span> <span class="n">inlet_BC_type</span> <span class="o">==</span> <span class="s1">&#39;NBC&#39;</span> <span class="ow">and</span> <span class="n">read_inlet_boundary</span> <span class="o">==</span> <span class="kc">False</span><span class="p">:</span>
+        <span class="n">comm</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
+        <span class="n">rank</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">Get_rank</span><span class="p">()</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;NBC is not available without reading inlet boundary conditions&#39;</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">mesh_file</span><span class="p">,</span> <span class="n">read_inlet_boundary</span><span class="p">,</span> <span class="n">inlet_boundary_file</span><span class="p">,</span> <span class="n">inlet_BC_type</span><span class="p">,</span> <span class="n">permeability_folder</span><span class="p">,</span> \
+           <span class="n">p_arterial</span><span class="p">,</span> <span class="n">p_venous</span><span class="p">,</span> <span class="n">K1gm_ref</span><span class="p">,</span> <span class="n">K2gm_ref</span><span class="p">,</span> <span class="n">K3gm_ref</span><span class="p">,</span> <span class="n">gmowm_perm_rat</span><span class="p">,</span> \
+           <span class="n">beta12gm</span><span class="p">,</span> <span class="n">beta23gm</span><span class="p">,</span> <span class="n">gmowm_beta_rat</span><span class="p">,</span> <span class="n">fe_degr</span><span class="p">,</span> <span class="n">res_fldr</span><span class="p">,</span> <span class="n">save_pvd</span><span class="p">,</span> <span class="n">comp_ave</span></div>
+
+
+
+<span class="c1">#%%</span>
+<div class="viewcode-block" id="basic_flow_config_reader2">
+<a class="viewcode-back" href="../files/Perf_IO.html#Perf_IO_fcts.basic_flow_config_reader2">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">basic_flow_config_reader2</span><span class="p">(</span><span class="n">input_file_path</span><span class="p">,</span><span class="n">parser</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">input_file_path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;xml&#39;</span><span class="p">):</span>
+        <span class="n">configs</span> <span class="o">=</span> <span class="n">untangle</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">input_file_path</span><span class="p">)</span><span class="o">.</span><span class="n">basic_flow_solver_settings</span>       
+        <span class="kn">from</span><span class="w"> </span><span class="nn">pydoc</span><span class="w"> </span><span class="kn">import</span> <span class="n">locate</span>
+        
+        <span class="k">for</span> <span class="n">mydir</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="n">configs</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">mysubdir</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">configs</span><span class="p">,</span><span class="n">mydir</span><span class="p">)):</span>
+                    <span class="n">mydata</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">configs</span><span class="p">,</span><span class="n">mydir</span><span class="p">),</span><span class="n">mysubdir</span><span class="p">)</span>
+                    <span class="n">mydata_type</span> <span class="o">=</span> <span class="n">mydata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">mydata_type</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="nb">setattr</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">configs</span><span class="p">,</span><span class="n">mydir</span><span class="p">),</span><span class="n">mysubdir</span><span class="p">,</span> <span class="n">mydata</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+                    <span class="k">elif</span> <span class="n">mydata_type</span> <span class="o">!=</span> <span class="s1">&#39;bool&#39;</span><span class="p">:</span>
+                        <span class="n">converter</span> <span class="o">=</span> <span class="n">locate</span><span class="p">(</span><span class="n">mydata_type</span><span class="p">)</span>
+                        <span class="nb">setattr</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">configs</span><span class="p">,</span><span class="n">mydir</span><span class="p">),</span><span class="n">mysubdir</span><span class="p">,</span> <span class="n">converter</span><span class="p">(</span><span class="n">mydata</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">strip</span><span class="p">()))</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="nb">setattr</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">configs</span><span class="p">,</span><span class="n">mydir</span><span class="p">),</span><span class="n">mysubdir</span><span class="p">,</span> <span class="n">mydata</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">==</span><span class="s1">&#39;True&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">input_file_path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;yaml&#39;</span><span class="p">):</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">input_file_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">configfile</span><span class="p">:</span>
+            <span class="n">configs</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">configfile</span><span class="p">,</span> <span class="n">yaml</span><span class="o">.</span><span class="n">SafeLoader</span><span class="p">)</span>
+        <span class="n">configs</span> <span class="o">=</span> <span class="n">dict2obj</span><span class="p">(</span><span class="n">configs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;unknown input file format: &quot;</span> <span class="o">+</span> <span class="n">config_format</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span><span class="o">.</span><span class="n">res_fldr</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">configs</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">res_fldr</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span><span class="o">.</span><span class="n">res_fldr</span>
+
+    <span class="k">if</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span><span class="o">.</span><span class="n">mesh_file</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">configs</span><span class="o">.</span><span class="n">input</span><span class="o">.</span><span class="n">mesh_file</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span><span class="o">.</span><span class="n">mesh_file</span>
+
+    <span class="k">if</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span><span class="o">.</span><span class="n">inlet_boundary_file</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">configs</span><span class="o">.</span><span class="n">input</span><span class="o">.</span><span class="n">inlet_boundary_file</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span><span class="o">.</span><span class="n">inlet_boundary_file</span>
+    <span class="k">return</span> <span class="n">configs</span></div>
+
+
+
+<span class="c1">#%%</span>
+<div class="viewcode-block" id="basic_flow_config_reader_yml">
+<a class="viewcode-back" href="../files/Perf_IO.html#Perf_IO_fcts.basic_flow_config_reader_yml">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">basic_flow_config_reader_yml</span><span class="p">(</span>
+        <span class="n">input_file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">parser</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span>
+        <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Read and process flow configuration from a YAML file with command-line overrides.</span>
+
+<span class="sd">    1. Checks if input file has YAML extension and loads its contents.</span>
+<span class="sd">    2. Overrides specific configuration values with command-line arguments if provided.</span>
+<span class="sd">    3. Creates results directory if it doesn&#39;t exist (only on rank 0 in parallel).</span>
+<span class="sd">    4. Saves the final configuration to a YAML file in the results directory.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    input_file_path : str</span>
+<span class="sd">        Path to the input YAML configuration file.</span>
+<span class="sd">    parser : argparse.ArgumentParser</span>
+<span class="sd">        Argument parser containing potential command-line overrides.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Dict[str, Any]</span>
+<span class="sd">        Dictionary containing all configuration parameters after processing,</span>
+<span class="sd">        with string keys and values of various types.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">input_file_path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;yaml&#39;</span><span class="p">):</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">input_file_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">configfile</span><span class="p">:</span>
+            <span class="n">configs</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">configfile</span><span class="p">,</span> <span class="n">yaml</span><span class="o">.</span><span class="n">SafeLoader</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;unknown input file format: &quot;</span> <span class="o">+</span> <span class="n">config_format</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(),</span> <span class="s1">&#39;res_fldr&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span><span class="o">.</span><span class="n">res_fldr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">configs</span><span class="p">[</span><span class="s1">&#39;output&#39;</span><span class="p">][</span><span class="s1">&#39;res_fldr&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span><span class="o">.</span><span class="n">res_fldr</span>
+
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(),</span> <span class="s1">&#39;mesh_file&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span><span class="o">.</span><span class="n">mesh_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">configs</span><span class="p">[</span><span class="s1">&#39;input&#39;</span><span class="p">][</span><span class="s1">&#39;mesh_file&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span><span class="o">.</span><span class="n">mesh_file</span>
+
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(),</span> <span class="s1">&#39;inlet_boundary_file&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span><span class="o">.</span><span class="n">inlet_boundary_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">configs</span><span class="p">[</span><span class="s1">&#39;input&#39;</span><span class="p">][</span><span class="s1">&#39;inlet_boundary_file&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span><span class="o">.</span><span class="n">inlet_boundary_file</span>
+    
+    <span class="n">comm</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
+    <span class="n">rank</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">Get_rank</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">rank</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">configs</span><span class="p">[</span><span class="s1">&#39;output&#39;</span><span class="p">][</span><span class="s1">&#39;res_fldr&#39;</span><span class="p">]):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">configs</span><span class="p">[</span><span class="s1">&#39;output&#39;</span><span class="p">][</span><span class="s1">&#39;res_fldr&#39;</span><span class="p">])</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">configs</span><span class="p">[</span><span class="s1">&#39;output&#39;</span><span class="p">][</span><span class="s1">&#39;res_fldr&#39;</span><span class="p">]</span><span class="o">+</span><span class="s1">&#39;settings.yaml&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">outfile</span><span class="p">:</span>
+            <span class="n">yaml</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">configs</span><span class="p">,</span> <span class="n">outfile</span><span class="p">,</span> <span class="n">default_flow_style</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">configs</span></div>
+
+
+
+<span class="c1">#%%</span>
+<div class="viewcode-block" id="input_file_reader">
+<a class="viewcode-back" href="../files/Perf_IO.html#Perf_IO_fcts.input_file_reader">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">input_file_reader</span><span class="p">(</span><span class="n">input_file_path</span><span class="p">):</span>
+    <span class="n">configs</span> <span class="o">=</span> <span class="n">untangle</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">input_file_path</span><span class="p">)</span><span class="o">.</span><span class="n">porobrain</span>
+    
+    <span class="n">mesh_file</span> <span class="o">=</span> <span class="n">configs</span><span class="o">.</span><span class="n">files_and_folders</span><span class="o">.</span><span class="n">mesh_file</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="n">pial_surf_file</span> <span class="o">=</span> <span class="n">configs</span><span class="o">.</span><span class="n">files_and_folders</span><span class="o">.</span><span class="n">pial_surf_file</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="n">inflow_file</span> <span class="o">=</span> <span class="n">configs</span><span class="o">.</span><span class="n">files_and_folders</span><span class="o">.</span><span class="n">inflow_file</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="n">res_fldr</span> <span class="o">=</span> <span class="n">configs</span><span class="o">.</span><span class="n">files_and_folders</span><span class="o">.</span><span class="n">res_fldr</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    
+    <span class="n">p_arterial</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">configs</span><span class="o">.</span><span class="n">physical_variables</span><span class="o">.</span><span class="n">p_arterial</span><span class="o">.</span><span class="n">cdata</span><span class="p">)</span>
+    <span class="n">p_venous</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">configs</span><span class="o">.</span><span class="n">physical_variables</span><span class="o">.</span><span class="n">p_venous</span><span class="o">.</span><span class="n">cdata</span><span class="p">)</span>
+    <span class="n">e_ref</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span><span class="n">configs</span><span class="o">.</span><span class="n">physical_variables</span><span class="o">.</span><span class="n">e_ref</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">))))</span>
+    <span class="n">K1_ref</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span><span class="n">configs</span><span class="o">.</span><span class="n">physical_variables</span><span class="o">.</span><span class="n">K1_ref</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">))))</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="n">K2_ref</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span><span class="n">configs</span><span class="o">.</span><span class="n">physical_variables</span><span class="o">.</span><span class="n">K2_ref</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">))))</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="n">K3_ref</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span><span class="n">configs</span><span class="o">.</span><span class="n">physical_variables</span><span class="o">.</span><span class="n">K3_ref</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">))))</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="n">beta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span><span class="n">configs</span><span class="o">.</span><span class="n">physical_variables</span><span class="o">.</span><span class="n">beta</span><span class="o">.</span><span class="n">cdata</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">))))</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    
+    <span class="n">fe_degr</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">configs</span><span class="o">.</span><span class="n">simulation_settings</span><span class="o">.</span><span class="n">fe_degr</span><span class="o">.</span><span class="n">cdata</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">mesh_file</span><span class="p">,</span> <span class="n">p_arterial</span><span class="p">,</span> <span class="n">p_venous</span><span class="p">,</span> <span class="n">e_ref</span><span class="p">,</span> \
+        <span class="n">K1_ref</span><span class="p">,</span> <span class="n">K2_ref</span><span class="p">,</span> <span class="n">K3_ref</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">fe_degr</span><span class="p">,</span> <span class="n">res_fldr</span><span class="p">,</span> <span class="n">pial_surf_file</span><span class="p">,</span> <span class="n">inflow_file</span></div>
+
+
+
+
+<span class="c1">#%%</span>
+<div class="viewcode-block" id="inlet_file_reader">
+<a class="viewcode-back" href="../files/Perf_IO.html#Perf_IO_fcts.inlet_file_reader">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">inlet_file_reader</span><span class="p">(</span><span class="n">inlet_boundary_file</span><span class="p">):</span>
+    <span class="c1"># ID, Q [ml/s], p [Pa]</span>
+    <span class="n">boundary_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">inflow_file</span><span class="p">,</span><span class="n">skiprows</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">boundary_data</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1000</span> <span class="o">*</span> <span class="n">boundary_data</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">boundary_data</span></div>
+
+
+
+<span class="c1">#%%</span>
+
+<div class="viewcode-block" id="initialise_permeabilities">
+<a class="viewcode-back" href="../files/Perf_IO.html#Perf_IO_fcts.initialise_permeabilities">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">initialise_permeabilities</span><span class="p">(</span>
+    <span class="n">K1_space</span><span class="p">,</span> 
+    <span class="n">K2_space</span><span class="p">,</span> 
+    <span class="n">mesh</span><span class="p">,</span> 
+    <span class="n">permeability_folder</span><span class="p">,</span> 
+    <span class="o">**</span><span class="n">kwarg</span>
+    <span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Initialise the three permeability tensor components K1, K2, and K3.</span>
+
+<span class="sd">    1. Reads a model type flag from the input arguments (default: &#39;acv&#39;).</span>
+<span class="sd">    2. Allocates K1 and K2 as fem.Functions in the provided function spaces.</span>
+<span class="sd">    3. Loads K1 from file &#39;K1_form.h5&#39; inside the specified permeability folder.</span>
+<span class="sd">    4. Copies the values of K1 into K3 (which shares K1&#39;s function space).</span>
+<span class="sd">    5. If the model type is not recognised, an exception is raised.</span>
+<span class="sd">    6. Prints the first 10 entries of K1 and K2 for debugging.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    K1_space : dolfinx.fem.FunctionSpace</span>
+<span class="sd">        Function space for K1.</span>
+
+<span class="sd">    K2_space : dolfinx.fem.FunctionSpace</span>
+<span class="sd">        Function space for K2.</span>
+
+<span class="sd">    mesh : dolfinx.mesh.Mesh</span>
+<span class="sd">        The mesh on which permeability tensors are defined (used implicitly via FunctionSpaces).</span>
+
+<span class="sd">    permeability_folder : str</span>
+<span class="sd">        Directory path containing the HDF5 file &quot;K1_form.h5&quot; with stored permeability data.</span>
+
+<span class="sd">    **kwarg : dict</span>
+<span class="sd">        Optional keyword arguments. Currently accepts:</span>
+<span class="sd">            - model_type : str</span>
+<span class="sd">              Either &#39;acv&#39; or &#39;a&#39;. Determines how permeabilities are initialised.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple</span>
+<span class="sd">        K1 : dolfinx.fem.Function</span>
+<span class="sd">            Primary permeability tensor field read from file.</span>
+
+<span class="sd">        K2 : dolfinx.fem.Function</span>
+<span class="sd">            Secondary permeability tensor field allocated but not filled from file.</span>
+
+<span class="sd">        K3 : dolfinx.fem.Function</span>
+<span class="sd">            A copy of K1 in the same function space.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    Exception</span>
+<span class="sd">        If the provided model type is not &#39;acv&#39; or &#39;a&#39;.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">print0</span><span class="p">(</span><span class="s2">&quot;initialise_permeabilities: Starting permeability initialisation&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># Step 1: Determine model type</span>
+    <span class="n">model_type</span> <span class="o">=</span> <span class="n">kwarg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;model_type&#39;</span><span class="p">,</span> <span class="s1">&#39;acv&#39;</span><span class="p">)</span>
+    <span class="n">print0</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Step 1: Using model type = </span><span class="si">{</span><span class="n">model_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">comm</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
+    <span class="c1"># Step 2: Allocate functions and read data depending on model type</span>
+    <span class="k">if</span> <span class="n">model_type</span> <span class="o">==</span> <span class="s1">&#39;acv&#39;</span><span class="p">:</span>
+        <span class="n">print0</span><span class="p">(</span><span class="s2">&quot;Step 2.1: Allocating K1 and K2 for model type &#39;acv&#39;&quot;</span><span class="p">)</span>
+        <span class="n">K1</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">Function</span><span class="p">(</span><span class="n">K1_space</span><span class="p">)</span>
+        <span class="n">K2</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">Function</span><span class="p">(</span><span class="n">K2_space</span><span class="p">)</span>
+
+        <span class="c1"># Step 3: Load K1 from file</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="n">permeability_folder</span> <span class="o">+</span> <span class="s2">&quot;K1_form.h5&quot;</span>
+        <span class="n">print0</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Step 3: Reading K1 from file: </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">read_function_from_h5</span><span class="p">(</span><span class="n">K1</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;Function&quot;</span><span class="p">)</span>
+        <span class="n">print0</span><span class="p">(</span><span class="s2">&quot;Step 3.1: Successfully read K1.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Step 4: Create K3 as a copy of K1</span>
+        <span class="n">print0</span><span class="p">(</span><span class="s2">&quot;Step 4: Copying K1 into K3&quot;</span><span class="p">)</span>
+        <span class="n">K3</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">Function</span><span class="p">(</span><span class="n">K1</span><span class="o">.</span><span class="n">function_space</span><span class="p">)</span>
+        <span class="n">K3</span><span class="o">.</span><span class="n">x</span><span class="o">.</span><span class="n">array</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">K1</span><span class="o">.</span><span class="n">x</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="k">elif</span> <span class="n">model_type</span> <span class="o">==</span> <span class="s1">&#39;a&#39;</span><span class="p">:</span>
+        <span class="n">print0</span><span class="p">(</span><span class="s2">&quot;Step 2.1: Allocating K1 and K2 for model type &#39;a&#39;&quot;</span><span class="p">)</span>
+        <span class="n">K1</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">Function</span><span class="p">(</span><span class="n">K1_space</span><span class="p">)</span>
+        <span class="n">K2</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">Function</span><span class="p">(</span><span class="n">K2_space</span><span class="p">)</span>
+
+        <span class="c1"># Step 3: Load K1 from file</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="n">permeability_folder</span> <span class="o">+</span> <span class="s2">&quot;K1_form.h5&quot;</span>
+        <span class="n">print0</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Step 3: Reading K1 from file: </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">read_function_from_h5</span><span class="p">(</span><span class="n">K1</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;Function&quot;</span><span class="p">)</span>
+        <span class="n">print0</span><span class="p">(</span><span class="s2">&quot;Step 3.1: Successfully read K1.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Step 4: Create K3 as a copy of K1</span>
+        <span class="n">print0</span><span class="p">(</span><span class="s2">&quot;Step 4: Copying K1 into K3&quot;</span><span class="p">)</span>
+        <span class="n">K3</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">Function</span><span class="p">(</span><span class="n">K1</span><span class="o">.</span><span class="n">function_space</span><span class="p">)</span>
+        <span class="n">K3</span><span class="o">.</span><span class="n">x</span><span class="o">.</span><span class="n">array</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">K1</span><span class="o">.</span><span class="n">x</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">print0</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ERROR: Unknown model type &#39;</span><span class="si">{</span><span class="n">model_type</span><span class="si">}</span><span class="s2">&#39; encountered.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;unknown model type: &quot;</span> <span class="o">+</span> <span class="n">model_type</span><span class="p">)</span>
+
+    <span class="c1"># Step 5: Print debug information for the first few entries</span>
+    <span class="n">print0</span><span class="p">(</span><span class="s2">&quot;Step 5: Debugging output of initial permeability values&quot;</span><span class="p">)</span>
+    <span class="n">print0</span><span class="p">(</span><span class="s2">&quot;Initial K1 values (first 10 entries):&quot;</span><span class="p">,</span> <span class="n">K1</span><span class="o">.</span><span class="n">x</span><span class="o">.</span><span class="n">array</span><span class="p">[:</span><span class="mi">10</span><span class="p">])</span>
+    <span class="n">print0</span><span class="p">(</span><span class="s2">&quot;Initial K2 values (first 10 entries):&quot;</span><span class="p">,</span> <span class="n">K2</span><span class="o">.</span><span class="n">x</span><span class="o">.</span><span class="n">array</span><span class="p">[:</span><span class="mi">10</span><span class="p">])</span>
+
+    <span class="n">print0</span><span class="p">(</span><span class="s2">&quot;initialise_permeabilities: Finished initialising permeability functions.&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">K1</span><span class="p">,</span> <span class="n">K2</span><span class="p">,</span> <span class="n">K3</span></div>
+
+
+
+
+
+
+<span class="c1">#%%</span>
+
+
+<span class="c1">#%%</span>
+<div class="viewcode-block" id="dict2obj">
+<a class="viewcode-back" href="../files/Perf_IO.html#Perf_IO_fcts.dict2obj">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">dict2obj</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">my_dict</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">my_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+               <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="p">[</span><span class="n">dict2obj</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">b</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+               <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">dict2obj</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="n">b</span><span class="p">)</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">Gemini</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../files/what.html">What This Software Does?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../files/gem_x.html">Gemini X</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../files/Perf_IO.html">Perf_IO_fcts module</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Adam.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

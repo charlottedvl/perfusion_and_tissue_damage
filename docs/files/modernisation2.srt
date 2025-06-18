@@ -1,0 +1,107 @@
+.. _modernisation_summary:
+
+==========================
+Modernisation Summary (FEniCS -> FEniCSx)
+==========================
+
+This document summarises the key structural and functional changes made during the modernisation of the cerebral perfusion solver from FEniCS legacy to FEniCSx (0.9), as described in the PDF titled *"Group Project: Methodology and Results for Modernisation and Weak vs Strong Scaling"* by Natalia Denton (April 2025). The goal is to provide an RST-readable digest for developers, focusing on maintainability, portability, and performance.
+
+.. note::
+    For full methodology, source comparisons, and validation steps, refer to the PDF.
+
+Repository Overview
+===================
+
+The updated repository is organized to support modular execution, containerisation, and HPC batch scripting:
+
+- `brain_meshes/`: Meshes and anatomical data
+- `doc/`: Sphinx-compatible documentation
+- `src/Gem_X/`: Modernised solver code
+- `run_files/`, `scripts/`: HPC runners and configuration examples
+
+General Workflow
+=================
+
+1. Preprocess Mesh: Extract and convert cortical meshes
+2. Initialise Permeability: Compute tensor fields (anisotropic)
+3. Solve Flow: Apply BCs and solve Darcy equations in ACV or A model
+
+Configuration-driven Execution
+------------------------------
+
+- YAML-based config files replaced `argparse` and manual CLI input
+- Model type (`a`/`acv`), occlusion IDs, mesh paths, and solver parameters are defined per run
+- Improved reproducibility and compatibility with job arrays
+
+Key Software Stack
+==================
+
+- **Core**: `dolfinx`, `basix`, `ufl`, `ffcx`
+- **Parallel I/O & MPI**: `mpi4py`, `petsc4py`, `h5py`
+- **Postprocessing**: `tqdm`, `joblib`, `numpy`, `pandas`, `scipy`
+- **Config Parsing**: `pyyaml`
+
+Main Code Modernisations
+=========================
+
+Below is a high-level summary of updates grouped by component. Repeated patterns are listed only once.
+
+**Logging and MPI**:
+- Replaced `set_log_level(50)` with `dolfinx.log.set_log_level(LogLevel.WARNING)`
+- Added rank-aware `print0()` wrapper (avoids `if rank==0` everywhere)
+
+**Function Spaces & Elements**:
+- Replaced `TensorFunctionSpace(...)` and `MixedElement(...)` with `basix.ufl.element(...)`
+- Explicit use of `fem.functionspace(mesh, element)` for all `FunctionSpaces`
+
+**I/O and HDF5 Output**:
+- Deprecated `write_checkpoint(...)` replaced with `XDMFFile(...).write_function(...)`
+- Introduced MPI-safe output and file-locking avoidance
+
+**Permeability Initialisation**:
+- Tensor constructed using orientation data and stored in `.h5/.xdmf`
+- Introduced `find_dataset_key()` and `read_function_from_h5()` to replace `read_checkpoint`
+
+**Boundary Condition Management**:
+- Legacy: Argument-based (CLI)
+- Modern: YAML config + internal dictionaries for arterial mapping
+- Added mixed BC support (Dirichlet + Neumann)
+
+**Linear System Solve**:
+- Legacy: `LinearVariationalSolver(...)`
+- Modern: Direct `PETSc.KSP` configuration with solver.setType(), getPC(), and assemble routines
+- Added convergence monitors and error checking (NaN, residuals)
+
+**Helper Functions Replaced**:
+- `project(...)` → `project_expression(...)`, `project_tensor_expression(...)`
+- `interpolate(...)` → `interpolate_expression(...)`, `interpolate_tensor_expression(...)`
+- Result outputs normalized via `interpolate_to_mesh_order(...)`
+
+**Boundary Tag Handling**:
+- Legacy: Subdomain functions and CSV mappers
+- Modern: `MeshTags` + hardcoded `artery_groups` dictionary
+
+**Data Arrays and Scattering**:
+- Used `.x.array[:] = ...` and `.x.scatter_forward()` in place of `.vector().set_local(...)`
+
+**Miscellaneous Improvements**:
+- All `dict.get("key", default)` replaced long `if-else` kwarg branches
+- Function calls now expose keyword args for model type, inlet BC type, etc.
+- All MPI-heavy loops restricted to local range via `mesh.topology.index_map` ranges
+
+Sections in the Original PDF
+============================
+
+For those interested in more detailed breakdowns:
+
+- Section 4.1: Permeability Initialiser
+- Section 4.2: Basic Flow Solver
+- Section 4.3: Boundary Condition Generator
+- Section 4.4: IO Functions
+- Section 4.5: Supplementary Functions
+- Section 4.6: Finite Element Setup and Solver Core
+- Section 5: Final Summary of Solver Modernisation
+
+.. bibliography:: modernization_refs.bib
+   :all:
+

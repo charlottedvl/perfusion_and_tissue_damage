@@ -164,7 +164,7 @@ if rank == 0:
     print('Step 2: Defining and solving governing equations')
 start2 = time.time()
 
-lin_solver, precond, rtol, mon_conv, init_sol = 'bicgstab', 'amg', False, False, False
+lin_solver, precond, rtol, mon_conv, init_sol = 'bicgstab', 'petsc_amg', False, False, False
 
 exit_program = False
 if not GeneralFunctions.is_non_zero_file(coupled_resistance_file):
@@ -494,7 +494,10 @@ if coupled_model:
     if rank == 0:
         print("\033[96mRunning two-way coupling\033[m")
         sys.stdout.flush()
-        guessPressure = numpy.array([node.Node.WKNode.Pressure for node in Patient.Perfusion.CouplingPoints])
+        # guessPressure = numpy.array([node.Node.WKNode.Pressure for node in Patient.Perfusion.CouplingPoints])
+        guessPressure = numpy.array([p_arterial for node in Patient.Perfusion.CouplingPoints])
+        print(f"Initial guess: {guessPressure}")
+        sys.stdout.flush()
         stop = [0]
         sol = scipy.optimize.root(coupledmodel, guessPressure, args=(stop,), method='krylov',
                                   options={'disp': True, 'maxiter': 10,
@@ -599,7 +602,7 @@ with contextlib.redirect_stdout(None):
     # Pressure from the perfusion model
     PressureAtBoundary = my_integr_vars['press1_surfave'][coupled_surface_index_start:]
 
-    # perfusion_stroke = project(abs(beta12 * (p1 - p2) * 6000), K2_space, solver_type='bicgstab', preconditioner_type='amg')
+    # perfusion_stroke = project(abs(beta12 * (p1 - p2) * 6000), K2_space, solver_type='bicgstab', preconditioner_type='petsc_amg')
 comm.Barrier()
 
 if rank == 0:

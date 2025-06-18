@@ -30,18 +30,18 @@ def cost_function(param_values, configs, mesh, subdomains, boundaries, K2_space,
                                  configs['input']['read_inlet_boundary'], configs['input']['inlet_boundary_file'],
                                  configs['input']['inlet_BC_type'], model_type = compartmental_model)
 
-    lin_solver, precond, rtol, mon_conv, init_sol = 'bicgstab', 'amg', False, False, False
+    lin_solver, precond, rtol, mon_conv, init_sol = 'bicgstab', 'petsc_amg', False, False, False
 
     try:
         p = fe_mod.solve_lin_sys(Vp, LHS, RHS, BCs, lin_solver, precond, rtol, mon_conv, init_sol, timer=False)
 
         if compartmental_model == 'acv':
             p1, p2, p3 = p.split()
-            perfusion = project(beta12 * (p1-p2) * 6000, K2_space, solver_type='bicgstab', preconditioner_type='amg')
+            perfusion = project(beta12 * (p1-p2) * 6000, K2_space, solver_type='bicgstab', preconditioner_type='petsc_amg')
         elif compartmental_model == 'a':
             p1 = p.copy(deepcopy=True)
-            beta_total = project( 1 / (1/beta12+1/beta23), K2_space, solver_type='bicgstab', preconditioner_type='amg')
-            perfusion = project( beta_total * (p-Constant(configs['physical']['p_venous'])) * 6000, K2_space, solver_type='bicgstab', preconditioner_type='amg')
+            beta_total = project( 1 / (1/beta12+1/beta23), K2_space, solver_type='bicgstab', preconditioner_type='petsc_amg')
+            perfusion = project( beta_total * (p-Constant(configs['physical']['p_venous'])) * 6000, K2_space, solver_type='bicgstab', preconditioner_type='petsc_amg')
         else:
             raise Exception("unknown model type: " + model_type)
 
@@ -74,7 +74,7 @@ def cost_function(param_values, configs, mesh, subdomains, boundaries, K2_space,
             p3vec = p3.vector().get_local()
             p3vec[:] = configs['physical']['p_venous']
             p3.vector().set_local(p3vec)
-            p2 = project( (beta12*p1 + beta23*p3)/(beta12+beta23), Vp, solver_type='bicgstab', preconditioner_type='amg')
+            p2 = project( (beta12*p1 + beta23*p3)/(beta12+beta23), Vp, solver_type='bicgstab', preconditioner_type='petsc_amg')
         wdir = "opt_field_res/"
         vtkfile = File(wdir + "p1.pvd")
         vtkfile << p1
@@ -276,14 +276,14 @@ if rank == 0:
 #          configs['physical']['p_arterial'], configs['physical']['p_venous'], \
 #          configs['input']['read_inlet_boundary'], configs['input']['inlet_boundary_file'], configs['input']['inlet_BC_type'])
 
-# lin_solver, precond, rtol, mon_conv, init_sol = 'bicgstab', 'amg', False, False, False
+# lin_solver, precond, rtol, mon_conv, init_sol = 'bicgstab', 'petsc_amg', False, False, False
 
 # try:
 #     psol = fe_mod.solve_lin_sys(Vp,LHS,RHS,BCs,lin_solver,precond,rtol,mon_conv,init_sol)
 
 #     p1sol, p2sol, p3sol=psol.split()
 
-#     perfusion = project(beta12 * (p1sol-p2sol)*6000,K2_space, solver_type='bicgstab', preconditioner_type='amg')
+#     perfusion = project(beta12 * (p1sol-p2sol)*6000,K2_space, solver_type='bicgstab', preconditioner_type='petsc_amg')
 
 #     FW = assemble( perfusion*dV(11) )/V_wm
 #     FG = assemble( perfusion*dV(12) )/V_gm

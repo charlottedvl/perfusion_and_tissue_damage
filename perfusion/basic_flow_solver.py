@@ -143,7 +143,7 @@ LHS, RHS, sigma1, sigma2, sigma3, BCs = fe_mod.set_up_fe_solver2(mesh, subdomain
                                                                  configs['input']['inlet_BC_type'],
                                                                  model_type=compartmental_model)
 
-lin_solver, precond, rtol, mon_conv, init_sol = 'bicgstab', 'amg', False, False, False
+lin_solver, precond, rtol, mon_conv, init_sol = 'bicgstab', 'petsc_amg', False, False, False
 
 # tested iterative solvers for first order elements: gmres, cg, bicgstab
 # linear_solver_methods()

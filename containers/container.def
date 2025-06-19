@@ -1,0 +1,119 @@
+Bootstrap: docker
+From: ubuntu:22.04
+Stage: build
+
+%post
+    # System dependencies
+    apt-get update && apt-get install -y --fix-missing \
+        mpich \
+        libmpich-dev \
+        netcat \
+        git \
+        vim \
+        gcc \
+        build-essential \
+        cmake \
+        wget \
+        pkg-config \
+        bzip2 \
+        libgl1 \
+        libxrender1 \
+        libsm6 \
+        libxext6
+
+    # Install Anaconda
+    mkdir -p /conda_stuff
+    cd /conda_stuff
+    wget https://repo.anaconda.com/archive/Anaconda3-2024.10-1-Linux-x86_64.sh
+    chmod +x Anaconda3-2024.10-1-Linux-x86_64.sh
+    ./Anaconda3-2024.10-1-Linux-x86_64.sh -b -p /conda_stuff/more_files
+
+    export PATH="/conda_stuff/more_files/bin:$PATH"
+    . /conda_stuff/more_files/etc/profile.d/conda.sh
+    conda init bash
+    conda config --set always_yes yes --set changeps1 no
+    conda update -n base -c defaults conda
+
+    ###### Create FEniCSx Environment ######
+    conda create -n fenicsx-newenv -c conda-forge python=3.11
+    conda activate fenicsx-newenv
+    conda install -c conda-forge \
+        fenics-dolfinx \
+        mpich \
+        mpi4py \
+        hdf5=*=mpi* \
+        h5py=*=mpi* \
+        pyvista \
+        pyyaml \
+        tqdm \
+        scipy \
+        untangle \
+        meshio \
+        pandas
+
+    echo "Testing mpi4py in fenicsx-newenv:"
+    python -c "from mpi4py import MPI; print('FEniCSx MPI OK on rank', MPI.COMM_WORLD.Get_rank())"
+
+    conda deactivate
+
+    ###### Create FEniCS Legacy Environment ######
+    conda create -n fenics-legacy -c conda-forge python=3.9
+    conda activate fenics-legacy
+    conda install -c conda-forge \
+        fenics \
+        mpich=4.2.0 \
+        mpi4py=3.1.5 \
+        hdf5=*=mpi* \
+        h5py=*=mpi* \
+        pyyaml \
+        tqdm \
+        scipy \
+        untangle \
+        pkg-config
+
+    echo "Testing mpi4py in fenics-legacy:"
+    python -c "from mpi4py import MPI; print('Legacy MPI OK on rank', MPI.COMM_WORLD.Get_rank())"
+
+    conda deactivate
+
+    ###### Activation Scripts ######
+    echo '#!/bin/bash' > /usr/local/bin/activate-fenics-legacy
+    echo '. /conda_stuff/more_files/etc/profile.d/conda.sh' >> /usr/local/bin/activate-fenics-legacy
+    echo 'conda activate fenics-legacy' >> /usr/local/bin/activate-fenics-legacy
+    echo 'export PKG_CONFIG_PATH=/conda_stuff/more_files/envs/fenics-legacy/lib/pkgconfig:$PKG_CONFIG_PATH' >> /usr/local/bin/activate-fenics-legacy
+    echo 'exec "$@"' >> /usr/local/bin/activate-fenics-legacy
+    chmod +x /usr/local/bin/activate-fenics-legacy
+
+    echo '#!/bin/bash' > /usr/local/bin/activate-fenicsx
+    echo '. /conda_stuff/more_files/etc/profile.d/conda.sh' >> /usr/local/bin/activate-fenicsx
+    echo 'conda activate fenicsx-newenv' >> /usr/local/bin/activate-fenicsx
+    echo 'export PKG_CONFIG_PATH=/conda_stuff/more_files/envs/fenicsx-newenv/lib/pkgconfig:$PKG_CONFIG_PATH' >> /usr/local/bin/activate-fenicsx
+    echo 'exec "$@"' >> /usr/local/bin/activate-fenicsx
+    chmod +x /usr/local/bin/activate-fenicsx
+
+    ###### MPI Launcher for FEniCSx ######
+    echo '#!/bin/bash' > /usr/local/bin/mpirun-fenicsx
+    echo '. /conda_stuff/more_files/etc/profile.d/conda.sh' >> /usr/local/bin/mpirun-fenicsx
+    echo 'conda activate fenicsx-newenv' >> /usr/local/bin/mpirun-fenicsx
+    echo 'mpirun "$@"' >> /usr/local/bin/mpirun-fenicsx
+    chmod +x /usr/local/bin/mpirun-fenicsx
+
+    ###### MPI Launcher for FEniCS Legacy ######
+    echo '#!/bin/bash' > /usr/local/bin/mpirun-fenics-legacy
+    echo '. /conda_stuff/more_files/etc/profile.d/conda.sh' >> /usr/local/bin/mpirun-fenics-legacy
+    echo 'conda activate fenics-legacy' >> /usr/local/bin/mpirun-fenics-legacy
+    echo 'mpirun "$@"' >> /usr/local/bin/mpirun-fenics-legacy
+    chmod +x /usr/local/bin/mpirun-fenics-legacy
+
+%environment
+    export PATH="/conda_stuff/more_files/bin:$PATH"
+    export PYTHONNOUSERSITE=1
+    export CC=$(which gcc)
+    export CXX=$(which g++)
+    export PKG_CONFIG_PATH=/conda_stuff/more_files/envs/fenicsx-newenv/lib/pkgconfig:$PKG_CONFIG_PATH
+
+%runscript
+    . /conda_stuff/more_files/etc/profile.d/conda.sh
+    conda activate fenicsx-newenv
+    export PKG_CONFIG_PATH=/conda_stuff/more_files/envs/fenicsx-newenv/lib/pkgconfig:$PKG_CONFIG_PATH
+    exec "$@"

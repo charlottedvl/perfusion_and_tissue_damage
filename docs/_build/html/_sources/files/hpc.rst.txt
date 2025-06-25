@@ -1,5 +1,5 @@
-HPC Tutorials
-=============
+Running on HPC
+==============
 
 The code can be run in two version: serial or parallel. In order to run in parallel, you can either use your local
 machine by following this tutorial: `Running on a local machine <local.html>`_. You can also choose to use one of the supercomputer facilities that allow to run

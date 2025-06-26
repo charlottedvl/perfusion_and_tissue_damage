@@ -27,7 +27,7 @@ numpy.set_printoptions(linewidth=200)
 parameters['ghost_mode'] = 'none'
 
 # added module
-from perfusion.src.Legacy_version.io import IO_fcts
+from src.Legacy_version.io import IO_fcts
 import suppl_fcts
 import finite_element_fcts as fe_mod
 
@@ -48,7 +48,7 @@ start1 = time.time()
 
 parser = argparse.ArgumentParser(description="perfusion computation based on multi-compartment Darcy flow model")
 parser.add_argument("--config_file", help="path to configuration file",
-                    type=str, default='./config_basic_flow_solver.yaml')
+                    type=str, default='./configs/config_basic_flow_solver.yaml')
 parser.add_argument("--res_fldr", help="path to results folder (string ended with /)", type=str, default=None)
 config_file = parser.parse_args().config_file
 

@@ -7,16 +7,16 @@ input:
   # file specifying inlet boundary conditions
   inlet_boundary_file: BC_template_RMCAo.csv
   # mesh file path
-  mesh_file: ../brain_meshes/b0000/clustered.xdmf
+  mesh_file: ./brain_meshes/b0000/clustered.xdmf
   # path of folder containing pre-computed permeability tensor form 
-  permeability_folder: ../brain_meshes/b0000/permeability/
+  permeability_folder: ./brain_meshes/b0000/permeability/
   # read inlet boundary file (no-false or yes-true)
   read_inlet_boundary: true
 output:
   # compute pre-determined averages (no-false or yes-true, old implementations)
   comp_ave: false
   # path of the folder storing results
-  res_fldr: ../VP_results/p0000/perfusion_RMCAo/
+  res_fldr: ./results/p0000/perfusion_RMCAo/
   # list of saved variables including any of the following
   # {'beta12','beta23','K1','K2','K3','perfusion','press1','press2','press3','vel1','vel2','vel3'}
   res_vars: {'press1','press2','press3','vel1','vel2','perfusion','beta12','beta23'}

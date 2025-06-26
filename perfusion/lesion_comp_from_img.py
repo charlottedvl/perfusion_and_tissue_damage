@@ -13,9 +13,9 @@ np.set_printoptions(linewidth=200)
 # %% READ INPUT
 parser = argparse.ArgumentParser(description="compute lesion proxies from perfusion images (*.nii.gz)")
 parser.add_argument("--healthy_file", help="path to image file of the healthy state",
-                    type=str, default='../VP_results/p0000/perfusion_healthy/perfusion.nii.gz')
+                    type=str, default='./results/p0000/perfusion_healthy/perfusion.nii.gz')
 parser.add_argument("--occluded_file", help="path to image file of the occluded state",
-                    type=str, default='../VP_results/p0000/perfusion_RMCAo/perfusion.nii.gz')
+                    type=str, default='./results/p0000/perfusion_RMCAo/perfusion.nii.gz')
 parser.add_argument("--res_fldr", help="path to folder where results will be saved",
                     type=str, default=None)
 parser.add_argument("--background_value", help="value used for background voxels",

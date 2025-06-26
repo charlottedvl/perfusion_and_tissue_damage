@@ -26,7 +26,7 @@ from dolfin import *
 import time
 import argparse
 
-from perfusion.src.Legacy_version.io import IO_fcts
+from src.Legacy_version.io import IO_fcts
 import suppl_fcts
 
 # solver runs is "silent" mode

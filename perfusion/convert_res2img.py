@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import os
 
 # added module
-from perfusion.src.Legacy_version.io import IO_fcts
+from src.Legacy_version.io import IO_fcts
 import finite_element_fcts as fe_mod
 
 numpy.set_printoptions(linewidth=200)
@@ -21,7 +21,7 @@ dolfin.set_log_level(50)
 # %% READ INPUT
 parser = argparse.ArgumentParser(description="convert finite elements results (*.h5 and *.xdmf) into an image (*.nii.gz)")
 parser.add_argument("--config_file", help="path to configuration file",
-                    type=str, default='./config_basic_flow_solver.yaml')
+                    type=str, default='./configs/config_basic_flow_solver.yaml')
 parser.add_argument("--res_fldr", help="path to results folder (string ended with /)",
                     type=str, default=None)
 parser.add_argument("--variable", help="e.g. press1, vel1, perfusion, K1, etc.",

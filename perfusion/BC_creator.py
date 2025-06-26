@@ -8,7 +8,7 @@ on their surface area
 
 from dolfin import *
 import numpy as np
-from perfusion.src.Legacy_version.io import IO_fcts
+from src.Legacy_version.io import IO_fcts
 import argparse
 
 import os
@@ -24,7 +24,7 @@ parser.add_argument("--occl_ID", help="a list of integers containing occluded ma
 parser.add_argument("--folder", help="folder of output file (string ended with /)",
                     type=str, default=None)
 parser.add_argument("--config_file", help="path to configuration file (string)",
-                    type=str, default='./config_basic_flow_solver.yaml')
+                    type=str, default='./configs/config_basic_flow_solver.yaml')
 parser.add_argument("--res_fldr", help="path to results folder (string ended with /)",
                 type=str, default=None)
 parser.add_argument("--mesh_file", help="path to mesh_file",

@@ -5,7 +5,7 @@ input:
   # otherwise determined based on the inlet boundary file
   inlet_BC_type: mixed
   # file specifying inlet boundary conditions
-  inlet_boundary_file: BC_template_RMCAo.csv
+  inlet_boundary_file: ./boundary_data/templates/BC_template_RMCAo.csv
   # mesh file path
   mesh_file: ./brain_meshes/b0000/clustered.xdmf
   # path of folder containing pre-computed permeability tensor form 

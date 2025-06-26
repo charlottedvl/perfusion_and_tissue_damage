@@ -27,8 +27,7 @@ parameters['ghost_mode'] = 'none'
 
 # added module
 from src.Legacy_version.io import IO_fcts
-import suppl_fcts
-import finite_element_fcts as fe_mod
+from src.Legacy_version.utils import suppl_fcts, finite_element_fcts as fe_mod
 
 import sys
 

@@ -9,7 +9,7 @@ import os
 
 # added module
 from src.Legacy_version.io import IO_fcts
-import finite_element_fcts as fe_mod
+from src.Legacy_version.utils import finite_element_fcts as fe_mod
 
 numpy.set_printoptions(linewidth=200)
 # ghost mode options: 'none', 'shared_facet', 'shared_vertex'

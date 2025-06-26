@@ -1,7 +1,8 @@
 from dolfin import *
 import numpy as np
 import time
-import suppl_fcts
+from . import suppl_fcts
+
 
 #%%
 def mesh_reader(mesh_file):

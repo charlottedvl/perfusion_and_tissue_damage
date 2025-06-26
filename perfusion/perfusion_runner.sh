@@ -11,25 +11,25 @@ then
     echo "The permeability tensor form has been computed already"
 else
     echo "The permeability tensor form will be computed" 
-    mpirun -n 6 python3 permeability_initialiser.py --config_file ./configs/config_permeability_initialiser.yaml
+    mpirun -n 6 python3 -m src.Legacy_version.simulation.permeability_initialiser --config_file ./configs/config_permeability_initialiser.yaml
 fi
 
 echo "The basic flow solver is running"
-python3 BC_creator.py
-mpirun -n 6 python3 basic_flow_solver.py
-python3 convert_res2img.py --config_file ./results/p0000/perfusion_healthy/settings.yaml
+python3 -m BC_creator
+mpirun -n 6 python3 -m src.Legacy_version.simulation.basic_flow_solver
+python3 -m convert_res2img --config_file ./results/p0000/perfusion_healthy/settings.yaml
 
 echo "The LMCAo model is running"
-mpirun -n 6 python3 basic_flow_solver.py --config_file ./configs/config_basic_flow_solver_LMCAo.yaml
-python3 convert_res2img.py --config_file ./results/p0000/perfusion_LMCAo/settings.yaml
-python3 lesion_comp_from_img.py --healthy_file ./results/p0000/perfusion_healthy/perfusion.nii.gz --occluded_file ./results/p0000/perfusion_LMCAo/perfusion.nii.gz
-mpirun -n 6 python3 infarct_calculation_thresholds.py --config_file ./configs/config_basic_flow_solver_LMCAo.yaml --baseline ./results/p0000/perfusion_healthy/perfusion.xdmf --occluded ./results/p0000/perfusion_LMCAo/perfusion.xdmf
+mpirun -n 6 python3 -m src.Legacy_version.simulation.basic_flow_solver --config_file ./configs/config_basic_flow_solver_LMCAo.yaml
+python3 -m convert_res2img --config_file ./results/p0000/perfusion_LMCAo/settings.yaml
+python3 -m lesion_comp_from_img --healthy_file ./results/p0000/perfusion_healthy/perfusion.nii.gz --occluded_file ./results/p0000/perfusion_LMCAo/perfusion.nii.gz
+mpirun -n 6 python3 -m infarct_calculation_thresholds --config_file ./configs/config_basic_flow_solver_LMCAo.yaml --baseline ./results/p0000/perfusion_healthy/perfusion.xdmf --occluded ./results/p0000/perfusion_LMCAo/perfusion.xdmf
 
 echo "The RMCAo model is running"
-mpirun -n 6 python3 basic_flow_solver.py --config_file ./configs/config_basic_flow_solver_RMCAo.yaml
-python3 convert_res2img.py --config_file ./results/p0000/perfusion_RMCAo/settings.yaml
-python3 lesion_comp_from_img.py --healthy_file ./results/p0000/perfusion_healthy/perfusion.nii.gz --occluded_file ./results/p0000/perfusion_RMCAo/perfusion.nii.gz
-mpirun -n 6 python3 infarct_calculation_thresholds.py --config_file ./configs/config_basic_flow_solver_RMCAo.yaml --baseline ./results/p0000/perfusion_healthy/perfusion.xdmf --occluded ./results/p0000/perfusion_RMCAo/perfusion.xdmf
+mpirun -n 6 python3 -m src.Legacy_version.simulation.basic_flow_solver --config_file ./configs/config_basic_flow_solver_RMCAo.yaml
+python3 -m convert_res2img --config_file ./results/p0000/perfusion_RMCAo/settings.yaml
+python3 -m lesion_comp_from_img --healthy_file ./results/p0000/perfusion_healthy/perfusion.nii.gz --occluded_file ./results/p0000/perfusion_RMCAo/perfusion.nii.gz
+mpirun -n 6 python3 -m infarct_calculation_thresholds --config_file ./configs/config_basic_flow_solver_RMCAo.yaml --baseline ./results/p0000/perfusion_healthy/perfusion.xdmf --occluded ./results/p0000/perfusion_RMCAo/perfusion.xdmf
 
 # TODO: update the tissue health path when the tissue_health will be refactored
 # run tissue health model

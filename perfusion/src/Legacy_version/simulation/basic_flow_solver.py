@@ -27,9 +27,8 @@ numpy.set_printoptions(linewidth=200)
 parameters['ghost_mode'] = 'none'
 
 # added module
-from src.Legacy_version.io import IO_fcts
-import suppl_fcts
-import finite_element_fcts as fe_mod
+from ..io import IO_fcts
+from ..utils import suppl_fcts, finite_element_fcts as fe_mod
 
 # solver runs is "silent" mode
 set_log_level(50)

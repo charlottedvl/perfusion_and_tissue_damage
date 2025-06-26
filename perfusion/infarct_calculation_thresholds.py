@@ -21,8 +21,8 @@ import yaml
 from dolfin import *
 
 from src.Legacy_version.io import IO_fcts
-import finite_element_fcts as fe_mod
-import suppl_fcts
+from src.Legacy_version.utils import finite_element_fcts as fe_mod
+from src.Legacy_version.utils import suppl_fcts
 
 np.set_printoptions(linewidth=200)
 
@@ -45,7 +45,7 @@ start1 = time.time()
 
 parser = argparse.ArgumentParser(description="perfusion computation based on multi-compartment Darcy flow model")
 parser.add_argument("--config_file", help="path to configuration file (string ended with /)",
-                    type=str, default='./config_coupled_flow_solver.yaml')
+                    type=str, default='./configs/config_coupled_flow_solver.yaml')
 parser.add_argument("--res_fldr", help="path to results folder (string ended with /)",
                     type=str, default=None)
 parser.add_argument("--mesh_file", help="path to mesh_file",

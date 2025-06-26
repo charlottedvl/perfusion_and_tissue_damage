@@ -1,7 +1,5 @@
 from dolfin import *
 import numpy as np
-from scipy.spatial.transform import Rotation as R
-import IO_fcts
 
 
 #%%

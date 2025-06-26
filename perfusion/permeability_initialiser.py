@@ -26,10 +26,8 @@ from dolfin import *
 import time
 import argparse
 
-import IO_fcts
+from perfusion.src.Legacy_version.io import IO_fcts
 import suppl_fcts
-import finite_element_fcts as fe_mod
-import yaml
 
 # solver runs is "silent" mode
 set_log_level(50)

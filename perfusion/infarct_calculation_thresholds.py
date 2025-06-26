@@ -20,7 +20,7 @@ import numpy as np
 import yaml
 from dolfin import *
 
-import IO_fcts
+from perfusion.src.Legacy_version.io import IO_fcts
 import finite_element_fcts as fe_mod
 import suppl_fcts
 

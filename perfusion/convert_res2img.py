@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import os
 
 # added module
-import IO_fcts
+from perfusion.src.Legacy_version.io import IO_fcts
 import finite_element_fcts as fe_mod
 
 numpy.set_printoptions(linewidth=200)

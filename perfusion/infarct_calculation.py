@@ -26,7 +26,7 @@ np.set_printoptions(linewidth=200)
 parameters['ghost_mode'] = 'none'
 
 # added module
-import IO_fcts
+from perfusion.src.Legacy_version.io import IO_fcts
 import suppl_fcts
 import finite_element_fcts as fe_mod
 

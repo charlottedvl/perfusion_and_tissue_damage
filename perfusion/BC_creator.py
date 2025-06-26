@@ -8,8 +8,7 @@ on their surface area
 
 from dolfin import *
 import numpy as np
-import IO_fcts
-import finite_element_fcts as fe_mod
+from perfusion.src.Legacy_version.io import IO_fcts
 import argparse
 
 import os
@@ -38,7 +37,7 @@ cmd_flags = [args.healthy, args.occl_ID, args.folder, args.config_file]
 [healthy, occl_ID, out_folder, config_file] = cmd_flags
 
 #%%
-configs = IO_fcts.basic_flow_config_reader_yml(config_file,parser)
+configs = IO_fcts.basic_flow_config_reader_yml(config_file, parser)
 
 if out_folder == None: res_file = configs['input']['inlet_boundary_file']
 else: res_file = out_folder + 'BCs.csv'

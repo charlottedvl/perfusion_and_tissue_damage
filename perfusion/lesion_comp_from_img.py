@@ -1,16 +1,19 @@
-# installed python3 modules
-import sys
+"""
+Compute lesion volume proxies from brain perfusion images (.nii.gz) by:
+- Thresholding absolute cerebral blood flow (aCBF)
+- Optionally thresholding relative CBF (rCBF) against a healthy reference
+
+@author: Charlotte Devillé
+"""
+
+# Import python3 modules
 import argparse
 import numpy as np
 import nibabel as nib
 import os
-import matplotlib.pyplot as plt
 import yaml
 
-np.set_printoptions(linewidth=200)
-
-
-# %% READ INPUT
+# Read input
 parser = argparse.ArgumentParser(description="compute lesion proxies from perfusion images (*.nii.gz)")
 parser.add_argument("--healthy_file", help="path to image file of the healthy state",
                     type=str, default='./results/p0000/perfusion_healthy/perfusion.nii.gz')
@@ -27,57 +30,59 @@ parser.add_argument("--aCBF_thrshld", help="CBF<aCBF_thrshld -> lesion [ml/min/1
 parser.add_argument('--save_figure', action='store_true',
                     help="save figure showing image along midline slices")
 parser.set_defaults(save_figure=False)
-aCBF_thrshld = parser.parse_args().aCBF_thrshld
-rCBF_thrshld = parser.parse_args().rCBF_thrshld
 
+# Parse input arguments
+args = parser.parse_args()
+aCBF_threshold = args.aCBF_thrshld
+rCBF_threshold = args.rCBF_thrshld
+occluded_file = args.occluded_file
+healthy_file = args.healthy_file
+result_folder = args.res_fldr
 
-file_o = parser.parse_args().occluded_file
-file_h = parser.parse_args().healthy_file
-
-res_fldr = parser.parse_args().res_fldr
-if not os.path.exists( str(res_fldr) ):
+if not os.path.exists( str(result_folder) ):
     print('Path to result folder is defined based on the location of the occluded image file')
-    mypath_list = file_o.split('/')[:-1]
-    res_fldr = os.path.join(*mypath_list)
+    path_elements = occluded_file.split('/')[:-1]
+    result_folder = os.path.join(*path_elements)
 
-img_o = nib.load(file_o)
-header_o = img_o.header
-voxel_volume = header_o.get("srow_x")[0] * header_o.get("srow_y")[1] * header_o.get("srow_z")[2] / 1000 # [ml]
-img_o = img_o.get_fdata()
+# Load occluded image
+occluded_img = nib.load(occluded_file)
+occluded_header = occluded_img.header
+voxel_volume = occluded_header.get("srow_x")[0] * occluded_header.get("srow_y")[1] * occluded_header.get("srow_z")[2] / 1000 # [ml]
+occluded_img = occluded_img.get_fdata()
 
-mymask = np.logical_and(img_o<aCBF_thrshld, img_o!=parser.parse_args().background_value )
-V_CBF_ST_thrshld = np.sum(mymask)*voxel_volume
+# Compute lesion volume from aCBF threshold
+lesion_mask = np.logical_and(occluded_img < aCBF_threshold, occluded_img != parser.parse_args().background_value )
+volume_lesion_aCBF = np.sum(lesion_mask) * voxel_volume
 
 try:
-    img_h = nib.load(file_h)
-    header_h = img_h.header
-    img_h = img_h.get_fdata()
+    # Try loading healthy file
+    healthy_img = nib.load(healthy_file)
+    header_h = healthy_img.header
+    healthy_img = healthy_img.get_fdata()
     
-    if not img_o.shape == img_h.shape:
+    if occluded_img.shape != healthy_img.shape:
         print("The shapes of occluded and healthy images do not match!")
-        sys.exit
-    
-    img_h_avail = True
-    rCBF = img_o/img_h
-    V_rCBF_ST_thrshld = np.sum(rCBF<rCBF_thrshld)*voxel_volume
-    
-except:
-    img_h_avail = False
-    print('Reference image of healthy state is not available')
+        raise ValueError("Shape mismatch")
 
-if img_h_avail:
-    my_res_file = os.path.join(res_fldr,"perfusion_outcome.yml")
-    with open(my_res_file, 'a') as outfile:
-        yaml.safe_dump(
-            {'img_core-volume_'+'{:02d}'.format(int(aCBF_thrshld))+'_aCBF_mL': float(V_CBF_ST_thrshld)},
-            outfile )
-        yaml.safe_dump(
-            {'img_core-volume_'+'{:02d}'.format(int(100*rCBF_thrshld))+'%_rCBF_mL': float(V_rCBF_ST_thrshld)},
-            outfile )
-else:
-    my_res_file = os.path.join(res_fldr,"perfusion_outcome.yml")
-    with open(my_res_file, 'a') as outfile:
-        yaml.safe_dump(
-            {'img_core-volume_'+'{:02d}'.format(int(aCBF_thrshld))+'_aCBF_mL': float(V_CBF_ST_thrshld)},
-            outfile )
+    # Compute rCBF based volume
+    healthy_img_available = True
+    rCBF = occluded_img/healthy_img
+    volume_lesion_rCBF = np.sum(rCBF<rCBF_threshold) * voxel_volume
 
+except (FileNotFoundError, ValueError) as e:
+    healthy_img_available = False
+    print('Reference image of healthy state is not available: ', e)
+
+# Always save the aCBF-based lesion volume
+result_file = os.path.join(result_folder,"perfusion_outcome.yml")
+with open(result_file, 'a') as outfile:
+    yaml.safe_dump(
+        {'img_core-volume_' + '{:02d}'.format(int(aCBF_threshold)) + '_aCBF_mL': float(volume_lesion_aCBF)},
+        outfile
+    )
+    # Save rCBF-based lesion volume as well
+    if healthy_img_available:
+        yaml.safe_dump(
+            {'img_core-volume_' + '{:02d}'.format(int(100 * rCBF_threshold)) + '%_rCBF_mL': float(volume_lesion_rCBF)},
+            outfile
+        )

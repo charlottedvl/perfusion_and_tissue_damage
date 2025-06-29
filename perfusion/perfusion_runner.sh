@@ -11,11 +11,11 @@ then
     echo "The permeability tensor form has been computed already"
 else
     echo "The permeability tensor form will be computed" 
-    mpirun -n 6 python3 -m src.Legacy_version.simulation.permeability_initialiser --config_file ./configs/config_permeability_initialiser.yaml
+    mpirun -n 6 python3 -m src.Legacy_version.simulation.permeability_initialiser
 fi
 
 echo "The basic flow solver is running"
-python3 -m BC_creator
+python3 -m src.Legacy_version.simulation.BC_creator
 mpirun -n 6 python3 -m src.Legacy_version.simulation.basic_flow_solver
 python3 -m convert_res2img --config_file ./results/p0000/perfusion_healthy/settings.yaml
 

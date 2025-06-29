@@ -8,7 +8,7 @@ on their surface area
 
 from dolfin import *
 import numpy as np
-from src.Legacy_version.io import IO_fcts
+from ..io import IO_fcts
 import argparse
 
 import os

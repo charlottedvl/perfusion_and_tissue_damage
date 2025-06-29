@@ -42,7 +42,7 @@ if rank == 0: print('Step 1: Reading input files')
 
 parser = argparse.ArgumentParser(description="perfusion computation based on multi-compartment Darcy flow model")
 parser.add_argument("--config_file", help="path to configuration file",
-                    type=str, default='../../../config_permeability_initialiser.yaml')
+                    type=str, default='./configs/config_permeability_initialiser.yaml')
 config_file = parser.parse_args().config_file
 
 configs = IO_fcts.perm_init_config_reader_yml(config_file)

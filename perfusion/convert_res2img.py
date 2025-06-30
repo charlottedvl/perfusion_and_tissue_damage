@@ -18,6 +18,15 @@ from src.Legacy_version.io import IO_fcts
 from src.Legacy_version.utils import finite_element_fcts as fe_mod
 
 def create_parser():
+    """
+    Creates and configures an argparse.ArgumentParser for the script.
+
+    This parser defines command-line arguments for converting finite element
+    results into NIfTI image files.
+
+    Returns:
+        argparse.ArgumentParser: The configured argument parser.
+    """
     parser = argparse.ArgumentParser(
         description="Convert finite elements results (*.h5 and *.xdmf) into an image (*.nii.gz)")
     parser.add_argument("--config_file", help="Path to configuration file",
@@ -32,6 +41,20 @@ def create_parser():
     return parser
 
 def prepare_voxel_size(arguments):
+    """
+    Prepares the voxel size to be a 3-element NumPy array of floats.
+
+    If the input voxel size from arguments is a single scalar, it is
+    replicated across all three dimensions (x, y, z).
+
+    Args:
+        arguments (argparse.Namespace): The parsed command-line arguments,
+            expected to have a 'voxel_size' attribute.
+
+    Returns:
+        numpy.ndarray: A 3-element NumPy array representing the voxel size
+                       along x, y, and z axes (e.g., [2.0, 2.0, 2.0]).
+    """
     voxel_size = numpy.array(arguments.voxel_size)
     try:
         if len(voxel_size) != 3:
@@ -42,8 +65,25 @@ def prepare_voxel_size(arguments):
 
 def allocate_field(variable_name, mesh, K1_space, K2_space, Vvel, simulation_configs):
     """
-    Allocates the appropriate dolfin.Function and determines variable type
-    based on the variable name (e.g., 'k1', 'vel1', 'press1', etc.)
+    Allocates the appropriate dolfin.Function and determines its type
+    based on the variable name prefix.
+
+    Args:
+        variable_name (str): The name of the variable (e.g., 'press1', 'vel1', 'perfusion').
+        mesh (dolfin.Mesh): The DOLFIN mesh object.
+        K1_space (dolfin.FunctionSpace): Function space for K1 (tensor) variables.
+        K2_space (dolfin.FunctionSpace): Function space for K2 (scalar, usually related to perfusion/beta) variables.
+        Vvel (dolfin.FunctionSpace): Function space for velocity (vector) variables.
+        simulation_configs (dict): A dictionary containing simulation configuration settings,
+            expected to have 'fe_degr' under 'simulation' key for pressure spaces.
+
+    Returns:
+        tuple: A tuple containing:
+            - dolfin_function (dolfin.Function): The allocated DOLFIN function object.
+            - variable_type (str): The determined type of the variable ('scalar', 'vector', or 'tensor').
+            - variable_name (str): The potentially modified variable name (e.g., 'k1' becomes 'K1').
+    Raises:
+       ValueError: If the variable name prefix is unknown.
     """
     prefix = variable_name[:3]
     dolfin_function, variable_type = None, ""
@@ -70,6 +110,25 @@ def allocate_field(variable_name, mesh, K1_space, K2_space, Vvel, simulation_con
     return dolfin_function, variable_type, variable_name
 
 def load_dolfin_data(variable, dolfin_variable, results_folder):
+    """
+    Loads finite element data for a specified variable from an XDMF file.
+
+    This function attempts to read a checkpoint of the DOLFIN function
+    from its corresponding XDMF file.
+
+    Args:
+        variable (str): The name of the variable as it appears in the XDMF file
+                       (e.g., 'perfusion', 'K1').
+        dolfin_variable (dolfin.Function): The DOLFIN function object into which
+                       the data will be loaded.
+        results_folder (str): The path to the directory containing the XDMF files.
+
+    Returns:
+        None: The function modifies `dolfin_variable` in-place.
+
+    Prints:
+        A message if the specified XDMF file is not available (due to ValueError).
+    """
     try:
         f_in = dolfin.XDMFFile(results_folder + variable + '.xdmf')
         f_in.read_checkpoint(dolfin_variable, variable, 0)
@@ -79,6 +138,26 @@ def load_dolfin_data(variable, dolfin_variable, results_folder):
     return
 
 def create_image_grid(mesh, voxel_size):
+    """
+    Creates the coordinate arrays for the image grid based on the mesh
+    and desired voxel size.
+
+    The image grid extends slightly beyond the mesh's bounding box
+    to ensure full coverage.
+
+    Args:
+        mesh (dolfin.Mesh): The DOLFIN mesh object from which to determine
+                            the bounding box for the image grid.
+        voxel_size (numpy.ndarray): A 3-element array specifying the size of
+                            each voxel in x, y, and z directions.
+
+    Returns:
+        tuple: A tuple containing:
+            - image_coord_min (numpy.ndarray): Minimum coordinates of the image grid origin.
+            - x (numpy.ndarray): Array of x-coordinates for the grid.
+            - y (numpy.ndarray): Array of y-coordinates for the grid.
+            - z (numpy.ndarray): Array of z-coordinates for the grid.
+    """
     image_coord_min = numpy.int32(numpy.floor(numpy.min(mesh.coordinates(), axis=0) - voxel_size))
     image_coord_max = numpy.int32(numpy.ceil(numpy.max(mesh.coordinates(), axis=0) + voxel_size))
 
@@ -89,6 +168,33 @@ def create_image_grid(mesh, voxel_size):
 
 # TODO: speed up image recovery
 def finite_element_to_image_data(var, variable_type, x, y, z, length_x, length_y, length_z, bg_value):
+    """
+    Converts finite element function data into a NumPy image array.
+
+    The function iterates through a 3D grid, evaluates the DOLFIN function
+    at each grid point, and stores the result in a NumPy array. Points where
+    the evaluation fails (e.g., outside the mesh) are filled with a background value.
+
+    Args:
+        var (dolfin.Function): The DOLFIN function object containing the finite element solution.
+        variable_type (str): The type of the variable ('scalar', 'vector', or 'tensor').
+        x (numpy.ndarray): Array of x-coordinates for the image grid.
+        y (numpy.ndarray): Array of y-coordinates for the image grid.
+        z (numpy.ndarray): Array of z-coordinates for the image grid.
+        length_x (int): Number of voxels in the x-dimension.
+        length_y (int): Number of voxels in the y-dimension.
+        length_z (int): Number of voxels in the z-dimension.
+        bg_value (float or int): The value to use for background voxels or where function evaluation fails.
+
+    Returns:
+        numpy.ndarray: The populated image data array with dimensions (length_x,
+                       length_y, length_z) for scalar, (length_x, length_y,
+                       length_z, 3) for vector, or (length_x, length_y,
+                       length_z, 9) for tensor.
+
+    Raises:
+        ValueError: If an unknown variable type is provided.
+    """
     if variable_type == 'scalar':
         image_data = numpy.ones((length_x, length_y, length_z)) * bg_value
     elif variable_type == 'vector':
@@ -113,6 +219,22 @@ def finite_element_to_image_data(var, variable_type, x, y, z, length_x, length_y
     return image_data
 
 def save_nifti(voxel_size, image_coord_min, image_data, results_folder, variable):
+    """
+    Saves the image data to a NIfTI (.nii.gz) file.
+
+    This function constructs the affine matrix necessary for NIfTI to correctly
+    position the image in 3D space, then saves the image.
+
+    Args:
+        voxel_size (numpy.ndarray): A 3-element array specifying the size of each voxel in x, y, and z directions.
+        image_coord_min (numpy.ndarray): Minimum coordinates of the image grid origin.
+        image_data (numpy.ndarray): The 3D or 4D NumPy array containing the image data.
+        results_folder (str): The path to the directory where the NIfTI file will be saved.
+        variable (str): The name of the variable, used for the output file name.
+
+    Returns:
+        None
+    """
     affine_matrix = numpy.eye(4)
     for i in range(3): affine_matrix[i, i] = voxel_size[i]
     affine_matrix[:3, -1] = image_coord_min + 1
@@ -121,6 +243,26 @@ def save_nifti(voxel_size, image_coord_min, image_data, results_folder, variable
     return
 
 def save_image(image_data, results_directory, args_variable, length_x, length_y, length_z):
+    """
+    Generates and saves 2D slices of the image data along midline planes.
+
+    For vector (4D) data, it calculates the L2 norm to convert it to a scalar field
+    before slicing. This function only saves images for 3D (scalar) data.
+
+    Args:
+        image_data (numpy.ndarray): The 3D or 4D NumPy array containing the image data.
+        results_directory (str): The path to the directory where the PNG figure will be saved.
+        args_variable (str): The original variable name from arguments, used for naming the output figure.
+        length_x (int): Number of voxels in the x-dimension.
+        length_y (int): Number of voxels in the y-dimension.
+        length_z (int): Number of voxels in the z-dimension.
+
+    Returns:
+        None
+
+    Prints:
+        A message if saving figures for tensor spaces is not available.
+    """
     dimensions = len(list(image_data.shape))
     if dimensions == 4:
         image_data = numpy.linalg.norm(image_data, axis=3)

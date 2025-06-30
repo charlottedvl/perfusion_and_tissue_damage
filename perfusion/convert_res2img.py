@@ -17,6 +17,7 @@ import os
 from src.Legacy_version.io import IO_fcts
 from src.Legacy_version.utils import finite_element_fcts as fe_mod
 
+
 def create_parser():
     """
     Creates and configures an argparse.ArgumentParser for the script.
@@ -40,6 +41,7 @@ def create_parser():
                         default=False)
     return parser
 
+
 def prepare_voxel_size(arguments):
     """
     Prepares the voxel size to be a 3-element NumPy array of floats.
@@ -62,6 +64,7 @@ def prepare_voxel_size(arguments):
     except:
         voxel_size = numpy.array([voxel_size, voxel_size, voxel_size], dtype=float)
     return voxel_size
+
 
 def allocate_field(variable_name, mesh, K1_space, K2_space, Vvel, simulation_configs):
     """
@@ -109,6 +112,7 @@ def allocate_field(variable_name, mesh, K1_space, K2_space, Vvel, simulation_con
         raise ValueError(f"Unknown variable type: {variable_name}")
     return dolfin_function, variable_type, variable_name
 
+
 def load_dolfin_data(variable, dolfin_variable, results_folder):
     """
     Loads finite element data for a specified variable from an XDMF file.
@@ -136,6 +140,7 @@ def load_dolfin_data(variable, dolfin_variable, results_folder):
     except ValueError:
         print(variable + '.xdmf file not available!')
     return
+
 
 def create_image_grid(mesh, voxel_size):
     """
@@ -165,6 +170,7 @@ def create_image_grid(mesh, voxel_size):
     y = numpy.arange(image_coord_min[1], image_coord_max[1], voxel_size[1])
     z = numpy.arange(image_coord_min[2], image_coord_max[2], voxel_size[2])
     return image_coord_min, x, y, z
+
 
 # TODO: speed up image recovery
 def finite_element_to_image_data(var, variable_type, x, y, z, length_x, length_y, length_z, bg_value):
@@ -215,8 +221,9 @@ def finite_element_to_image_data(var, variable_type, x, y, z, length_x, length_y
                     else:
                         image_data[i, j, k, :] = value
                 except Exception:
-                    pass # image_date have been instantiated to the default value so no need to update again
+                    pass  # image_date have been instantiated to the default value so no need to update again
     return image_data
+
 
 def save_nifti(voxel_size, image_coord_min, image_data, results_folder, variable):
     """
@@ -241,6 +248,7 @@ def save_nifti(voxel_size, image_coord_min, image_data, results_folder, variable
     img = nib.Nifti1Image(image_data, affine_matrix)
     nib.save(img, results_folder + variable + '.nii.gz')
     return
+
 
 def save_image(image_data, results_directory, args_variable, length_x, length_y, length_z):
     """
@@ -284,9 +292,10 @@ def save_image(image_data, results_directory, args_variable, length_x, length_y,
         ax.imshow(numpy.flip(numpy.rot90(slices[index]), axis=1), cmap='gist_gray', vmin=0, vmax=image_data.max())
     fig1.savefig(results_directory + args_variable.strip().lower() + '.png', transparent=True, dpi=450)
 
+
 def main():
     # DOLFIN settings
-    dolfin.parameters['ghost_mode'] = 'none' # ghost mode options: 'none', 'shared_facet', 'shared_vertex'
+    dolfin.parameters['ghost_mode'] = 'none'  # ghost mode options: 'none', 'shared_facet', 'shared_vertex'
     # solver runs is "silent" mode
     dolfin.set_log_level(50)
 
@@ -343,6 +352,7 @@ def main():
     # Save image slices if possible
     if args.save_figure:
         save_image(img_data, results_folder, args.variable, nx, ny, nz)
+
 
 if __name__ == "__main__":
     main()

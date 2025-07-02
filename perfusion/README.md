@@ -1,3 +1,14 @@
+# Refactoring
+
+This folder is currently in a refactoring phase. The following tutorial on how to run the basic flow solver may not be 
+accurate to the actual state of the folder. 
+
+Four different aspects are updated with the refactoring:
+- modifying the structure of the code;
+- adding and updating the documentation;
+- updating the code of FEniCS legacy to FEniCSX;
+- adding tests (unit, global, performance tests).
+
 # basic_flow_solver
 
 Running the 3D blood flow solver:

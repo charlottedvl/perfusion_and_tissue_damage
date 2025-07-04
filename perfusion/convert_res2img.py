@@ -1,5 +1,5 @@
 """
-This file converts a .msh file into a .nii.gz format.
+This file converts a finite element results (a .h5 or .xdmf) file into a .nii.gz format.
 
 @author: Charlotte Devillé
 """

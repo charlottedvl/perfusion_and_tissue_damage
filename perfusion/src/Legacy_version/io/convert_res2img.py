@@ -14,8 +14,8 @@ import matplotlib.pyplot as plt
 import os
 
 # Local imports
-from src.Legacy_version.io import IO_fcts
-from src.Legacy_version.utils import finite_element_fcts as fe_mod
+from ..io import IO_fcts
+from ..utils import finite_element_fcts as fe_mod
 
 
 def create_parser():

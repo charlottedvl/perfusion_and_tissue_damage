@@ -1,4 +1,4 @@
-# Utils – General Utilities and Reusable Functions
+# Utils
 
 This folder contains helper functions and utilities used throughout the project. Typical tasks include:
 - Finite elements functions;

@@ -1,4 +1,4 @@
-# Simulation folder
+# Simulation
 
 This folder contains all simulation scripts. Three main are presents:
 - BC_creator.py;

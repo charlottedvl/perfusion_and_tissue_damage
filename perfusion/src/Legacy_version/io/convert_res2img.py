@@ -344,7 +344,7 @@ def main():
     nx, ny, nz = len(x), len(y), len(z)
 
     # Convert finite element data to image
-    img_data = finite_element_to_image_data(variable, var_type, x, y, z, nx, ny, nz, args.background_value)
+    img_data = finite_element_to_image_data(dolfin_variable, var_type, x, y, z, nx, ny, nz, args.background_value)
 
     # Save image to nifti format
     save_nifti(voxel_size, img_coord_min, img_data, results_folder, variable)

@@ -60,9 +60,9 @@ Stage: build
     conda create -n fenics-legacy -c conda-forge python=3.9
     conda activate fenics-legacy
     conda install -c conda-forge \
-        fenics \
-        mpich=4.2.0 \
-        mpi4py=3.1.5 \
+        fenics=2019.1.0 \
+        mpich=4.3.1 \
+        mpi4py=4.1.0 \
         hdf5=*=mpi* \
         h5py=*=mpi* \
         pyyaml \

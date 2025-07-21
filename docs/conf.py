@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.abspath('/mnt/src/Gem_X/functions'))
 project = 'Gemini'
 copyright = '2025, Adam Brierley'
 author = 'Adam Brierley'
+master_doc = 'index'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -41,3 +42,8 @@ html_static_path = ['_static']
 # -- Options for function output -----------------------------------------------
 autoclass_content = 'both'  # Include class and __init__ docstrings
 autodoc_member_order = 'bysource'  # Order members as they appear in the source
+
+html_theme_options = {
+    "show_related": True,
+    "show_toc_level": 1,  # Only show top-level (document titles)
+}

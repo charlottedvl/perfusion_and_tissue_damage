@@ -8,13 +8,13 @@
     <title>Running on HPC &#8212; Gemini  documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
-    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=712fa57f" />
     <script src="../_static/documentation_options.js?v=5929fcd5"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Code Performance" href="performance.html" />
+    <link rel="next" title="Crescent2" href="crescent2.html" />
     <link rel="prev" title="Running on a local machine" href="local.html" />
    
   <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
@@ -35,24 +35,40 @@
             
   <section id="running-on-hpc">
 <h1>Running on HPC<a class="headerlink" href="#running-on-hpc" title="Link to this heading">¶</a></h1>
+<div class="toctree-wrapper compound">
+</div>
 <p>The code can be run in two version: serial or parallel. In order to run in parallel, you can either use your local
 machine by following this tutorial: <a class="reference external" href="local.html">Running on a local machine</a>. You can also choose to use one of the supercomputer facilities that allow to run
 the simulation using high performance computing (HPC). The three facilities that support the project are Crescent2,
 Archer2 and Ares. More information about those three facilities are given below, abd tutorial on how to set up the
 environment for each one of them.</p>
-<section id="crescent2">
-<h2>Crescent2<a class="headerlink" href="#crescent2" title="Link to this heading">¶</a></h2>
+<p><strong>Crescent2</strong></p>
 <p>Crescent2 is the Cranfield University facility open to students.</p>
-<p>A full tutorial on how to run the code on this facility is given here:</p>
-</section>
-<section id="archer2">
-<h2>Archer2<a class="headerlink" href="#archer2" title="Link to this heading">¶</a></h2>
-<p>Archer2 is the UK national facility.</p>
-</section>
-<section id="ares">
-<h2>Ares<a class="headerlink" href="#ares" title="Link to this heading">¶</a></h2>
-<p>Ares is a Polish system which access has been given to GEMINI researchers.</p>
-</section>
+<p>A full <strong>tutorial</strong> on how to run the code on this facility is given here:
+<a class="reference external" href="crescent2.html">Running on Crescent2</a>.</p>
+<p><strong>Archer2</strong></p>
+<p>ARCHER2 is the UK’s National Supercomputing Service, provided by UK Research and Innovation (UKRI), EPCC at the
+University of Edinburgh, and Hewlett Packard Enterprise (HPE) Cray.
+Deployed in 2020, the supercomputer counts 5,860 compute nodes each equipped with dual AMD EPYC Zen2 (Rome) 64-core CPUs
+at 2.25GHz.</p>
+<p>It possesses 750,080 computing cores and a cooling system. It boasts a theoretical peak performance of 28 PetaFlops.</p>
+<p><a class="reference external" href="https://docs.archer2.ac.uk/">Official Website (ARCHER2 Documentation)</a></p>
+<p>A full tutorial will be available soon.</p>
+<p><strong>Ares</strong></p>
+<p>Ares is a Polish system part of the PLGrid Consortium which access has been given to GEMINI researchers. Deployed in
+2021, the supercomputer is based on computing servers with Intel Xeon Platinum and Intel Xeon Gold processors,
+divided into three groups:</p>
+<ul class="simple">
+<li><p>532 servers each equipped with 192 GB of RAM,</p></li>
+<li><p>256 servers each equipped with 384 GB of RAM each,</p></li>
+<li><p>9 servers with 8 NVIDIA Tesla V100 cards each.</p></li>
+</ul>
+<p>It possesses 37 824 computing cores and a cooling system. It boasts a theoretical peak performance of over 3.5 PetaFlops
+for its CPU parts and over 500 TeraFlops for its GPU parts.</p>
+<p><a class="reference external" href="https://www.cyfronet.pl/en/">Official Website (Cyfronet)</a></p>
+<p><a class="reference external" href="https://www.cyfronet.pl/en/computers/18827,artykul,ares_supercomputer.html">Ares specific page</a></p>
+<p>A full <strong>tutorial</strong> on how to run the code there is given here:
+<a class="reference external" href="ares.html">Running on Ares</a>.</p>
 </section>
 
 
@@ -89,9 +105,8 @@ environment for each one of them.</p>
 <li class="toctree-l1"><a class="reference internal" href="modernisation_concise.html">Modernisation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="local.html">Running on a local machine</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Running on HPC</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#crescent2">Crescent2</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#archer2">Archer2</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#ares">Ares</a></li>
+<li class="toctree-l2"><a class="reference internal" href="crescent2.html">Crescent2</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ares.html">Ares</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="performance.html">Code Performance</a></li>
@@ -105,7 +120,7 @@ environment for each one of them.</p>
 <ul>
   <li><a href="../index.html">Documentation overview</a><ul>
       <li>Previous: <a href="local.html" title="previous chapter">Running on a local machine</a></li>
-      <li>Next: <a href="performance.html" title="next chapter">Code Performance</a></li>
+      <li>Next: <a href="crescent2.html" title="next chapter">Crescent2</a></li>
   </ul></li>
 </ul>
 </div>

@@ -12,8 +12,8 @@ sys.path.insert(0, os.path.abspath('/mnt/src/Gem_X/functions'))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'Gemini'
-copyright = '2025, Adam Brierley'
-author = 'Adam Brierley'
+copyright = '2025, Adam Brierley, Charlotte Devillé'
+author = 'Adam Brierley, Charlotte Devillé'
 master_doc = 'index'
 
 # -- General configuration ---------------------------------------------------

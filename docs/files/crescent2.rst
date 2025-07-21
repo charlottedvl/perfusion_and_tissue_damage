@@ -15,7 +15,7 @@ Initial setup
 Before being able to run the code on Crescent2, some preliminary steps need to be carried out.
 This initial setup is essential to run the code and get inform of the state of each task you submit.
 
-The first step is to upload the code into Crescent2. To do so, you can choose either of thefollowing solutions: cloning
+The first step is to upload the code into Crescent2. To do so, you can choose either of the following solutions: cloning
 from the public GitHub repository or copying the folder from your local machine using a command.
 
 To clone the repository, you can use the following command:
@@ -40,7 +40,7 @@ your local machine, you can import it using the same command as before:
 
     scp -r container.sif your_crescent2_username@crescent2.central.cranfield.ac.uk:/mnt/beegfs/home/your_crescent2_username/you_project_folder/containers/
 
-If not, it can be easily build from the root folder of your project using the following commang:
+If not, it can be easily build from the root folder of your project using the following command:
 
 .. code-block:: bash
 

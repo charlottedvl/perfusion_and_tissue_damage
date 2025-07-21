@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Code Structure &#8212; Gemini  documentation</title>
+    <title>Project structure &#8212; Gemini  documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=712fa57f" />
@@ -33,59 +33,112 @@
 
           <div class="body" role="main">
             
-  <section id="code-structure">
-<h1>Code Structure<a class="headerlink" href="#code-structure" title="Link to this heading">¶</a></h1>
-<p>IN FUTURE, ADD SOPHISTICATED FLOW CHART …</p>
-<p>The following shows the project directory structure:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>├── README.md
-├── VP_results
-│   └── p0000
-├── brain_meshes
-│   └── b0000
-│       ├── affine_matrices.yaml
-│       ├── boundary_mapper.csv
-│       ├── clustered.h5
-│       ├── clustered.xdmf
-│       ├── clustered_facet_region.h5
-│       ├── clustered_facet_region.xdmf
-│       ├── clustered_physical_region.h5
-│       ├── clustered_physical_region.xdmf
-│       └── permeability
-│           ├── K1_form.h5
-│           ├── K1_form.xdmf
-│           ├── e_loc.h5
-│           ├── e_loc.xdmf
-│           ├── main_direction.h5
-│           └── main_direction.xdmf
-├── containers
-│   ├── container.def
-│   └── new_container.def
-├── doc
-│   ├── Makefile
-│   ├── _build
-│   │   ├── doctrees
-│   │   │   ├── environment.pickle
-│   │   │   ├── files
-│   │   │   │   ├── Perf_IO.doctree
-│   │   │   │   ├── Perf_finite_element_fcts.doctree
-│   │   │   │   ├── Perf_suppl_fcts.doctree
-│   │   │   │   ├── background.doctree
-│   │   │   │   ├── gem_leg.doctree
-│   │   │   │   ├── gem_x.doctree
-│   │   │   │   └── what.doctree
-│   │   │   └── index.doctree
-│   │   └── html
-│   │       ├── .buildinfo
-│   │       ├── .buildinfo.bak
-│   │       ├── .doctrees
-│   │       │   ├── environment.pickle
-│   │       │   ├── files
-│   │       │   │   ├── Perf_IO.doctree
-│   │       │   │   ├── Perf_finite_element_fcts.doctree
-│   │       │   │   ├── Perf_suppl_fcts.doctree
-│   │
+  <section id="project-structure">
+<h1>Project structure<a class="headerlink" href="#project-structure" title="Link to this heading">¶</a></h1>
+<p>The following graph shows the project directory structure. All files are not displayed as this is a large project.
+However, each folder contains a <code class="docutils literal notranslate"><span class="pre">README.md</span></code> file to explain its content.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>├── perfusion/
+│   ├── containers/
+│   │   ├── container.def
+│   │   └── container.sif
+│   ├── boundary_data/
+│   │   ├── templates/
+│   │   └── BC.csv
+│   ├── brain_meshes/
+│   │   └── ...
+│   ├── configs/
+│   │   ├── config_examples/
+│   │   └── ...
+│   ├── hpc_submission/
+│   │   ├── Crescent2/
+│   │   │   └── ...
+│   │   └── Ares/
+│   │   │   └── ...
+│   ├── results/
+│   │   └── ... # All the results files
+│   ├── src/
+│   │   ├── Legacy_version/
+│   │   │   ├── io/
+│   │   │   ├── simulation/
+│   │   │   └── utils/
+│   │   └── X_version/
+│   │   │   ├── io/
+│   │   │   ├── simulation/
+│   │   │   └── utils/
+│   ├── test/
+│   │   └── ...
+│   ├── verification/
+│   │   └── ...
+│   ├── README.md
+│   └── perfusion_runner.sh
+└── docs/
+    └── ...
 </pre></div>
 </div>
+</section>
+<section id="folder-explanation">
+<h1>Folder explanation<a class="headerlink" href="#folder-explanation" title="Link to this heading">¶</a></h1>
+<section id="perfusion-folder">
+<h2>Perfusion folder<a class="headerlink" href="#perfusion-folder" title="Link to this heading">¶</a></h2>
+<p>This folder contains the code related to the perfusion model, which describe the amount of blood delivered to a given
+amount of tissue in a given time (unit describing the perfusion: [ml/min/100g]). This code is structured clearly into
+different folders according to the functions of the file.</p>
+<p>This folder also contains a <code class="docutils literal notranslate"><span class="pre">README.md</span></code> file and a runner, called perfusion_runner.sh, that runs the typical workflow
+of the perfusion simulations.</p>
+<section id="containers-folder">
+<h3>Containers folder<a class="headerlink" href="#containers-folder" title="Link to this heading">¶</a></h3>
+<p>The containers folder groups both <code class="docutils literal notranslate"><span class="pre">.def</span></code> and <code class="docutils literal notranslate"><span class="pre">.sif</span></code> files related to the containers of the project.
+The <code class="docutils literal notranslate"><span class="pre">.sif</span></code> file is supposed to be here after the container has been built.</p>
+</section>
+<section id="boundary-data-folder">
+<h3>Boundary Data folder<a class="headerlink" href="#boundary-data-folder" title="Link to this heading">¶</a></h3>
+<p>This folder contains the boundary conditions of the brain mesh used for the simulation. A template is available,
+or a new file could be generated using the the <code class="docutils literal notranslate"><span class="pre">BC_creator.py</span></code> file.</p>
+</section>
+<section id="brain-meshes-folder">
+<h3>Brain meshes folder<a class="headerlink" href="#brain-meshes-folder" title="Link to this heading">¶</a></h3>
+<p>This folder contains the description of the brain meshes used for the simulation.</p>
+</section>
+<section id="configs-folder">
+<h3>Configs folder<a class="headerlink" href="#configs-folder" title="Link to this heading">¶</a></h3>
+<p>This folder contains the configurations files with the extension <code class="docutils literal notranslate"><span class="pre">.yaml</span></code>, and a folder gathering some examples of
+configurations for the simulations.</p>
+</section>
+<section id="hpc-submission-folder">
+<h3>HPC submission folder<a class="headerlink" href="#hpc-submission-folder" title="Link to this heading">¶</a></h3>
+<p>This folder contains two sub-folders, Ares and Crescent2, which gather all the submission files related to the HPC
+systems supported by the project.</p>
+</section>
+<section id="results">
+<h3>Results<a class="headerlink" href="#results" title="Link to this heading">¶</a></h3>
+<p>This folder gathers all the results from the simulations.</p>
+</section>
+<section id="src-folder">
+<h3>Src folder<a class="headerlink" href="#src-folder" title="Link to this heading">¶</a></h3>
+<p>This folder contains two sub-folders, Legacy_version and X_version, related to the two versions of the FEniCS software.
+The project is currently under a modernisation process that consists of switching from FEniCS Legacy to FEniCS-X.
+Until now, the X version is not completely implemented and tested, we then decide to conserve the Legacy version in
+order to always have a working version of the simulations available.</p>
+<p>Both sub-folders are build with 3 folders:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">io</span></code>: it contains the resources related to the inputs and outputs of the simulations;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">simulation</span></code>: it contains the scripts of the simulations (i.e. basic_flow_solver.py);</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">utils</span></code>: it is a collection of useful resources.</p></li>
+</ul>
+</section>
+<section id="test-folder">
+<h3>Test folder<a class="headerlink" href="#test-folder" title="Link to this heading">¶</a></h3>
+<p>This folder contains the tests of the project, especially the unit tests.</p>
+</section>
+<section id="verification">
+<h3>Verification<a class="headerlink" href="#verification" title="Link to this heading">¶</a></h3>
+<p>This folder contains some initial integration tests.</p>
+</section>
+</section>
+<section id="docs-folder">
+<h2>Docs folder<a class="headerlink" href="#docs-folder" title="Link to this heading">¶</a></h2>
+<p>This folder contains the source code of the Sphinx documentation of the project.</p>
+</section>
 </section>
 
 
@@ -118,7 +171,23 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="background.html">Background Theory</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Code Structure</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Project structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#folder-explanation">Folder explanation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#perfusion-folder">Perfusion folder</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#containers-folder">Containers folder</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#boundary-data-folder">Boundary Data folder</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#brain-meshes-folder">Brain meshes folder</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#configs-folder">Configs folder</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hpc-submission-folder">HPC submission folder</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#results">Results</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#src-folder">Src folder</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#test-folder">Test folder</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#verification">Verification</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#docs-folder">Docs folder</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="modernisation_concise.html">Modernisation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="local.html">Running on a local machine</a></li>
 <li class="toctree-l1"><a class="reference internal" href="hpc.html">Running on HPC</a></li>

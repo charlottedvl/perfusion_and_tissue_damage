@@ -1,12 +1,25 @@
 Running on a local machine
 ==========================
 
+Cloning the GitHub repository
+-----------------------------
+
+Before running or editing the code, you need to clone it. You can use the following command:
+
+.. code-block:: bash
+
+    git clone https://github.com/Gemini-DTH/perfusion_and_tissue_damage.git
+
+
+Operating system recommended
+----------------------------
+
 You can easily run the code on a linux machine. If you have a windows machine, you can use WSL to run a linux
 environment on a Windows machine. Find more information about WSL here:
 `WSL installation tutorial <https://learn.microsoft.com/en-us/windows/wsl/install>`_.
 
-Installing a package/environment manager:
------------------------------------------
+Installing a package/environment manager
+----------------------------------------
 
 You need to have a conda environment installed on your Linux environment. If you don't possess one, please enter the
 following commands to install Miniconda. The required **version of python is 3.9**.
@@ -28,8 +41,8 @@ After installing the package manager you need to activate conda and create a cus
 
 `As to why you need conda or a seperate environment at all, read through <https://www.anaconda.com/docs/tools/working-with-conda/environments>`_.
 
-Installing python packages:
----------------------------
+Installing python packages
+--------------------------
 
 .. code-block:: bash
 
@@ -47,7 +60,7 @@ The package *desist* isn't a standard built-in python package and therefore need
   	pip install -r requirements.txt
   	pip show desist
 
-Running the perfusion code:
+Running the perfusion code
 ---------------------------
 
 

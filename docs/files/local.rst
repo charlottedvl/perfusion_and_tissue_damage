@@ -14,7 +14,7 @@ Before running or editing the code, you need to clone it. You can use the follow
 Operating system recommended
 ----------------------------
 
-You can easily run the code on a linux machine. If you have a windows machine, you can use WSL to run a linux
+You can easily run the code on a Linux machine. If you have a windows machine, you can use WSL to run a linux
 environment on a Windows machine. Find more information about WSL here:
 `WSL installation tutorial <https://learn.microsoft.com/en-us/windows/wsl/install>`_.
 

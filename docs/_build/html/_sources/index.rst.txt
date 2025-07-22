@@ -3,45 +3,41 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-====================
-GEMINI documentation
-====================
+=====================
+The perfusion project
+=====================
 
-.. .. figure:: files/images/bw_joben_thrombus_transport.jpeg
-..    :alt: thrombus_transport_example
+The perfusion project is part of the **GEMINI** project, historically the **INSIST** project.
 
-   Thrombus transport in a human brain (courtesy of Joben Leons).
+**GEMINI**, *Generation of Multi-scale Digital Twins of Ischaemic and Haemorrhagic Stroke Patients*, is a project that
+aims at creating digital twins of stroke patients. It is a European project, funded by the European Union’s Horizon
+Europe research and innovation programme.
 
-**GEMINI** is a software package that solves problems involving blood flow to the brain
-in the event of *acute ischaemic stroke* in a patient. Hello.
+Before Gemini, the perfusion project was part of the **INSIST** project, *IN-Silico trials for acute Ischaemic STroke*,
+which seeks to model real-world clinical trials of Acute Ischaemic Stroke.
 
-This is part of the EU GEMINI project which seeks to create digital twins of stroke patients. 
-A subset of this project is INSIST (IN-Silico trials for acute Ischaemic STroke), which seeks 
-to model real-world clinical trials of the same.
+Find more information about those project here:
 
-.. note::
+* `GEMINI <https://dth-gemini.eu/>`_
+* `INSIST <https://insist-h2020.eu/>`_
 
-   This documentation is for the **perfusion model** of the GEMINI software.
+The perfusion model aims at simulating the blood flow in capillary vessel in healthy and stroke cases.
+*Perfusion* refers to the amount of blood delivered to a given amount of tissue in a given time.
+The associated unit is [ml/min/100g].
 
-GEMINI: https://dth-gemini.eu/
-
-INSIST: https://insist-h2020.eu/
-
-GitHub: https://github.com/Gemini-DTH/perfusion_and_tissue_damage
-
-
-
+The GitHub repository of the project can be found `here <https://github.com/Gemini-DTH/perfusion_and_tissue_damage>`_.
 
 .. toctree::
-   :maxdepth: 9
-   :caption: Contents:       
+   :maxdepth: 2
+   :hidden:
 
    files/background
+   files/requirements
+   files/local
+   files/hpc
    files/usage
    files/structure
    files/modernisation_concise
-   files/local
-   files/hpc
    files/performance 
    files/IO_fcts
    files/finite_element_fcts

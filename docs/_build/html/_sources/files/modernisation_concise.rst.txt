@@ -15,34 +15,6 @@ The model uses human-readable YAML configuration files to define physical, numer
 Running the Perfusion Model
 ---------------------------
 
-### Requirements
-
-The model requires the following software (specific versions ensure compatibility):
-
-- **FEniCSx Stack**:
-  - fenics-basix (0.9.0)
-  - fenics-dolfinx (0.9.0)
-  - fenics-ffcx (0.9.0)
-  - fenics-ufl (2024.2.0)
-- **Linear Algebra/MPI**:
-  - petsc4py (3.22.3)
-  - mpi4py (4.0.3)
-  - h5py (3.13.0)
-- **Scientific Python**:
-  - numpy (2.2.3)
-  - scipy (1.15.2)
-  - pandas (2.2.3)
-  - PyYAML (6.0.2)
-- **Utilities**:
-  - joblib (1.4.2)
-  - tqdm (4.67.1)
-- **Environment**:
-  - Python 3.10.x
-  - OpenMPI/MPICH 3.x+
-  - Linux/Unix
-
-For reproducibility, use the provided Singularity container (see `containers/container.def`).
-
 ### Pipeline Steps
 
 1. **Extract Meshes**:

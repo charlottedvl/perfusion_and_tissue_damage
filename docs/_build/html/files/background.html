@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Background Theory &#8212; Gemini  documentation</title>
+    <title>Background theory &#8212; Gemini  documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=712fa57f" />
@@ -14,8 +14,8 @@
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Usage" href="usage.html" />
-    <link rel="prev" title="GEMINI documentation" href="../index.html" />
+    <link rel="next" title="Requirements" href="requirements.html" />
+    <link rel="prev" title="The perfusion project" href="../index.html" />
    
   <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
   
@@ -34,24 +34,27 @@
           <div class="body" role="main">
             
   <section id="background-theory">
-<h1>Background Theory<a class="headerlink" href="#background-theory" title="Link to this heading">¶</a></h1>
-<p>To reduce the burden of resource-intensive human and animal clinical trials for acute ischaemic stroke, <em>in-silico</em> trials are sought as an alternative as
-part of the GEMINI project. These simulated trials - where brain meshes are altered slightly to represent different members of the population (ages, sexes, &amp;c.)
-- will enable predictions of patient outcome as a function of treatments such as thrombectomy and thrombolysis. This will help inform clinical decisions,
-like whether to carry out the treatment for a particular patient given that there are some associated risks.</p>
-<p>One aspect of these simulations
-involves an organ-scale micro-circulation model of the human brain for estimating perfusion of blood. Perfusion of blood into the brain corresponds to delivery
-of oxygen which corresponds to the health of the tissue, which is a direct indicator of patient
-functional outcome. This model is an essential part of simulating the brain mechanics.</p>
-<p>The goal is to see how a cohort of virtual patients respond to a particular treatment. That is to run a clinical trial to assess response to thrombolysis and
-thrombosis, but virtually.</p>
+<h1>Background theory<a class="headerlink" href="#background-theory" title="Link to this heading">¶</a></h1>
+<p>To reduce the burden of resource-intensive human and animal clinical trials for <strong>acute ischaemic stroke</strong>, <em>in-silico</em>
+trials are sought as an alternative as part of the GEMINI project. These simulated trials - where brain meshes are
+altered slightly to represent different members of the population (ages, sexes, &amp;c.) - will enable predictions of
+patient outcome as a function of treatments such as thrombectomy and thrombolysis. This will help inform clinical
+decisions, like whether to carry out the treatment for a particular patient given that there are some associated risks.</p>
+<p>One aspect of these simulations involves an organ-scale micro-circulation model of the human brain for estimating
+perfusion of blood. An interrupted perfusion, i.e. when a clot occludes a blood vessel as it happens during a stroke,
+reduces or suppresses the oxygen delivery to the cells. This is tightly linked to the health of the tissue, which is a
+direct indicator of patient functional outcome.
+This model is an essential part of simulating the brain mechanics.</p>
+<p>The goal is to see how a cohort of virtual patients respond to a particular treatment. That is to run a clinical trial
+to assess response to thrombolysis and thrombosis, the two main treatments of strokes, but virtually.</p>
 <section id="a-microscopic-circulation-model-of-the-human-brain">
 <h2>A Microscopic Circulation Model of the Human Brain<a class="headerlink" href="#a-microscopic-circulation-model-of-the-human-brain" title="Link to this heading">¶</a></h2>
 <section id="a-porous-continuum-with-three-compartments">
 <h3>A Porous Continuum with Three Compartments<a class="headerlink" href="#a-porous-continuum-with-three-compartments" title="Link to this heading">¶</a></h3>
-<p>This model helps to predict the blood perfusion levels at different spatial points. The 1D blood flow model is coupled with the cerebral perfusion model;
-from main arteries to the pial surface. The effect of blockages in the 1D blood vessel network on distribution of blood on the pial surface is coupled with
-the response of perfusion in the brain. Then there are additional factors depending on perfusion: oxygen/nutrient delivery, tissue damage, and oedema/swelling
+<p>This model helps to predict the blood perfusion levels at different spatial points. The 1D blood flow model is coupled
+with the cerebral perfusion model; from main arteries to the pial surface. The effect of blockages in the 1D blood
+vessel network on distribution of blood on the pial surface is coupled with the response of perfusion in the brain.
+Then there are additional factors depending on perfusion: oxygen/nutrient delivery, tissue damage, and oedema/swelling
 (mechanical deformation of tissue) which are models also in development. The approach is modular in this respect.</p>
 </section>
 </section>
@@ -83,20 +86,18 @@ the response of perfusion in the brain. Then there are additional factors depend
     </div>
 </search>
 <script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
-<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Background Theory</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#a-microscopic-circulation-model-of-the-human-brain">A Microscopic Circulation Model of the Human Brain</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#a-porous-continuum-with-three-compartments">A Porous Continuum with Three Compartments</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Background theory</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#a-microscopic-circulation-model-of-the-human-brain">A Microscopic Circulation Model of the Human Brain</a></li>
 </ul>
 </li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
-<li class="toctree-l1"><a class="reference internal" href="structure.html">Code Structure</a></li>
-<li class="toctree-l1"><a class="reference internal" href="modernisation_concise.html">Modernisation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="requirements.html">Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="local.html">Running on a local machine</a></li>
 <li class="toctree-l1"><a class="reference internal" href="hpc.html">Running on HPC</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="structure.html">Project structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="structure.html#folder-explanation">Folder explanation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modernisation_concise.html">Modernisation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="performance.html">Code Performance</a></li>
 <li class="toctree-l1"><a class="reference internal" href="IO_fcts.html">IO_fcts module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="finite_element_fcts.html">finite_element_fcts</a></li>
@@ -107,8 +108,8 @@ the response of perfusion in the brain. Then there are additional factors depend
 <h3>Related Topics</h3>
 <ul>
   <li><a href="../index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="../index.html" title="previous chapter">GEMINI documentation</a></li>
-      <li>Next: <a href="usage.html" title="next chapter">Usage</a></li>
+      <li>Previous: <a href="../index.html" title="previous chapter">The perfusion project</a></li>
+      <li>Next: <a href="requirements.html" title="next chapter">Requirements</a></li>
   </ul></li>
 </ul>
 </div>
@@ -125,7 +126,7 @@ the response of perfusion in the brain. Then there are additional factors depend
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &#169;2025, Adam Brierley.
+      &#169;2025, Adam Brierley, Charlotte Devillé.
       
       |
       Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>

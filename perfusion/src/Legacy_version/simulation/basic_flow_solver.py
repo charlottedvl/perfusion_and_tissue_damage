@@ -23,7 +23,7 @@ import numpy
 
 # Local imports
 from ..io import IO_fcts
-from ..utils import suppl_fcts, finite_element_fcts as fe_module
+from ..utils import suppl_fcts, config_utils, finite_element_fcts as fe_module
 
 # Global settings
 parameters['ghost_mode'] = 'none' # ghost mode options: 'none', 'shared_facet', 'shared_vertex'
@@ -49,62 +49,6 @@ def create_parser_basic_flow_solver():
                         type=str, default='./configs/config_basic_flow_solver.yaml')
     parser.add_argument("--res_fldr", help="path to results folder (string ended with /)", type=str, default=None)
     return parser
-
-
-def prepare_compartmental_model(simulation_configs):
-    """
-    Extract the compartmental model type from simulation configuration.
-
-    Defaults to 'acv' if the model type is not specified.
-
-    Args:
-        simulation_configs (dict): Simulation parameters dictionary.
-
-    Returns:
-        str: Model type string in lowercase.
-    """
-    try:
-        return simulation_configs.get('model_type').lower().strip()
-    except KeyError:
-        return 'acv'
-
-
-
-def prepare_velocity_order(simulation_configs):
-    """
-    Determine the velocity order for finite element approximation.
-
-    Uses 'vel_order' if present in the configuration; otherwise,
-    returns one degree less than 'fe_degr'.
-
-    Args:
-        simulation_configs (dict): Simulation parameters dictionary.
-
-    Returns:
-        int: Velocity order for finite elements.
-    """
-    try:
-        return simulation_configs.get('vel_order')
-    except KeyError:
-        return simulation_configs.get('fe_degr') - 1
-
-
-def prepare_simulation_parameters(simulation_configs):
-    """
-    Prepare simulation parameters from the configuration dictionary.
-
-    Extracts and returns the compartmental model type and velocity order
-    based on the provided simulation configuration.
-
-    Args:
-        simulation_configs (dict): Simulation parameters dictionary.
-
-    Returns:
-        tuple: (compartmental_model (str), velocity_order (int or None))
-    """
-    compartmental_model = prepare_compartmental_model(simulation_configs)
-    velocity_order = prepare_velocity_order(simulation_configs)
-    return compartmental_model, velocity_order
 
 
 def is_non_zero_file(path_file):
@@ -243,7 +187,7 @@ def main():
 
     # Read simulation parameters
     simulation_configs = configs.get('simulation', {})
-    compartmental_model, velocity_order = prepare_simulation_parameters(simulation_configs)
+    compartmental_model, velocity_order = config_utils.prepare_simulation_parameters(simulation_configs)
 
     # Read mesh
     mesh, subdomains, boundaries = IO_fcts.mesh_reader(configs['input']['mesh_file'])

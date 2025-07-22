@@ -251,6 +251,28 @@ def hdf5_reader(mesh,variable,folder,file_name,variable_name):
     hdf.read(variable, "/"+variable_name)
     hdf.close()
 
+
+def xdmf_reader(file, function, checkpoint_function):
+    """
+    Load a FEniCS Function from an XDMF file checkpoint.
+
+    Reads a previously stored function from disk and returns it in the given function space.
+
+    Args:
+        file (str): Path to the XDMF file containing the checkpoint.
+        function (FunctionSpace): FEniCS function space into which the data will be loaded.
+        checkpoint_function (str): Name of the checkpoint variable stored in the file.
+
+    Returns:
+        Function: The loaded FEniCS function containing the stored simulation data.
+    """
+    variable = Function(function)
+    f_in = XDMFFile(file)
+    f_in.read_checkpoint(variable, checkpoint_function, 0)
+    f_in.close()
+    return variable
+
+
 #%%
 class dict2obj(dict):
     def __init__(self, my_dict):

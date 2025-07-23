@@ -14,13 +14,12 @@ sigma_i - source term in the ith compartment [1 / s]
 """
 
 import argparse
-import time
 
 import numpy as np
 import yaml
 from dolfin import *
 
-from ..io import IO_fcts
+from ..io import IO_fcts, basic_flow_solver_IO
 from ..utils import finite_element_fcts as fe_mod
 from ..utils import suppl_fcts, config_utils
 
@@ -148,7 +147,7 @@ def main():
     parser = create_infarct_calculation_parser()
     args = parser.parse_args()
     config_file = args.config_file
-    configs = IO_fcts.basic_flow_config_reader_yml(config_file, parser)
+    configs = basic_flow_solver_IO.basic_flow_config_reader_yml(config_file, parser)
     result_folder = configs['output']['res_fldr']
 
     # Define simulation parameters

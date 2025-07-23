@@ -22,7 +22,7 @@ import argparse
 import numpy
 
 # Local imports
-from ..io import IO_fcts
+from ..io import IO_fcts, permeability_initialiser_IO, basic_flow_solver_IO
 from ..utils import suppl_fcts, config_utils, finite_element_fcts as fe_module
 
 # Global settings
@@ -174,7 +174,7 @@ def main():
     # Read input and extract configurations
     parser = create_parser_basic_flow_solver()
     config_file = parser.parse_args().config_file
-    configs = IO_fcts.basic_flow_config_reader_yml(config_file, parser)
+    configs = basic_flow_solver_IO.basic_flow_config_reader_yml(config_file, parser)
     result_folder = configs['output']['res_fldr']
 
     # Define physical parameters
@@ -198,7 +198,7 @@ def main():
                                 model_type=compartmental_model, vel_order=velocity_order)
 
     # Initialise permeability tensors
-    K1, K2, K3 = IO_fcts.initialise_permeabilities(K1_space, K2_space, mesh,
+    K1, K2, K3 = permeability_initialiser_IO.initialise_permeabilities(K1_space, K2_space,
                                                    configs['input']['permeability_folder'],
                                                    model_type=compartmental_model)
 

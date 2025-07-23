@@ -26,8 +26,8 @@ numpy.set_printoptions(linewidth=200)
 parameters['ghost_mode'] = 'none'
 
 # added module
-from src.Legacy_version.io import IO_fcts
-from src.Legacy_version.utils import suppl_fcts, finite_element_fcts as fe_mod
+from ..io import IO_fcts, basic_flow_solver_IO
+from ..utils import suppl_fcts, finite_element_fcts as fe_mod
 
 import sys
 
@@ -62,7 +62,7 @@ parser.add_argument("--inlet_boundary_file", help="path to inlet_boundary_file",
 
 config_file = parser.parse_args().config_file
 
-configs = IO_fcts.basic_flow_config_reader_yml(config_file, parser)
+configs = basic_flow_solver_IO.basic_flow_config_reader_yml(config_file, parser)
 
 # physical parameters
 p_arterial, p_venous = configs['physical']['p_arterial'], configs['physical']['p_venous']

@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import os
 
 # Local imports
-from ..io import IO_fcts
+from ..io import IO_fcts, basic_flow_solver_IO
 from ..utils import finite_element_fcts as fe_mod
 
 
@@ -310,7 +310,7 @@ def main():
 
     voxel_size = prepare_voxel_size(args)
 
-    configs = IO_fcts.basic_flow_config_reader_yml(config_file, parser)
+    configs = basic_flow_solver_IO.basic_flow_config_reader_yml(config_file, parser)
     results_folder = configs['output']['res_fldr']
 
     # Simulation parameters

@@ -137,7 +137,7 @@ numpy.set_printoptions(linewidth=200)
 parameters['ghost_mode'] = 'none'
 
 # added module
-from src.Legacy_version.io import IO_fcts
+from src.Legacy_version.io import IO_fcts, basic_flow_solver_IO
 from src.Legacy_version.utils import suppl_fcts
 from src.Legacy_version.utils import finite_element_fcts as fe_mod
 
@@ -162,7 +162,7 @@ parser.add_argument("--res_fldr", help="path to results folder (string ended wit
                     type=str, default=None)
 config_file = parser.parse_args().config_file
 
-configs = IO_fcts.basic_flow_config_reader_yml(config_file, parser)
+configs = basic_flow_solver_IO.basic_flow_config_reader_yml(config_file, parser)
 
 try:
     compartmental_model = configs['simulation']['model_type'].lower().strip()

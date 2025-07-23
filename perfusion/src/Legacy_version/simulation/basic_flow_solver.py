@@ -257,6 +257,8 @@ def main():
     start3 = time.time() # Start timer for third step
 
     # Compute velocity fields and save the results
+    if rank == 0:
+        os.makedirs(result_folder, exist_ok=True) # Create directory if it doesn't exist
     results = {}
     suppl_fcts.compute_my_variables(p, K1, K2, K3, beta12, beta23, p_venous, Vp, Vvel, K2_space,
                                     configs, results, compartmental_model, rank)

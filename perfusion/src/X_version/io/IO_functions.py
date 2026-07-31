@@ -95,6 +95,13 @@ def read_function_from_h5(K, filename: str, dataset_name="Function"):
     """
     Read global (owned) data from HDF5 and scatter into the DolfinX Function `K`.
 
+    Supports two HDF5 layouts:
+    - FEniCS-X format:  ``Function/f/0``  (written by XDMFFile.write_function)
+    - Legacy format:    ``<name>/<name>_0/vector``  (written by XDMFFile.write_checkpoint)
+
+    The function auto-detects the layout by looking for a ``vector`` dataset
+    inside the group, falling back to the generic key traversal otherwise.
+
     Parameters
     ----------
     K : dolfinx.fem.Function
@@ -102,23 +109,33 @@ def read_function_from_h5(K, filename: str, dataset_name="Function"):
     filename : str
         Path to the HDF5 file storing the global DoF values.
     dataset_name : str
-        Logical key for the function dataset (e.g. "Function").
+        Top-level group name, e.g. ``"K1_form"`` or ``"Function"``.
     """
     import h5py
     from mpi4py import MPI
     import numpy as np
-    from petsc4py import PETSc
 
     comm = MPI.COMM_WORLD
     rank = comm.rank
 
-    # --- Step 1: Read full data on rank 0 ---
+    # --- Step 1: Read the values dataset ---
     flat_data = None
     with h5py.File(filename, "r", driver="mpio", comm=comm) as f:
-        dataset_key = find_dataset_key(f, dataset_name)
-        if dataset_key is None:
+
+        # Priority 1: Legacy write_checkpoint layout → <name>/<name>_0/vector
+        legacy_key = f"{dataset_name or 'Function'}/{dataset_name or 'Function'}_0/vector"
+        # Priority 2: generic traversal (handles FEniCS-X Function/f/0 layout)
+        generic_key = find_dataset_key(f, dataset_name or "Function")
+
+        if legacy_key in f and isinstance(f[legacy_key], h5py.Dataset):
+            dataset_key = legacy_key
+        elif generic_key is not None and isinstance(f[generic_key], h5py.Dataset):
+            dataset_key = generic_key
+        else:
             raise KeyError(
-                f"[Rank {rank}] Could not find dataset key for logical name '{dataset_name}' in '{filename}'")
+                f"[Rank {rank}] Could not find values dataset for '{dataset_name}' in '{filename}'. "
+                f"Available top-level keys: {list(f.keys())}")
+
         raw_data = f[dataset_key][()]
 
         if raw_data.ndim == 2:
@@ -130,14 +147,16 @@ def read_function_from_h5(K, filename: str, dataset_name="Function"):
 
     # --- Step 2: Determine ownership (exclude ghost cells) ---
     index_map = K.function_space.dofmap.index_map
-    local_size = index_map.size_local  # Non-ghost DoFs only
+    bs = K.function_space.dofmap.index_map_bs  # block size (9 for tensor, 1 for scalar)
+    local_size = index_map.size_local * bs      # number of owned values in x.array
 
     # Compute offset in global array
     offset = comm.scan(local_size) - local_size
-    start, end = offset, offset + local_size
+    start, end = int(offset), int(offset + local_size)
 
-    # --- Step 4: Assign data to owned DoFs only ---
+    # --- Step 3: Assign data to owned DoFs only ---
     K.x.array[:local_size] = flat_data[start:end]
+    K.x.scatter_forward()
     return K.x.array
 
 

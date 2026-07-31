@@ -20,15 +20,15 @@ This README covers several subjects listed below.
 
 # State of the branch
 
-This folder is currently in a refactoring phase.
+This folder is currently in a full migration phase from Legacy to X.
 
 The [Legacy_version](src/Legacy_version) folder is almost completely refactored. 
 The files have been moved in the correct folders and functions have been created for the long scripts to create 
 modularity and introduce separation of concerns. 
 
 A modernisation from FEniCS Legacy to FEniCS-X has been initiated in the [X_version](src/X_version) folder. 
-Most of the files have not been updates. The only simulation migrated is the 
-[permeability_initialiser.py](src/X_version/simulation/permeability_initialiser.py) and the corresponding functions. 
+Most of the files have been updated. The simulations migrated are the 
+[permeability_initialiser.py](src/X_version/simulation/permeability_initialiser.py), the [basic_flow_solver_x.py], and their corresponding functions. 
 
 A testing effort have been started in the [test](test) folder. A fixture, representing a mesh of a cube rotated on 
 itself, has been created to this purpose. Some initial tests have been produced for the 
@@ -62,13 +62,23 @@ bash Miniconda3-latest-Linux-x86_64.sh
 After installing the package manager you need to activate conda and create a custom environment to run your code on.
 You can create the environment with the following command. 
 
+For the [Legacy_version](src/Legacy_version):
+
 ````bash
 source ~/miniconda3/bin/activate
 conda create -n fenics-legacy -c conda-forge fenics python=3.9
 conda activate fenics-legacy
 ````
 
-**Remember to activate both conda and fenics-env everytime you want to use the code**
+For the [X_version](src/X_version):
+
+````bash
+source ~/miniconda3/bin/activate
+conda create -n dolfinx -c conda-forge fenics-dolfinx python=3.11 numpy pytest
+conda activate dolfinx
+````
+
+**Remember to activate both conda and fenics-env/dolfinx everytime you want to use the code**
 
 The requirements need to be installed as well into your conda environment. Use the following command to do so.
 
@@ -86,10 +96,20 @@ tar xf ../brain_meshes.tar.xz
 The perfusion_runner.sh needs to be set as an executable file for it to run successfully.
 More information about what the perfusion_runner.sh does can be found in the [Main pipeline section](#main-pipeline).
 
+For the [Legacy_version](src/Legacy_version):
+
 ````bash
-cd ~/perfusion_and_tissue_damage/perfusion/
+cd ~/perfusion_and_tissue_damage_IRP_2026/perfusion/
 chmod +x perfusion_runner.sh
 ./perfusion_runner.sh
+````
+
+For the [X_version](src/X_version):
+
+````bash
+cd ~/perfusion_and_tissue_damage_IRP_2026/perfusion/
+chmod +x perfusion_runner_x_version.sh
+./perfusion_runner_x_version.sh
 ````
 
 # Pipeline
@@ -110,12 +130,20 @@ tar xf ../brain_meshes.tar.xz
 
 2. **Initialise the permeability tensor**:
 
-- Run `permeability_initialiser.py` to compute the permeability tensor.
+- Run `permeability_initialiser.py` or `permeability_initialiser_x.py` to compute the permeability tensor.
 - This simulation only need to be run once.
 - You can use the following command to run it in parallel from the project directory:
 
+For the [Legacy_version](src/Legacy_version):
+
 ```
 mpirun -n 4 python3 -m src.Legacy_version.simulation.permeability_initialiser --config_file ./configs/config_permeability_initialiser.yaml
+```
+
+For the [X_version](src/X_version):
+
+```
+mpirun -n 4 python3 -m src.X_version.simulation.permeability_initialiser --config_file ./configs/config_permeability_initialiser.yaml
 ```
 
 - Uses `config_permeability_initialiser.yaml` as a configuration file. It contains information about the mesh file, the output folder or physical parameters such as the arteriole/venule permeability tensor form.
@@ -130,8 +158,16 @@ When those task have been done, the main pipeline can be performed.
 - Generate boundary conditions for all scenarios, but especially occluded scenarios (e.g., LMCAo, RMCAo):
 - You can use the following command to run it in serial from the project directory:
 
+For the [Legacy_version](src/Legacy_version):
+
 ````bash
 python3 -m src.Legacy_version.simulation.BC_creator --config_file ./configs/config_basic_flow_solver.yaml
+````
+
+For the [X_version](src/X_version):
+
+````bash
+python3 -m src.X_version.simulation.BC_creator_x --config_file ./configs/config_basic_flow_solver.yaml
 ````
 
 - The command presented here is adapted to a healthy case. To adapt it to an occluded case, please update the argument of the command.
@@ -146,7 +182,7 @@ python3 -m src.Legacy_version.simulation.BC_creator --config_file ./configs/conf
 
 2. **Solve Flow**:
 
-- Run `basic_flow_solver.py` for pressure and velocity fields.
+- Run `basic_flow_solver.py` or `basic_flow_solver_x.py` for pressure and velocity fields.
 - You can use the following command to run it in parallel from the project directory:
 
 ````bash
